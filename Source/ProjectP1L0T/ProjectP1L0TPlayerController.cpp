@@ -17,6 +17,7 @@
 #include "Sound/SoundClass.h"
 #include "Sound/SoundMix.h"
 #include "Engine/GameUserSettings.h"
+#include "Misc/ConfigCacheIni.h"
 
 AProjectP1L0TPlayerController::AProjectP1L0TPlayerController()
 {
@@ -28,6 +29,7 @@ void AProjectP1L0TPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	LoadAudioSettings();
 	InitializeAudioMix();
 	SyncGraphicsSettings();
 
@@ -117,6 +119,33 @@ void AProjectP1L0TPlayerController::InitializeAudioMix()
 	ApplySoundMix();
 }
 
+void AProjectP1L0TPlayerController::LoadAudioSettings()
+{
+	if (!GConfig)
+	{
+		return;
+	}
+
+	static const TCHAR* Section = TEXT("ProjectP1L0T.Audio");
+	GConfig->GetFloat(Section, TEXT("MasterVolume"), MasterVolume, GGameUserSettingsIni);
+	GConfig->GetFloat(Section, TEXT("MusicVolume"), MusicVolume, GGameUserSettingsIni);
+	GConfig->GetFloat(Section, TEXT("SfxVolume"), SfxVolume, GGameUserSettingsIni);
+}
+
+void AProjectP1L0TPlayerController::SaveAudioSettings() const
+{
+	if (!GConfig)
+	{
+		return;
+	}
+
+	static const TCHAR* Section = TEXT("ProjectP1L0T.Audio");
+	GConfig->SetFloat(Section, TEXT("MasterVolume"), MasterVolume, GGameUserSettingsIni);
+	GConfig->SetFloat(Section, TEXT("MusicVolume"), MusicVolume, GGameUserSettingsIni);
+	GConfig->SetFloat(Section, TEXT("SfxVolume"), SfxVolume, GGameUserSettingsIni);
+	GConfig->Flush(false, GGameUserSettingsIni);
+}
+
 void AProjectP1L0TPlayerController::ApplySoundMix()
 {
 	if (!OptionsSoundMix || !MasterSoundClass)
@@ -144,18 +173,21 @@ void AProjectP1L0TPlayerController::SetMasterVolume(float Value)
 {
 	MasterVolume = FMath::Clamp(Value, 0.0f, 1.0f);
 	ApplySoundMix();
+	SaveAudioSettings();
 }
 
 void AProjectP1L0TPlayerController::SetMusicVolume(float Value)
 {
 	MusicVolume = FMath::Clamp(Value, 0.0f, 1.0f);
 	ApplySoundMix();
+	SaveAudioSettings();
 }
 
 void AProjectP1L0TPlayerController::SetSfxVolume(float Value)
 {
 	SfxVolume = FMath::Clamp(Value, 0.0f, 1.0f);
 	ApplySoundMix();
+	SaveAudioSettings();
 }
 
 void AProjectP1L0TPlayerController::SetGraphicsQuality(float Value)
@@ -167,6 +199,7 @@ void AProjectP1L0TPlayerController::SetGraphicsQuality(float Value)
 	{
 		Settings->SetOverallScalabilityLevel(QualityLevel);
 		Settings->ApplySettings(false);
+		Settings->SaveSettings();
 	}
 }
 
@@ -177,6 +210,7 @@ void AProjectP1L0TPlayerController::SetFullscreenEnabled(bool bEnabled)
 	{
 		Settings->SetFullscreenMode(bEnabled ? EWindowMode::Fullscreen : EWindowMode::Windowed);
 		Settings->ApplySettings(false);
+		Settings->SaveSettings();
 	}
 }
 

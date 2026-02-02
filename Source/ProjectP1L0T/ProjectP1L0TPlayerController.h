@@ -134,6 +134,8 @@ private:
 	float GraphicsQuality = 0.5f;
 	bool bFullscreenEnabled = true;
 
+	void LoadAudioSettings();
+	void SaveAudioSettings() const;
 	void InitializeAudioMix();
 	void ApplySoundMix();
 	void SyncGraphicsSettings();
