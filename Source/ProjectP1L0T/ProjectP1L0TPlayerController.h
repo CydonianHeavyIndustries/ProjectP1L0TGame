@@ -28,6 +28,10 @@ public:
 	void HandleTitleOptions();
 	void HandleTitleExit();
 
+	void HandlePauseResume();
+	void HandlePauseOptions();
+	void HandlePauseExit();
+
 protected:
 
 	/** Input Mapping Contexts */
@@ -54,6 +58,14 @@ protected:
 	UPROPERTY()
 	TObjectPtr<UUserWidget> TitleScreenWidget;
 
+	/** Pause menu widget to spawn */
+	UPROPERTY(EditAnywhere, Category="UI")
+	TSubclassOf<UUserWidget> PauseMenuWidgetClass;
+
+	/** Pointer to the pause menu widget */
+	UPROPERTY()
+	TObjectPtr<UUserWidget> PauseMenuWidget;
+
 	/** If true, the player will use UMG touch controls even if not playing on mobile platforms */
 	UPROPERTY(EditAnywhere, Config, Category = "Input|Touch Controls")
 	bool bForceTouchControls = false;
@@ -74,4 +86,7 @@ protected:
 private:
 	void ShowTitleScreen();
 	void HideTitleScreen();
+	void ShowPauseMenu();
+	void HidePauseMenu();
+	void TogglePauseMenu();
 };

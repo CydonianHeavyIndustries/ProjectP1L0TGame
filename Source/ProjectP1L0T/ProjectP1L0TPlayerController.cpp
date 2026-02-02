@@ -9,6 +9,7 @@
 #include "Blueprint/UserWidget.h"
 #include "ProjectP1L0T.h"
 #include "UI/TitleScreenWidget.h"
+#include "UI/PauseMenuWidget.h"
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "Kismet/KismetSystemLibrary.h"
 
@@ -71,6 +72,11 @@ void AProjectP1L0TPlayerController::SetupInputComponent()
 				}
 			}
 		}
+
+		if (InputComponent)
+		{
+			InputComponent->BindAction("Menu", IE_Pressed, this, &AProjectP1L0TPlayerController::TogglePauseMenu);
+		}
 	}
 	
 }
@@ -129,6 +135,71 @@ void AProjectP1L0TPlayerController::HideTitleScreen()
 	SetPause(false);
 }
 
+void AProjectP1L0TPlayerController::ShowPauseMenu()
+{
+	if (!IsLocalPlayerController() || PauseMenuWidget)
+	{
+		return;
+	}
+
+	TSubclassOf<UUserWidget> WidgetClass = PauseMenuWidgetClass;
+	if (!WidgetClass)
+	{
+		WidgetClass = UPauseMenuWidget::StaticClass();
+	}
+
+	PauseMenuWidget = CreateWidget<UUserWidget>(this, WidgetClass);
+	if (!PauseMenuWidget)
+	{
+		UE_LOG(LogProjectP1L0T, Error, TEXT("Could not spawn pause menu widget."));
+		return;
+	}
+
+	PauseMenuWidget->AddToViewport(0);
+
+	FInputModeGameAndUI InputMode;
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	InputMode.SetWidgetToFocus(PauseMenuWidget->TakeWidget());
+	SetInputMode(InputMode);
+	bShowMouseCursor = true;
+	bEnableClickEvents = true;
+	bEnableMouseOverEvents = true;
+	SetPause(true);
+}
+
+void AProjectP1L0TPlayerController::HidePauseMenu()
+{
+	if (PauseMenuWidget)
+	{
+		PauseMenuWidget->RemoveFromParent();
+		PauseMenuWidget = nullptr;
+	}
+
+	FInputModeGameOnly InputMode;
+	SetInputMode(InputMode);
+	bShowMouseCursor = false;
+	bEnableClickEvents = false;
+	bEnableMouseOverEvents = false;
+	SetPause(false);
+}
+
+void AProjectP1L0TPlayerController::TogglePauseMenu()
+{
+	if (TitleScreenWidget)
+	{
+		return;
+	}
+
+	if (PauseMenuWidget)
+	{
+		HidePauseMenu();
+	}
+	else
+	{
+		ShowPauseMenu();
+	}
+}
+
 void AProjectP1L0TPlayerController::HandleTitlePlay()
 {
 	HideTitleScreen();
@@ -140,6 +211,21 @@ void AProjectP1L0TPlayerController::HandleTitleOptions()
 }
 
 void AProjectP1L0TPlayerController::HandleTitleExit()
+{
+	UKismetSystemLibrary::QuitGame(this, this, EQuitPreference::Quit, false);
+}
+
+void AProjectP1L0TPlayerController::HandlePauseResume()
+{
+	HidePauseMenu();
+}
+
+void AProjectP1L0TPlayerController::HandlePauseOptions()
+{
+	UE_LOG(LogProjectP1L0T, Log, TEXT("Pause options selected (placeholder)."));
+}
+
+void AProjectP1L0TPlayerController::HandlePauseExit()
 {
 	UKismetSystemLibrary::QuitGame(this, this, EQuitPreference::Quit, false);
 }
