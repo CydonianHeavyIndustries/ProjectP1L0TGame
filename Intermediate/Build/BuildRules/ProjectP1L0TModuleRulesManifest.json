@@ -1,0 +1,8 @@
+{
+	"SourceFiles": [
+		"E:\\OneDrive\\Documents\\Unreal Projects\\ProjectP1L0T\\Source\\ProjectP1L0T\\ProjectP1L0T.Build.cs",
+		"E:\\OneDrive\\Documents\\Unreal Projects\\ProjectP1L0T\\Source\\ProjectP1L0T.Target.cs",
+		"E:\\OneDrive\\Documents\\Unreal Projects\\ProjectP1L0T\\Source\\ProjectP1L0TEditor.Target.cs"
+	],
+	"EngineVersion": "5.7.2"
+}

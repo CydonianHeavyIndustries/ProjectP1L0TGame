@@ -1,0 +1,15 @@
+{
+	"version": 1,
+	"changelists": [
+		{
+			"guid": "00000000000000000000000000000000",
+			"description": "Default Uncontrolled Changelist",
+			"files": [
+				"E:/OneDrive/Documents/Unreal Projects/ProjectP1L0T/Content/FirstPerson/Lvl_FirstPerson.umap",
+				"E:/OneDrive/Documents/Unreal Projects/ProjectP1L0T/Content/FirstPerson/NewPawn.uasset",
+				"E:/OneDrive/Documents/Unreal Projects/ProjectP1L0T/Content/Characters/PilotCharacter.uasset",
+				"E:/OneDrive/Documents/Unreal Projects/ProjectP1L0T/Content/Blueprints/ProjectP1L0TGameMode.uasset"
+			]
+		}
+	]
+}
