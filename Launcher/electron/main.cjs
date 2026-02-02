@@ -8,6 +8,11 @@ const extract = require('extract-zip');
 
 const REPO = 'CydonianHeavyIndustries/ProjectP1L0TGame';
 const API_BASE = `https://api.github.com/repos/${REPO}`;
+const CHANNEL_BRANCH = {
+  dev: 'master',
+  test: 'master',
+  live: 'master'
+};
 
 const logDir = path.join(app.getPath('userData'), 'logs');
 const logFile = path.join(logDir, 'launcher.log');
@@ -46,6 +51,21 @@ const compareSemver = (a, b) => {
   return 0;
 };
 
+const pad = (value, size = 2) => String(value).padStart(size, '0');
+
+const versionFromDate = (isoDate) => {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) {
+    return '0.0.0.0';
+  }
+  const year = date.getUTCFullYear();
+  const month = pad(date.getUTCMonth() + 1);
+  const day = pad(date.getUTCDate());
+  const hour = pad(date.getUTCHours());
+  const minute = pad(date.getUTCMinutes());
+  return `${year}.${month}.${day}.${hour}${minute}`;
+};
+
 const requestGitHub = async (endpoint) => {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     headers: {
@@ -82,16 +102,51 @@ const mapRelease = (release) => {
   };
 };
 
+const mapCommitRelease = (commit) => {
+  const shortSha = commit.sha.slice(0, 7);
+  const publishedAt = commit.commit?.author?.date || new Date().toISOString();
+  return {
+    version: versionFromDate(publishedAt),
+    name: `Commit ${shortSha}`,
+    publishedAt,
+    body: commit.commit?.message || null,
+    asset: {
+      name: `ProjectP1L0TGame-${shortSha}.zip`,
+      size: 0,
+      url: `${API_BASE}/zipball/${commit.sha}`
+    }
+  };
+};
+
+const getCommitForChannel = async (channel) => {
+  const branch = CHANNEL_BRANCH[channel] || 'master';
+  const commit = await requestGitHub(`/commits/${branch}`);
+  if (!commit?.sha) {
+    throw new Error(`No commit data for ${branch}`);
+  }
+  return mapCommitRelease(commit);
+};
+
 const getReleaseForChannel = async (channel) => {
-  const releases = await requestGitHub('/releases');
-  if (!Array.isArray(releases) || releases.length === 0) {
-    throw new Error('No releases found');
+  try {
+    const releases = await requestGitHub('/releases');
+    if (!Array.isArray(releases) || releases.length === 0) {
+      throw new Error('No releases found');
+    }
+    const picked = pickRelease(releases, channel);
+    if (!picked) {
+      throw new Error(`No releases available for ${channel}`);
+    }
+    const release = mapRelease(picked);
+    if (!release.asset) {
+      throw new Error('No downloadable assets on release');
+    }
+    return release;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    writeLog('WARN', 'Release fetch failed, falling back to commit', reason);
+    return getCommitForChannel(channel);
   }
-  const picked = pickRelease(releases, channel);
-  if (!picked) {
-    throw new Error(`No releases available for ${channel}`);
-  }
-  return mapRelease(picked);
 };
 
 const ensureDir = async (dir) => {
