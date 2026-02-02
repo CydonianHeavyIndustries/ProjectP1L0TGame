@@ -287,16 +287,13 @@ const resolveRepoRoot = () => {
 
 const runPackagingScript = (payload) => {
   const repoRoot = resolveRepoRoot();
-  const scriptPath = path.join(repoRoot, 'package_dev_build.bat');
-  if (!fs.existsSync(scriptPath)) {
-    throw new Error(`Packaging script not found: ${scriptPath}`);
+  const ps1Path = path.join(repoRoot, 'tools', 'package_dev_build.ps1');
+  const batPath = path.join(repoRoot, 'package_dev_build.bat');
+  const hasPs1 = fs.existsSync(ps1Path);
+  const hasBat = fs.existsSync(batPath);
+  if (!hasPs1 && !hasBat) {
+    throw new Error(`Packaging script not found: ${ps1Path} or ${batPath}`);
   }
-
-  const quoteCmdArg = (value) => {
-    if (value === '') return '""';
-    if (!/[\s"]/g.test(value)) return value;
-    return `"${value.replace(/"/g, '\\"')}"`;
-  };
 
   const args = [];
   if (payload.installDir) {
@@ -310,14 +307,20 @@ const runPackagingScript = (payload) => {
   }
 
   return new Promise((resolve, reject) => {
-    writeLog('INFO', 'Packaging started', scriptPath);
-    const quotedArgs = args.map(quoteCmdArg);
-    const command = `"${scriptPath}" ${quotedArgs.join(' ')}`.trim();
-    writeLog('INFO', 'Packager', command);
-    const child = spawn('cmd.exe', ['/d', '/s', '/c', command], {
-      cwd: repoRoot,
-      windowsVerbatimArguments: true
-    });
+    writeLog('INFO', 'Packaging started', hasPs1 ? ps1Path : batPath);
+
+    let command = '';
+    let commandArgs = [];
+    if (hasPs1) {
+      command = 'powershell.exe';
+      commandArgs = ['-ExecutionPolicy', 'Bypass', '-File', ps1Path, ...args];
+    } else {
+      command = batPath;
+      commandArgs = [...args];
+    }
+
+    writeLog('INFO', 'Packager', `${command} ${commandArgs.join(' ')}`.trim());
+    const child = spawn(command, commandArgs, { cwd: repoRoot });
 
     child.stdout.on('data', (data) => {
       writeLog('INFO', 'Packager', data.toString().trim());
