@@ -1,6 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
@@ -8,6 +6,8 @@
 
 class UInputMappingContext;
 class UUserWidget;
+class USoundClass;
+class USoundMix;
 
 /**
  *  Simple first person Player Controller
@@ -33,6 +33,18 @@ public:
 	void HandlePauseExit();
 
 	void HandleOptionsBack();
+
+	void SetMasterVolume(float Value);
+	void SetMusicVolume(float Value);
+	void SetSfxVolume(float Value);
+	void SetGraphicsQuality(float Value);
+	void SetFullscreenEnabled(bool bEnabled);
+
+	float GetMasterVolume() const { return MasterVolume; }
+	float GetMusicVolume() const { return MusicVolume; }
+	float GetSfxVolume() const { return SfxVolume; }
+	float GetGraphicsQuality() const { return GraphicsQuality; }
+	bool IsFullscreenEnabled() const { return bFullscreenEnabled; }
 
 protected:
 
@@ -103,6 +115,28 @@ private:
 
 	EMenuContext ActiveMenuContext = EMenuContext::None;
 	EMenuContext OptionsReturnContext = EMenuContext::None;
+
+	UPROPERTY()
+	TObjectPtr<USoundMix> OptionsSoundMix;
+
+	UPROPERTY()
+	TObjectPtr<USoundClass> MasterSoundClass;
+
+	UPROPERTY()
+	TObjectPtr<USoundClass> MusicSoundClass;
+
+	UPROPERTY()
+	TObjectPtr<USoundClass> SfxSoundClass;
+
+	float MasterVolume = 0.8f;
+	float MusicVolume = 0.7f;
+	float SfxVolume = 0.85f;
+	float GraphicsQuality = 0.5f;
+	bool bFullscreenEnabled = true;
+
+	void InitializeAudioMix();
+	void ApplySoundMix();
+	void SyncGraphicsSettings();
 
 	void ShowTitleScreen();
 	void HideTitleScreen();

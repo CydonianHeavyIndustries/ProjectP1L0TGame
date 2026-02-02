@@ -169,6 +169,23 @@ export const useLauncherState = (): LauncherState => {
     });
   };
 
+  const packageBuild = async () => {
+    if (!window.launcher?.packageBuild) {
+      pushLog('Packaging failed (Launcher bridge unavailable)');
+      return;
+    }
+    pushLog('Packaging started');
+    const result = await window.launcher.packageBuild({
+      installDir: settings.installDir,
+      configuration: 'Development'
+    });
+    if (result.status === 'error') {
+      pushLog(`Packaging failed (${result.reason})`);
+      return;
+    }
+    pushLog('Packaging complete');
+  };
+
   const markCorrupt = () => {
     setInstall({ state: 'RepairRecommended', step: 'Idle', progress: 0, message: 'Integrity check failed' });
     pushLog('Integrity mismatch detected');
@@ -236,6 +253,7 @@ export const useLauncherState = (): LauncherState => {
       startInstall,
       startUpdate: startInstall,
       startRepair,
+      packageBuild,
       markCorrupt,
       triggerError,
       clearLogs,

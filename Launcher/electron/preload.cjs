@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('launcher', {
   checkForUpdate: (payload) => ipcRenderer.invoke('launcher:checkUpdate', payload),
   performUpdate: (payload) => ipcRenderer.invoke('launcher:performUpdate', payload),
   launchGame: (payload) => ipcRenderer.invoke('launcher:launchGame', payload),
+  packageBuild: (payload) => ipcRenderer.invoke('launcher:packageBuild', payload),
   openPath: (targetPath) => ipcRenderer.invoke('launcher:openPath', targetPath),
   openLogs: () => ipcRenderer.invoke('launcher:openLogs'),
   onUpdateProgress

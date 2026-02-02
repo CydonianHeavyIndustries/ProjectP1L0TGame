@@ -17,6 +17,30 @@ void UOptionsMenuWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	BuildLayout();
+
+	if (AProjectP1L0TPlayerController* PC = Cast<AProjectP1L0TPlayerController>(GetOwningPlayer()))
+	{
+		if (MasterVolumeSlider)
+		{
+			MasterVolumeSlider->SetValue(PC->GetMasterVolume());
+		}
+		if (MusicVolumeSlider)
+		{
+			MusicVolumeSlider->SetValue(PC->GetMusicVolume());
+		}
+		if (SfxVolumeSlider)
+		{
+			SfxVolumeSlider->SetValue(PC->GetSfxVolume());
+		}
+		if (GraphicsQualitySlider)
+		{
+			GraphicsQualitySlider->SetValue(PC->GetGraphicsQuality());
+		}
+		if (FullscreenToggle)
+		{
+			FullscreenToggle->SetIsChecked(PC->IsFullscreenEnabled());
+		}
+	}
 }
 
 void UOptionsMenuWidget::BuildLayout()
@@ -177,25 +201,40 @@ void UOptionsMenuWidget::HandleBackClicked()
 
 void UOptionsMenuWidget::HandleMasterChanged(float Value)
 {
-	UE_LOG(LogProjectP1L0T, Log, TEXT("Master volume changed: %.2f"), Value);
+	if (AProjectP1L0TPlayerController* PC = Cast<AProjectP1L0TPlayerController>(GetOwningPlayer()))
+	{
+		PC->SetMasterVolume(Value);
+	}
 }
 
 void UOptionsMenuWidget::HandleMusicChanged(float Value)
 {
-	UE_LOG(LogProjectP1L0T, Log, TEXT("Music volume changed: %.2f"), Value);
+	if (AProjectP1L0TPlayerController* PC = Cast<AProjectP1L0TPlayerController>(GetOwningPlayer()))
+	{
+		PC->SetMusicVolume(Value);
+	}
 }
 
 void UOptionsMenuWidget::HandleSfxChanged(float Value)
 {
-	UE_LOG(LogProjectP1L0T, Log, TEXT("SFX volume changed: %.2f"), Value);
+	if (AProjectP1L0TPlayerController* PC = Cast<AProjectP1L0TPlayerController>(GetOwningPlayer()))
+	{
+		PC->SetSfxVolume(Value);
+	}
 }
 
 void UOptionsMenuWidget::HandleGraphicsChanged(float Value)
 {
-	UE_LOG(LogProjectP1L0T, Log, TEXT("Graphics slider changed: %.2f"), Value);
+	if (AProjectP1L0TPlayerController* PC = Cast<AProjectP1L0TPlayerController>(GetOwningPlayer()))
+	{
+		PC->SetGraphicsQuality(Value);
+	}
 }
 
 void UOptionsMenuWidget::HandleFullscreenChanged(bool bIsChecked)
 {
-	UE_LOG(LogProjectP1L0T, Log, TEXT("Fullscreen toggled: %s"), bIsChecked ? TEXT("true") : TEXT("false"));
+	if (AProjectP1L0TPlayerController* PC = Cast<AProjectP1L0TPlayerController>(GetOwningPlayer()))
+	{
+		PC->SetFullscreenEnabled(bIsChecked);
+	}
 }

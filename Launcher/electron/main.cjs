@@ -277,6 +277,54 @@ const launchGame = (payload) => {
   child.unref();
 };
 
+const resolveRepoRoot = () => {
+  if (process.env.P1LOT_REPO_ROOT) {
+    return process.env.P1LOT_REPO_ROOT;
+  }
+  const appPath = app.getAppPath();
+  return path.resolve(appPath, '..');
+};
+
+const runPackagingScript = (payload) => {
+  const repoRoot = resolveRepoRoot();
+  const scriptPath = path.join(repoRoot, 'package_dev_build.bat');
+  if (!fs.existsSync(scriptPath)) {
+    throw new Error(`Packaging script not found: ${scriptPath}`);
+  }
+
+  const args = [];
+  if (payload.installDir) {
+    args.push('-InstallRoot', payload.installDir);
+  }
+  if (payload.configuration) {
+    args.push('-Configuration', payload.configuration);
+  }
+  if (payload.zip) {
+    args.push('-Zip');
+  }
+
+  return new Promise((resolve, reject) => {
+    writeLog('INFO', 'Packaging started', scriptPath);
+    const child = spawn(scriptPath, args, { cwd: repoRoot, shell: true });
+
+    child.stdout.on('data', (data) => {
+      writeLog('INFO', 'Packager', data.toString().trim());
+    });
+    child.stderr.on('data', (data) => {
+      writeLog('WARN', 'Packager', data.toString().trim());
+    });
+    child.on('error', (error) => reject(error));
+    child.on('close', (code) => {
+      if (code === 0) {
+        writeLog('INFO', 'Packaging completed');
+        resolve();
+      } else {
+        reject(new Error(`Packaging failed (exit ${code})`));
+      }
+    });
+  });
+};
+
 process.on('uncaughtException', (error) => {
   writeLog('FATAL', 'Uncaught exception', error?.stack || String(error));
 });
@@ -389,6 +437,17 @@ ipcMain.handle('launcher:launchGame', async (_event, payload) => {
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     writeLog('ERROR', 'Launch failed', reason);
+    return { status: 'error', reason };
+  }
+});
+
+ipcMain.handle('launcher:packageBuild', async (_event, payload) => {
+  try {
+    await runPackagingScript(payload || {});
+    return { status: 'ok' };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    writeLog('ERROR', 'Packaging failed', reason);
     return { status: 'error', reason };
   }
 });

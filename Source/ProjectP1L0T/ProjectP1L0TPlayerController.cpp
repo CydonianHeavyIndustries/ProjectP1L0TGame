@@ -13,6 +13,10 @@
 #include "UI/OptionsMenuWidget.h"
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundClass.h"
+#include "Sound/SoundMix.h"
+#include "Engine/GameUserSettings.h"
 
 AProjectP1L0TPlayerController::AProjectP1L0TPlayerController()
 {
@@ -23,6 +27,9 @@ AProjectP1L0TPlayerController::AProjectP1L0TPlayerController()
 void AProjectP1L0TPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+
+	InitializeAudioMix();
+	SyncGraphicsSettings();
 
 	if (bShowTitleScreenOnStart)
 	{
@@ -86,6 +93,91 @@ bool AProjectP1L0TPlayerController::ShouldUseTouchControls() const
 {
 	// are we on a mobile platform? Should we force touch?
 	return SVirtualJoystick::ShouldDisplayTouchInterface() || bForceTouchControls;
+}
+
+void AProjectP1L0TPlayerController::InitializeAudioMix()
+{
+	if (OptionsSoundMix)
+	{
+		return;
+	}
+
+	OptionsSoundMix = NewObject<USoundMix>(this);
+	MasterSoundClass = LoadObject<USoundClass>(nullptr, TEXT("/Engine/EngineSounds/Master.Master"));
+	if (!MasterSoundClass)
+	{
+		MasterSoundClass = NewObject<USoundClass>(this);
+	}
+
+	MusicSoundClass = NewObject<USoundClass>(this);
+	SfxSoundClass = NewObject<USoundClass>(this);
+	MusicSoundClass->ParentClass = MasterSoundClass;
+	SfxSoundClass->ParentClass = MasterSoundClass;
+
+	ApplySoundMix();
+}
+
+void AProjectP1L0TPlayerController::ApplySoundMix()
+{
+	if (!OptionsSoundMix || !MasterSoundClass)
+	{
+		return;
+	}
+
+	UGameplayStatics::SetSoundMixClassOverride(this, OptionsSoundMix, MasterSoundClass, MasterVolume, 1.0f, 0.0f, true);
+	UGameplayStatics::SetSoundMixClassOverride(this, OptionsSoundMix, MusicSoundClass, MusicVolume, 1.0f, 0.0f, true);
+	UGameplayStatics::SetSoundMixClassOverride(this, OptionsSoundMix, SfxSoundClass, SfxVolume, 1.0f, 0.0f, true);
+	UGameplayStatics::PushSoundMixModifier(this, OptionsSoundMix);
+}
+
+void AProjectP1L0TPlayerController::SyncGraphicsSettings()
+{
+	if (UGameUserSettings* Settings = GEngine ? GEngine->GetGameUserSettings() : nullptr)
+	{
+		const int32 QualityLevel = Settings->GetOverallScalabilityLevel();
+		GraphicsQuality = FMath::Clamp(QualityLevel / 3.0f, 0.0f, 1.0f);
+		bFullscreenEnabled = Settings->GetFullscreenMode() != EWindowMode::Windowed;
+	}
+}
+
+void AProjectP1L0TPlayerController::SetMasterVolume(float Value)
+{
+	MasterVolume = FMath::Clamp(Value, 0.0f, 1.0f);
+	ApplySoundMix();
+}
+
+void AProjectP1L0TPlayerController::SetMusicVolume(float Value)
+{
+	MusicVolume = FMath::Clamp(Value, 0.0f, 1.0f);
+	ApplySoundMix();
+}
+
+void AProjectP1L0TPlayerController::SetSfxVolume(float Value)
+{
+	SfxVolume = FMath::Clamp(Value, 0.0f, 1.0f);
+	ApplySoundMix();
+}
+
+void AProjectP1L0TPlayerController::SetGraphicsQuality(float Value)
+{
+	GraphicsQuality = FMath::Clamp(Value, 0.0f, 1.0f);
+	const int32 QualityLevel = FMath::RoundToInt(GraphicsQuality * 3.0f);
+
+	if (UGameUserSettings* Settings = GEngine ? GEngine->GetGameUserSettings() : nullptr)
+	{
+		Settings->SetOverallScalabilityLevel(QualityLevel);
+		Settings->ApplySettings(false);
+	}
+}
+
+void AProjectP1L0TPlayerController::SetFullscreenEnabled(bool bEnabled)
+{
+	bFullscreenEnabled = bEnabled;
+	if (UGameUserSettings* Settings = GEngine ? GEngine->GetGameUserSettings() : nullptr)
+	{
+		Settings->SetFullscreenMode(bEnabled ? EWindowMode::Fullscreen : EWindowMode::Windowed);
+		Settings->ApplySettings(false);
+	}
 }
 
 void AProjectP1L0TPlayerController::ShowTitleScreen()

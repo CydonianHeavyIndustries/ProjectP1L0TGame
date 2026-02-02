@@ -10,6 +10,7 @@ const Updates = ({ state }: { state: LauncherState }) => {
   const isBusy = install.state === 'Updating' || install.state === 'Repairing';
   const payloadSize = release?.asset?.size ? formatBytes(release.asset.size) : '—';
   const releaseDate = release?.publishedAt ? formatDate(release.publishedAt) : '—';
+  const isDev = typeof window !== 'undefined' && window.launcher?.isDev;
 
   return (
     <div className="page">
@@ -25,6 +26,11 @@ const Updates = ({ state }: { state: LauncherState }) => {
             <Button variant="ghost" onClick={() => actions.startRepair()} disabled={isBusy}>
               Repair Install
             </Button>
+            {isDev && (
+              <Button variant="ghost" onClick={() => actions.packageBuild()} disabled={isBusy}>
+                Package & Install
+              </Button>
+            )}
             <Button variant="ghost" onClick={() => actions.openInstallDir()}>
               Open Install Folder
             </Button>

@@ -27,6 +27,11 @@ declare global {
         safeMode: boolean;
         buildVersion: string;
       }) => Promise<{ status: 'ok' } | { status: 'error'; reason: string }>;
+      packageBuild: (payload: {
+        installDir: string;
+        configuration?: string;
+        zip?: boolean;
+      }) => Promise<{ status: 'ok' } | { status: 'error'; reason: string }>;
       openPath: (targetPath: string) => Promise<void>;
       openLogs: () => Promise<void>;
       onUpdateProgress: (

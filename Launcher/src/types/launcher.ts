@@ -7,6 +7,7 @@ export interface LauncherActions {
   startInstall: () => void;
   startUpdate: () => void;
   startRepair: () => void;
+  packageBuild: () => void;
   markCorrupt: () => void;
   triggerError: (message: string) => void;
   clearLogs: () => void;
