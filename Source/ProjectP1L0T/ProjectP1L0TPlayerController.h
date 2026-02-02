@@ -32,6 +32,8 @@ public:
 	void HandlePauseOptions();
 	void HandlePauseExit();
 
+	void HandleOptionsBack();
+
 protected:
 
 	/** Input Mapping Contexts */
@@ -66,6 +68,14 @@ protected:
 	UPROPERTY()
 	TObjectPtr<UUserWidget> PauseMenuWidget;
 
+	/** Options widget to spawn */
+	UPROPERTY(EditAnywhere, Category="UI")
+	TSubclassOf<UUserWidget> OptionsMenuWidgetClass;
+
+	/** Pointer to the options widget */
+	UPROPERTY()
+	TObjectPtr<UUserWidget> OptionsMenuWidget;
+
 	/** If true, the player will use UMG touch controls even if not playing on mobile platforms */
 	UPROPERTY(EditAnywhere, Config, Category = "Input|Touch Controls")
 	bool bForceTouchControls = false;
@@ -84,9 +94,24 @@ protected:
 	bool ShouldUseTouchControls() const;
 
 private:
+	enum class EMenuContext : uint8
+	{
+		None,
+		Title,
+		Pause
+	};
+
+	EMenuContext ActiveMenuContext = EMenuContext::None;
+	EMenuContext OptionsReturnContext = EMenuContext::None;
+
 	void ShowTitleScreen();
 	void HideTitleScreen();
 	void ShowPauseMenu();
 	void HidePauseMenu();
 	void TogglePauseMenu();
+	void ShowOptionsMenu();
+	void HideOptionsMenu();
+	void ReturnFromOptions();
+	void RemoveTitleScreenWidget();
+	void RemovePauseMenuWidget();
 };

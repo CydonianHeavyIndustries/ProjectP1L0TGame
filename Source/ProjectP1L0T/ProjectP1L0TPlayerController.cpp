@@ -10,6 +10,7 @@
 #include "ProjectP1L0T.h"
 #include "UI/TitleScreenWidget.h"
 #include "UI/PauseMenuWidget.h"
+#include "UI/OptionsMenuWidget.h"
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "Kismet/KismetSystemLibrary.h"
 
@@ -108,6 +109,7 @@ void AProjectP1L0TPlayerController::ShowTitleScreen()
 	}
 
 	TitleScreenWidget->AddToViewport(0);
+	ActiveMenuContext = EMenuContext::Title;
 
 	FInputModeUIOnly InputMode;
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
@@ -119,13 +121,19 @@ void AProjectP1L0TPlayerController::ShowTitleScreen()
 	SetPause(true);
 }
 
-void AProjectP1L0TPlayerController::HideTitleScreen()
+void AProjectP1L0TPlayerController::RemoveTitleScreenWidget()
 {
 	if (TitleScreenWidget)
 	{
 		TitleScreenWidget->RemoveFromParent();
 		TitleScreenWidget = nullptr;
 	}
+}
+
+void AProjectP1L0TPlayerController::HideTitleScreen()
+{
+	RemoveTitleScreenWidget();
+	ActiveMenuContext = EMenuContext::None;
 
 	FInputModeGameOnly InputMode;
 	SetInputMode(InputMode);
@@ -156,6 +164,7 @@ void AProjectP1L0TPlayerController::ShowPauseMenu()
 	}
 
 	PauseMenuWidget->AddToViewport(0);
+	ActiveMenuContext = EMenuContext::Pause;
 
 	FInputModeGameAndUI InputMode;
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
@@ -167,12 +176,87 @@ void AProjectP1L0TPlayerController::ShowPauseMenu()
 	SetPause(true);
 }
 
-void AProjectP1L0TPlayerController::HidePauseMenu()
+void AProjectP1L0TPlayerController::RemovePauseMenuWidget()
 {
 	if (PauseMenuWidget)
 	{
 		PauseMenuWidget->RemoveFromParent();
 		PauseMenuWidget = nullptr;
+	}
+}
+
+void AProjectP1L0TPlayerController::HidePauseMenu()
+{
+	RemovePauseMenuWidget();
+	ActiveMenuContext = EMenuContext::None;
+
+	FInputModeGameOnly InputMode;
+	SetInputMode(InputMode);
+	bShowMouseCursor = false;
+	bEnableClickEvents = false;
+	bEnableMouseOverEvents = false;
+	SetPause(false);
+}
+
+void AProjectP1L0TPlayerController::ShowOptionsMenu()
+{
+	if (!IsLocalPlayerController() || OptionsMenuWidget)
+	{
+		return;
+	}
+
+	OptionsReturnContext = ActiveMenuContext;
+	RemoveTitleScreenWidget();
+	RemovePauseMenuWidget();
+
+	TSubclassOf<UUserWidget> WidgetClass = OptionsMenuWidgetClass;
+	if (!WidgetClass)
+	{
+		WidgetClass = UOptionsMenuWidget::StaticClass();
+	}
+
+	OptionsMenuWidget = CreateWidget<UUserWidget>(this, WidgetClass);
+	if (!OptionsMenuWidget)
+	{
+		UE_LOG(LogProjectP1L0T, Error, TEXT("Could not spawn options widget."));
+		return;
+	}
+
+	OptionsMenuWidget->AddToViewport(1);
+
+	FInputModeUIOnly InputMode;
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	InputMode.SetWidgetToFocus(OptionsMenuWidget->TakeWidget());
+	SetInputMode(InputMode);
+	bShowMouseCursor = true;
+	bEnableClickEvents = true;
+	bEnableMouseOverEvents = true;
+	SetPause(true);
+}
+
+void AProjectP1L0TPlayerController::HideOptionsMenu()
+{
+	if (OptionsMenuWidget)
+	{
+		OptionsMenuWidget->RemoveFromParent();
+		OptionsMenuWidget = nullptr;
+	}
+}
+
+void AProjectP1L0TPlayerController::ReturnFromOptions()
+{
+	HideOptionsMenu();
+
+	if (OptionsReturnContext == EMenuContext::Title)
+	{
+		ShowTitleScreen();
+		return;
+	}
+
+	if (OptionsReturnContext == EMenuContext::Pause)
+	{
+		ShowPauseMenu();
+		return;
 	}
 
 	FInputModeGameOnly InputMode;
@@ -187,6 +271,12 @@ void AProjectP1L0TPlayerController::TogglePauseMenu()
 {
 	if (TitleScreenWidget)
 	{
+		return;
+	}
+
+	if (OptionsMenuWidget)
+	{
+		ReturnFromOptions();
 		return;
 	}
 
@@ -207,7 +297,7 @@ void AProjectP1L0TPlayerController::HandleTitlePlay()
 
 void AProjectP1L0TPlayerController::HandleTitleOptions()
 {
-	UE_LOG(LogProjectP1L0T, Log, TEXT("Options selected (placeholder)."));
+	ShowOptionsMenu();
 }
 
 void AProjectP1L0TPlayerController::HandleTitleExit()
@@ -222,10 +312,15 @@ void AProjectP1L0TPlayerController::HandlePauseResume()
 
 void AProjectP1L0TPlayerController::HandlePauseOptions()
 {
-	UE_LOG(LogProjectP1L0T, Log, TEXT("Pause options selected (placeholder)."));
+	ShowOptionsMenu();
 }
 
 void AProjectP1L0TPlayerController::HandlePauseExit()
 {
 	UKismetSystemLibrary::QuitGame(this, this, EQuitPreference::Quit, false);
+}
+
+void AProjectP1L0TPlayerController::HandleOptionsBack()
+{
+	ReturnFromOptions();
 }
