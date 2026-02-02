@@ -30,7 +30,7 @@ export const defaultSettings: LauncherSettings = {
   runOnStartup: false,
   launchArgs: '-log -nosplash',
   safeMode: false,
-  gameExeRelative: 'ProjectP1L0T/Binaries/Win64/ProjectP1L0T-Win64-Shipping.exe'
+  gameExeRelative: 'ProjectP1L0T/Binaries/Win64/ProjectP1L0T-Win64-Development.exe'
 };
 
 export const readSettings = (): LauncherSettings => {
