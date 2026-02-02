@@ -292,6 +292,12 @@ const runPackagingScript = (payload) => {
     throw new Error(`Packaging script not found: ${scriptPath}`);
   }
 
+  const quoteCmdArg = (value) => {
+    if (value === '') return '""';
+    if (!/[\s"]/g.test(value)) return value;
+    return `"${value.replace(/"/g, '\\"')}"`;
+  };
+
   const args = [];
   if (payload.installDir) {
     args.push('-InstallRoot', payload.installDir);
@@ -305,7 +311,13 @@ const runPackagingScript = (payload) => {
 
   return new Promise((resolve, reject) => {
     writeLog('INFO', 'Packaging started', scriptPath);
-    const child = spawn(scriptPath, args, { cwd: repoRoot, shell: true });
+    const quotedArgs = args.map(quoteCmdArg);
+    const command = `"${scriptPath}" ${quotedArgs.join(' ')}`.trim();
+    writeLog('INFO', 'Packager', command);
+    const child = spawn('cmd.exe', ['/d', '/s', '/c', command], {
+      cwd: repoRoot,
+      windowsVerbatimArguments: true
+    });
 
     child.stdout.on('data', (data) => {
       writeLog('INFO', 'Packager', data.toString().trim());
