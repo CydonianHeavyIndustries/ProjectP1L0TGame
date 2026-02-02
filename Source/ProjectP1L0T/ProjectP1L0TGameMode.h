@@ -5,7 +5,7 @@
 #include "ProjectP1L0TGameMode.generated.h"
 
 UCLASS()
-class PROJECTP1LOT_API AProjectP1L0TGameMode : public AGameModeBase
+class PROJECTP1L0T_API AProjectP1L0TGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 

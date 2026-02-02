@@ -29,6 +29,13 @@ if ($env:UE_PATH) { $possibleRoots += $env:UE_PATH }
 if ($engineAssociation) {
   $possibleRoots += "C:\Program Files\Epic Games\UE_$engineAssociation"
   $possibleRoots += "C:\Epic\UE_$engineAssociation"
+  try {
+    $regKey = "HKLM:\Software\EpicGames\Unreal Engine\$engineAssociation"
+    $regInstall = (Get-ItemProperty -Path $regKey -ErrorAction SilentlyContinue).InstalledDirectory
+    if ($regInstall) { $possibleRoots += $regInstall }
+  } catch {
+    # ignore registry lookup failures
+  }
 }
 $possibleRoots += "C:\Program Files\Epic Games\UE_5.7"
 $possibleRoots += "C:\Epic\UE_5.7"
@@ -52,8 +59,8 @@ Write-Host "Packaging $Configuration build..."
   -project="$uproject" `
   -noP4 `
   -platform=Win64 `
-  -clientconfig=$Configuration `
-  -serverconfig=$Configuration `
+  -clientconfig="$Configuration" `
+  -serverconfig="$Configuration" `
   -cook `
   -build `
   -stage `

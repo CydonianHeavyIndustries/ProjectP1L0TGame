@@ -63,9 +63,9 @@ UButton* UPauseMenuWidget::BuildButton(const FString& Label, UVerticalBox* Conta
 	Text->SetJustification(ETextJustify::Center);
 
 	Button->AddChild(Text);
-	UVerticalBoxSlot* Slot = Container->AddChildToVerticalBox(Button);
-	Slot->SetPadding(FMargin(8.f));
-	Slot->SetHorizontalAlignment(HAlign_Center);
+	UVerticalBoxSlot* ButtonSlot = Container->AddChildToVerticalBox(Button);
+	ButtonSlot->SetPadding(FMargin(8.f));
+	ButtonSlot->SetHorizontalAlignment(HAlign_Center);
 
 	return Button;
 }

@@ -1,8 +1,11 @@
+#pragma once
+
+#include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "PilotCharacter.generated.h"
 
 UCLASS()
-class PROJECTP1LOT_API APilotCharacter : public ACharacter
+class PROJECTP1L0T_API APilotCharacter : public ACharacter
 {
 	GENERATED_BODY()
 

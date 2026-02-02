@@ -13,7 +13,7 @@ enum class EPilotCustomMode : uint8
 };
 
 UCLASS()
-class PROJECTP1LOT_API UPilotMovementComponent : public UCharacterMovementComponent
+class PROJECTP1L0T_API UPilotMovementComponent : public UCharacterMovementComponent
 {
 	GENERATED_BODY()
 
@@ -55,12 +55,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Pilot|Input")
 	void SetWantsSlide(bool bNew) { bWantsSlide = bNew; }
 
+	// Manual entry points (used by pilot character)
+	bool TryEnterSlide();
+	bool TryEnterWallRun();
+
 protected:
 	void PhysSlide(float DeltaTime, int32 Iterations);
 	void PhysWallRun(float DeltaTime, int32 Iterations);
-
-	bool TryEnterSlide();
-	bool TryEnterWallRun();
 
 	void ExitCustomMode();
 

@@ -111,9 +111,9 @@ UTextBlock* UOptionsMenuWidget::BuildSectionTitle(const FString& Label, UVertica
 	UTextBlock* Text = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
 	Text->SetText(FText::FromString(Label));
 
-	UVerticalBoxSlot* Slot = Container->AddChildToVerticalBox(Text);
-	Slot->SetPadding(FMargin(8.f, 16.f, 8.f, 4.f));
-	Slot->SetHorizontalAlignment(HAlign_Center);
+	UVerticalBoxSlot* TextSlot = Container->AddChildToVerticalBox(Text);
+	TextSlot->SetPadding(FMargin(8.f, 16.f, 8.f, 4.f));
+	TextSlot->SetHorizontalAlignment(HAlign_Center);
 
 	return Text;
 }
@@ -184,9 +184,9 @@ UButton* UOptionsMenuWidget::BuildButton(const FString& Label, UVerticalBox* Con
 	Text->SetJustification(ETextJustify::Center);
 
 	Button->AddChild(Text);
-	UVerticalBoxSlot* Slot = Container->AddChildToVerticalBox(Button);
-	Slot->SetPadding(FMargin(12.f, 20.f, 12.f, 0.f));
-	Slot->SetHorizontalAlignment(HAlign_Center);
+	UVerticalBoxSlot* ButtonSlot = Container->AddChildToVerticalBox(Button);
+	ButtonSlot->SetPadding(FMargin(12.f, 20.f, 12.f, 0.f));
+	ButtonSlot->SetHorizontalAlignment(HAlign_Center);
 
 	return Button;
 }
