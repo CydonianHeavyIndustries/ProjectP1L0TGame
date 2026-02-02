@@ -21,11 +21,12 @@
     "@vitejs/plugin-react": "^4.2.1",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
-    "electron": "^28.2.0",
+    "electron": "^35.7.5",
     "eslint": "^8.56.0",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "esbuild": "^0.25.0",
     "typescript": "^5.3.3",
     "vite": "^5.0.12",
     "wait-on": "^7.2.0"

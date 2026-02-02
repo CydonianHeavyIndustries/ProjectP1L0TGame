@@ -14,5 +14,4 @@ call npm run dev
 
 echo.
 echo Launcher exited with code %errorlevel%.
-pause
 endlocal
