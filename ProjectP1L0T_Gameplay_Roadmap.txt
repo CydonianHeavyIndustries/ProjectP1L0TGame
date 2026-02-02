@@ -1,0 +1,246 @@
+PROJECT P1L0T — GAMEPLAY ROADMAP (CANON)
+
+====================================
+HIGH-LEVEL IDENTITY
+====================================
+Genre:
+Open-world, massively online, high-mobility FPS (PvE / PvP / PvPvE hybrid)
+
+Core Fantasy:
+Players are Pilots operating across hostile planets, supported by bonded Titans and mobile spaceship bases. The game blends fast parkour combat with MMO-scale social, economic, and faction systems.
+
+Primary Inspirations:
+- Titanfall (movement, Titans, pilot fantasy)
+- Warframe (launcher, live-service shell, long-term progression)
+- Tarkov (weapon customization, extraction tension)
+- Destiny (shared world + safe hubs)
+- Shadow of Mordor (Nemesis system)
+
+====================================
+WORLD STRUCTURE
+====================================
+Planet-Based MMO:
+- The universe is split into planets.
+- Each planet is a large open world with server instances/shards.
+- New planets are added as the player base grows.
+- Planets vary by:
+  - Environment
+  - Factions present
+  - Resources
+  - PvP intensity
+
+Safe Zones / Hubs:
+- Major cities and hubs are PvP-disabled safe zones.
+- Used for:
+  - Trading & market access
+  - Social interaction
+  - Clan management
+  - Missions & contracts
+  - Customization
+
+====================================
+SOCIAL STRUCTURE
+====================================
+Parties & Clans:
+- Temporary parties for missions or roaming.
+- Persistent clans with shared progression.
+- Clan size affects:
+  - Spaceship size
+  - Personnel capacity
+  - Titan transport capacity
+
+Permissions:
+- Spawn permissions (ships)
+- Ship access levels
+- Titan bay access
+
+====================================
+FACTIONS
+====================================
+- Players choose a faction or subfaction (lore-backed, placeholder early).
+- Factions influence:
+  - Reputation
+  - PvP incentives
+  - NPC hostility
+  - Nemesis pool
+- Faction switching is restricted.
+
+====================================
+GAMEPLAY MODES
+====================================
+PvE:
+- Open-world PvE encounters.
+- Loot-based progression.
+- Resource gathering.
+- Missions & contracts.
+- Extraction-style risk/reward loops.
+
+PvP:
+- Open-world PvP zones.
+- Faction-based or free-for-all depending on planet.
+- PvP rewards:
+  - Bonus XP
+  - Currency
+  - Reputation
+  - Rare loot chances
+
+PvPvE:
+- Players and AI coexist.
+- PvP can occur during PvE objectives.
+- Increased risk over time for better rewards.
+- Nemesis AI may appear.
+
+====================================
+SPACESHIP SYSTEM (CORE PILLAR)
+====================================
+Spaceship as Home/Base:
+- Each player or clan owns a spaceship.
+- Functions:
+  - Spawn point
+  - Mobile base
+  - Social hub
+  - Titan carrier
+
+Rules:
+- Ships are indestructible (can be disabled, not destroyed).
+- Ships despawn when player logs off.
+- Ships respawn at last location when player logs in.
+- Players spawn inside their ship.
+- Players may request permission to spawn in other ships.
+
+Clan Ships:
+- Larger clans unlock larger ships.
+- More Titan bays and internal space.
+- Heavy customization.
+
+====================================
+TITAN SYSTEM
+====================================
+Buddy Titan:
+- Each player has a bonded Titan.
+- Stored in spaceship in transport mode.
+- Deployable during gameplay.
+
+Titan Destruction:
+- Titan destruction triggers a reconstruction cooldown.
+- Titan respawns inside the spaceship.
+
+Titan AI Learning:
+- Titan AI learns player behavior.
+- Adapts to combat style over time.
+- Improved pilot–Titan synergy.
+- Player names the Titan OS.
+- Titan OS personality configurable.
+
+====================================
+CUSTOMIZATION SYSTEMS
+====================================
+Player Character:
+- Full character creator.
+- Cosmetic and identity focused.
+
+Weapons:
+- Deep, Tarkov-style weapon customization.
+- Attachments, mods, trade-offs.
+- Mechanical impact, not cosmetic-only.
+
+Titans:
+- Heavy visual and mechanical customization.
+- Loadouts, modules, AI behavior tuning.
+
+Spaceships:
+- Modular interior expansion.
+- Functional rooms.
+- Visual identity reflects player or clan.
+
+====================================
+ECONOMY & MARKET
+====================================
+Economy:
+- One or more in-game currencies.
+- Resources gathered via PvE.
+- Loot extraction loops.
+
+Market:
+- Player-to-player trading.
+- Possibly regional markets per planet.
+- Strong inflation control required.
+
+====================================
+MISSIONS & REWARDS
+====================================
+- Dynamic missions and contracts.
+- Faction-aligned objectives.
+- Rewards:
+  - Currency
+  - Gear
+  - Reputation
+  - Customization unlocks
+- Difficulty scales with:
+  - Group size
+  - Zone danger
+  - PvP risk
+
+====================================
+PROGRESSION
+====================================
+Skill Tree:
+- Deep branching skill trees.
+- Affects pilot abilities, Titan synergy, and utility.
+- Avoid hard meta locks.
+- Limited respec options.
+
+====================================
+NEMESIS SYSTEM
+====================================
+- Introduced during campaign/tutorial/onboarding.
+- Player choices generate a personal Nemesis.
+- Nemesis:
+  - Belongs to opposing faction.
+  - Remembers encounters.
+  - Evolves over time.
+  - Can invade PvE, PvPvE, and rare PvP scenarios.
+- Creates long-term rivalries and emergent stories.
+
+====================================
+DEVELOPMENT PHASES (REALISTIC)
+====================================
+Phase 0 — Infrastructure:
+- Launcher
+- Menu shell
+- Profile persistence
+
+Phase 1 — Pilot Core:
+- Movement perfection
+- Weapon handling
+- Minimal PvE enemies
+
+Phase 2 — Shared World:
+- One planet
+- One hub city
+- Limited PvE/PvP zones
+
+Phase 3 — Spaceships & Titans:
+- One ship type
+- One Titan per player
+- Basic deployment/respawn loop
+
+Phase 4 — Economy & Missions:
+- Loot system
+- Trading
+- Contracts
+
+Phase 5 — Expansion:
+- More planets
+- More factions
+- Clan ships
+- Nemesis depth
+- Skill trees
+
+====================================
+FINAL NOTE
+====================================
+Project P1L0T is a live-service platform, not a single game mode.
+Systems must be built in layers.
+Inputs, identity, and core fantasy are locked early.
+Everything else evolves around that foundation.
