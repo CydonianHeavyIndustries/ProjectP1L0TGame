@@ -19,6 +19,14 @@ declare global {
         | { status: 'ok'; version: string; installDir: string }
         | { status: 'error'; reason: string }
       >;
+      launchGame: (payload: {
+        channel: string;
+        installDir: string;
+        gameExeRelative: string;
+        launchArgs: string;
+        safeMode: boolean;
+        buildVersion: string;
+      }) => Promise<{ status: 'ok' } | { status: 'error'; reason: string }>;
       openPath: (targetPath: string) => Promise<void>;
       openLogs: () => Promise<void>;
       onUpdateProgress: (

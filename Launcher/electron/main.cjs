@@ -4,6 +4,7 @@ const fsp = require('fs/promises');
 const path = require('path');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
+const { spawn } = require('child_process');
 const extract = require('extract-zip');
 
 const REPO = 'CydonianHeavyIndustries/ProjectP1L0TGame';
@@ -213,6 +214,69 @@ const swapInstall = async (installDir, stagingDir, sender) => {
   sendProgress(sender, { state: 'Updating', step: 'Cleaning', progress: 100, message: 'Cleanup complete' });
 };
 
+const parseArgs = (value) => {
+  if (!value) return [];
+  const args = [];
+  let current = '';
+  let quoted = false;
+  for (let i = 0; i < value.length; i += 1) {
+    const char = value[i];
+    if (char === '"') {
+      quoted = !quoted;
+      continue;
+    }
+    if (char === ' ' && !quoted) {
+      if (current.length > 0) {
+        args.push(current);
+        current = '';
+      }
+      continue;
+    }
+    current += char;
+  }
+  if (current.length > 0) {
+    args.push(current);
+  }
+  return args;
+};
+
+const resolveExecutable = (installRoot, relativePath) => {
+  const installDir = path.join(installRoot, 'install');
+  const normalized = relativePath.replace(/^[\\/]+/, '');
+  return path.join(installDir, normalized);
+};
+
+const launchGame = (payload) => {
+  const rootDir = payload.installDir && payload.installDir.trim().length > 0 ? payload.installDir : app.getPath('userData');
+  const exePath = resolveExecutable(rootDir, payload.gameExeRelative || '');
+  if (!payload.gameExeRelative || payload.gameExeRelative.trim().length === 0) {
+    throw new Error('Game executable path is not configured');
+  }
+  if (!fs.existsSync(exePath)) {
+    throw new Error(`Game executable not found: ${exePath}`);
+  }
+
+  const args = [];
+  args.push(...parseArgs(payload.launchArgs || ''));
+  if (payload.safeMode) {
+    args.push('-safemode');
+  }
+  args.push(`-ENV=${payload.channel}`);
+  if (payload.buildVersion) {
+    args.push(`-BUILD_VERSION=${payload.buildVersion}`);
+  }
+  args.push('-LAUNCHER=CHII');
+
+  writeLog('INFO', 'Launching game', `${exePath} ${args.join(' ')}`);
+
+  const child = spawn(exePath, args, {
+    cwd: path.dirname(exePath),
+    detached: true,
+    stdio: 'ignore'
+  });
+  child.unref();
+};
+
 process.on('uncaughtException', (error) => {
   writeLog('FATAL', 'Uncaught exception', error?.stack || String(error));
 });
@@ -314,6 +378,17 @@ ipcMain.handle('launcher:performUpdate', async (event, payload) => {
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     writeLog('ERROR', 'Update failed', reason);
+    return { status: 'error', reason };
+  }
+});
+
+ipcMain.handle('launcher:launchGame', async (_event, payload) => {
+  try {
+    launchGame(payload);
+    return { status: 'ok' };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    writeLog('ERROR', 'Launch failed', reason);
     return { status: 'error', reason };
   }
 });

@@ -54,8 +54,8 @@ export const useLauncherState = (): LauncherState => {
 
   const runUpdateCheck = async (logOutcome: boolean): Promise<UpdateCheckResult> => {
     const payload = { channel, installedVersion };
-    const result = window.launcher?.checkForUpdate
-      ? await window.launcher.checkForUpdate(payload)
+    const result: UpdateCheckResult = window.launcher?.checkForUpdate
+      ? ((await window.launcher.checkForUpdate(payload)) as UpdateCheckResult)
       : await checkGitHubUpdate(payload.channel, payload.installedVersion);
 
     if (result.status === 'error') {
@@ -191,8 +191,25 @@ export const useLauncherState = (): LauncherState => {
     setLogs([`[${formatDate(new Date().toISOString())}] Logs cleared`]);
   };
 
-  const requestLaunch = () => {
-    pushLog('Launch requested');
+  const requestLaunch = async () => {
+    if (!window.launcher?.launchGame) {
+      pushLog('Launch failed (Launcher bridge unavailable)');
+      return;
+    }
+    const result = await window.launcher.launchGame({
+      channel,
+      installDir: settings.installDir,
+      gameExeRelative: settings.gameExeRelative,
+      launchArgs: settings.launchArgs,
+      safeMode: settings.safeMode,
+      buildVersion: installedVersion
+    });
+    if (result.status === 'error') {
+      pushLog(`Launch failed (${result.reason})`);
+      setInstall((prev) => ({ ...prev, state: 'Error', error: result.reason }));
+      return;
+    }
+    pushLog('Launch initiated');
   };
 
   const openInstallDir = () => {

@@ -18,6 +18,14 @@ const Settings = ({ state }: { state: LauncherState }) => {
               />
             </label>
             <label className="stack">
+              Game Executable (relative to /install)
+              <input
+                type="text"
+                value={settings.gameExeRelative}
+                onChange={(event) => actions.updateSettings({ gameExeRelative: event.target.value })}
+              />
+            </label>
+            <label className="stack">
               Bandwidth Limit (Mbps, 0 = unlimited)
               <input
                 type="text"

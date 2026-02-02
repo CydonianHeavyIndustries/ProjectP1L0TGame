@@ -5,4 +5,5 @@
   runOnStartup: boolean;
   launchArgs: string;
   safeMode: boolean;
+  gameExeRelative: string;
 }
