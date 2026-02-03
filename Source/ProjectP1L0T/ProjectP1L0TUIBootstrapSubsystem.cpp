@@ -1,20 +1,29 @@
-#include "ProjectP1L0TGameInstance.h"
+#include "ProjectP1L0TUIBootstrapSubsystem.h"
 #include "Blueprint/UserWidget.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/InputComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "ProjectP1L0T.h"
 #include "ProjectP1L0TPlayerController.h"
 #include "UI/PauseMenuWidget.h"
 #include "UI/TitleScreenWidget.h"
 
-void UProjectP1L0TGameInstance::Init()
+void UProjectP1L0TUIBootstrapSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
-	Super::Init();
+	Super::Initialize(Collection);
 
-	FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UProjectP1L0TGameInstance::HandlePostLoadMap);
+	UE_LOG(LogProjectP1L0T, Display, TEXT("UIBootstrapSubsystem Initialize"));
+	FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UProjectP1L0TUIBootstrapSubsystem::HandlePostLoadMap);
 }
 
-void UProjectP1L0TGameInstance::HandlePostLoadMap(UWorld* World)
+void UProjectP1L0TUIBootstrapSubsystem::Deinitialize()
+{
+	FCoreUObjectDelegates::PostLoadMapWithWorld.RemoveAll(this);
+	Super::Deinitialize();
+}
+
+void UProjectP1L0TUIBootstrapSubsystem::HandlePostLoadMap(UWorld* World)
 {
 	if (!World)
 	{
@@ -29,20 +38,25 @@ void UProjectP1L0TGameInstance::HandlePostLoadMap(UWorld* World)
 
 	if (Cast<AProjectP1L0TPlayerController>(PC))
 	{
+		UE_LOG(LogProjectP1L0T, Display, TEXT("UIBootstrapSubsystem: Custom PlayerController detected, skipping fallback."));
 		return;
 	}
 
 	FallbackPlayerController = PC;
 	EnsureFallbackInput(PC);
 
-	if (TitleScreenWidget && TitleScreenWidget->IsInViewport())
+	TArray<UUserWidget*> Existing;
+	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(World, Existing, UTitleScreenWidget::StaticClass(), false);
+	if (Existing.Num() > 0)
 	{
+		TitleScreenWidget = Existing[0];
 		return;
 	}
 
 	UUserWidget* Widget = CreateWidget<UUserWidget>(PC, UTitleScreenWidget::StaticClass());
 	if (!Widget)
 	{
+		UE_LOG(LogProjectP1L0T, Warning, TEXT("UIBootstrapSubsystem: Failed to create TitleScreenWidget."));
 		return;
 	}
 
@@ -57,16 +71,18 @@ void UProjectP1L0TGameInstance::HandlePostLoadMap(UWorld* World)
 	PC->bEnableClickEvents = true;
 	PC->bEnableMouseOverEvents = true;
 	PC->SetPause(true);
+
+	UE_LOG(LogProjectP1L0T, Display, TEXT("UIBootstrapSubsystem: Title screen displayed."));
 }
 
-void UProjectP1L0TGameInstance::EnsureFallbackInput(APlayerController* PC)
+void UProjectP1L0TUIBootstrapSubsystem::EnsureFallbackInput(APlayerController* PC)
 {
 	if (!PC || FallbackInputComponent)
 	{
 		return;
 	}
 
-	FallbackInputComponent = NewObject<UInputComponent>(PC, TEXT("ProjectP1L0TMenuInput"));
+	FallbackInputComponent = NewObject<UInputComponent>(PC, TEXT("ProjectP1L0TFallbackMenuInput"));
 	if (!FallbackInputComponent)
 	{
 		return;
@@ -75,12 +91,12 @@ void UProjectP1L0TGameInstance::EnsureFallbackInput(APlayerController* PC)
 	FallbackInputComponent->RegisterComponent();
 	FallbackInputComponent->bBlockInput = false;
 	FallbackInputComponent->Priority = 1;
-	FInputActionBinding& MenuBinding = FallbackInputComponent->BindAction("Menu", IE_Pressed, this, &UProjectP1L0TGameInstance::HandleFallbackMenuPressed);
+	FInputActionBinding& MenuBinding = FallbackInputComponent->BindAction("Menu", IE_Pressed, this, &UProjectP1L0TUIBootstrapSubsystem::HandleFallbackMenuPressed);
 	MenuBinding.bExecuteWhenPaused = true;
 	PC->PushInputComponent(FallbackInputComponent);
 }
 
-void UProjectP1L0TGameInstance::HandleFallbackMenuPressed()
+void UProjectP1L0TUIBootstrapSubsystem::HandleFallbackMenuPressed()
 {
 	APlayerController* PC = FallbackPlayerController.Get();
 	if (!PC)
@@ -105,7 +121,7 @@ void UProjectP1L0TGameInstance::HandleFallbackMenuPressed()
 	ShowFallbackPauseMenu(PC);
 }
 
-void UProjectP1L0TGameInstance::ShowFallbackPauseMenu(APlayerController* PC)
+void UProjectP1L0TUIBootstrapSubsystem::ShowFallbackPauseMenu(APlayerController* PC)
 {
 	if (!PC)
 	{
@@ -133,7 +149,7 @@ void UProjectP1L0TGameInstance::ShowFallbackPauseMenu(APlayerController* PC)
 	PC->SetPause(true);
 }
 
-void UProjectP1L0TGameInstance::HideFallbackPauseMenu(APlayerController* PC)
+void UProjectP1L0TUIBootstrapSubsystem::HideFallbackPauseMenu(APlayerController* PC)
 {
 	if (!PC)
 	{
