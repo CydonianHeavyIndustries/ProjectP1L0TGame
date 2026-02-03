@@ -20,7 +20,6 @@ void ULogOverlayWidget::NativeConstruct()
 	LogTextBox->SetIsReadOnly(true);
 	LogTextBox->SetText(FText::FromString(TEXT("Log overlay active...")));
 	LogTextBox->SetAutoWrapText(true);
-	LogTextBox->SetRevertTextOnEscape(false);
 
 	Root->SetContent(LogTextBox);
 	WidgetTree->RootWidget = Root;

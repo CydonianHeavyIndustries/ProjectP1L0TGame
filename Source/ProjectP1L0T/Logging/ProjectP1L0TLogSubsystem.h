@@ -19,6 +19,7 @@ public:
 	void ToggleOverlay();
 
 private:
+	friend class FProjectP1L0TLogDevice;
 	void HandleLogLine(const FString& Line);
 	void RefreshOverlayText();
 

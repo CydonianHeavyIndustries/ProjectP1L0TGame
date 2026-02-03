@@ -14,7 +14,7 @@ class USoundMix;
  *  Manages the input mapping context.
  *  Overrides the Player Camera Manager class.
  */
-UCLASS(abstract, config="Game")
+UCLASS(config="Game", Blueprintable)
 class PROJECTP1L0T_API AProjectP1L0TPlayerController : public APlayerController
 {
 	GENERATED_BODY()

@@ -116,7 +116,7 @@ void UProjectP1L0TUIBootstrapSubsystem::EnsureLogInput(APlayerController* PC)
 	LogInputComponent->RegisterComponent();
 	LogInputComponent->bBlockInput = false;
 	LogInputComponent->Priority = 0;
-	FInputActionBinding& LogBinding = LogInputComponent->BindKey(EKeys::F9, IE_Pressed, this, &UProjectP1L0TUIBootstrapSubsystem::HandleLogTogglePressed);
+	FInputKeyBinding& LogBinding = LogInputComponent->BindKey(EKeys::F9, IE_Pressed, this, &UProjectP1L0TUIBootstrapSubsystem::HandleLogTogglePressed);
 	LogBinding.bExecuteWhenPaused = true;
 	PC->PushInputComponent(LogInputComponent);
 }

@@ -83,8 +83,30 @@ if (-not $release) {
 }
 
 $assetName = [System.IO.Path]::GetFileName($ZipPath)
-$uploadUrl = $release.upload_url -replace "\\{\\?name,label\\}$", ""
-$assetUrl = "$uploadUrl?name=$([Uri]::EscapeDataString($assetName))"
+$rawUploadUrl = "$($release.upload_url)"
+Write-Host "Upload URL (raw): $rawUploadUrl"
+$uploadUrl = $rawUploadUrl.Trim()
+if (-not $uploadUrl) {
+  Write-Error "Release response missing upload_url. Check token permissions and repo. Response: $($release | ConvertTo-Json -Depth 5)"
+  exit 1
+}
+# GitHub returns a templated URL like: .../assets{?name,label}
+$uploadUrl = $uploadUrl -replace "\{.*\}$", ""
+if ($uploadUrl -like "*{*") {
+  $uploadUrl = $uploadUrl.Split("{")[0]
+}
+if ($uploadUrl -notmatch "^https?://") {
+  Write-Error "Invalid upload URL after normalization: $uploadUrl"
+  exit 1
+}
+$builder = New-Object System.UriBuilder($uploadUrl)
+$builder.Query = "name=$([Uri]::EscapeDataString($assetName))"
+$assetUrl = $builder.Uri.AbsoluteUri
+Write-Host "Asset URL: $assetUrl"
+if (-not [Uri]::IsWellFormedUriString($assetUrl, [System.UriKind]::Absolute)) {
+  Write-Error "Asset URL is not well-formed: $assetUrl"
+  exit 1
+}
 
 Write-Host "Uploading asset: $assetName"
 Invoke-WebRequest -Method Post -Uri $assetUrl -Headers @{
