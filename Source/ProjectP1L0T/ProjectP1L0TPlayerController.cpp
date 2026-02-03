@@ -29,6 +29,8 @@ void AProjectP1L0TPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	UE_LOG(LogProjectP1L0T, Display, TEXT("ProjectP1L0TPlayerController BeginPlay"));
+
 	LoadAudioSettings();
 	InitializeAudioMix();
 	SyncGraphicsSettings();
@@ -85,7 +87,8 @@ void AProjectP1L0TPlayerController::SetupInputComponent()
 
 		if (InputComponent)
 		{
-			InputComponent->BindAction("Menu", IE_Pressed, this, &AProjectP1L0TPlayerController::TogglePauseMenu);
+			FInputActionBinding& MenuBinding = InputComponent->BindAction("Menu", IE_Pressed, this, &AProjectP1L0TPlayerController::TogglePauseMenu);
+			MenuBinding.bExecuteWhenPaused = true;
 		}
 	}
 	
@@ -237,7 +240,7 @@ void AProjectP1L0TPlayerController::ShowTitleScreen()
 	TitleScreenWidget->AddToViewport(0);
 	ActiveMenuContext = EMenuContext::Title;
 
-	FInputModeUIOnly InputMode;
+	FInputModeGameAndUI InputMode;
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 	InputMode.SetWidgetToFocus(TitleScreenWidget->TakeWidget());
 	SetInputMode(InputMode);
@@ -397,6 +400,7 @@ void AProjectP1L0TPlayerController::TogglePauseMenu()
 {
 	if (TitleScreenWidget)
 	{
+		HideTitleScreen();
 		return;
 	}
 

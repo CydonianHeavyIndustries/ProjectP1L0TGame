@@ -6,6 +6,7 @@
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Blueprint/WidgetTree.h"
+#include "GameFramework/PlayerController.h"
 #include "ProjectP1L0TPlayerController.h"
 
 void UPauseMenuWidget::NativeConstruct()
@@ -75,6 +76,18 @@ void UPauseMenuWidget::HandleResumeClicked()
 	if (AProjectP1L0TPlayerController* PC = Cast<AProjectP1L0TPlayerController>(GetOwningPlayer()))
 	{
 		PC->HandlePauseResume();
+		return;
+	}
+
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		RemoveFromParent();
+		FInputModeGameOnly InputMode;
+		PC->SetInputMode(InputMode);
+		PC->bShowMouseCursor = false;
+		PC->bEnableClickEvents = false;
+		PC->bEnableMouseOverEvents = false;
+		PC->SetPause(false);
 	}
 }
 

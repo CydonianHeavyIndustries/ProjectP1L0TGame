@@ -11,4 +11,6 @@ class PROJECTP1L0T_API AProjectP1L0TGameMode : public AGameModeBase
 
 public:
 	AProjectP1L0TGameMode();
+
+	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 };
