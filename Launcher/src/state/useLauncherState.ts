@@ -142,7 +142,8 @@ export const useLauncherState = (): LauncherState => {
 
     const result: UpdateResult = await window.launcher.performUpdate({
       channel,
-      installDir: settings.installDir
+      installDir: settings.installDir,
+      gameExeRelative: settings.gameExeRelative
     });
 
     if (result.status === 'error') {

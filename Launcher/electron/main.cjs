@@ -9,12 +9,6 @@ const extract = require('extract-zip');
 
 const REPO = 'CydonianHeavyIndustries/ProjectP1L0TGame';
 const API_BASE = `https://api.github.com/repos/${REPO}`;
-const CHANNEL_BRANCH = {
-  dev: 'master',
-  test: 'master',
-  live: 'master'
-};
-
 const logDir = path.join(app.getPath('userData'), 'logs');
 const logFile = path.join(logDir, 'launcher.log');
 
@@ -50,21 +44,6 @@ const compareSemver = (a, b) => {
     if (l < r) return -1;
   }
   return 0;
-};
-
-const pad = (value, size = 2) => String(value).padStart(size, '0');
-
-const versionFromDate = (isoDate) => {
-  const date = new Date(isoDate);
-  if (Number.isNaN(date.getTime())) {
-    return '0.0.0.0';
-  }
-  const year = date.getUTCFullYear();
-  const month = pad(date.getUTCMonth() + 1);
-  const day = pad(date.getUTCDate());
-  const hour = pad(date.getUTCHours());
-  const minute = pad(date.getUTCMinutes());
-  return `${year}.${month}.${day}.${hour}${minute}`;
 };
 
 const requestGitHub = async (endpoint) => {
@@ -103,51 +82,20 @@ const mapRelease = (release) => {
   };
 };
 
-const mapCommitRelease = (commit) => {
-  const shortSha = commit.sha.slice(0, 7);
-  const publishedAt = commit.commit?.author?.date || new Date().toISOString();
-  return {
-    version: versionFromDate(publishedAt),
-    name: `Commit ${shortSha}`,
-    publishedAt,
-    body: commit.commit?.message || null,
-    asset: {
-      name: `ProjectP1L0TGame-${shortSha}.zip`,
-      size: 0,
-      url: `${API_BASE}/zipball/${commit.sha}`
-    }
-  };
-};
-
-const getCommitForChannel = async (channel) => {
-  const branch = CHANNEL_BRANCH[channel] || 'master';
-  const commit = await requestGitHub(`/commits/${branch}`);
-  if (!commit?.sha) {
-    throw new Error(`No commit data for ${branch}`);
-  }
-  return mapCommitRelease(commit);
-};
-
 const getReleaseForChannel = async (channel) => {
-  try {
-    const releases = await requestGitHub('/releases');
-    if (!Array.isArray(releases) || releases.length === 0) {
-      throw new Error('No releases found');
-    }
-    const picked = pickRelease(releases, channel);
-    if (!picked) {
-      throw new Error(`No releases available for ${channel}`);
-    }
-    const release = mapRelease(picked);
-    if (!release.asset) {
-      throw new Error('No downloadable assets on release');
-    }
-    return release;
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    writeLog('WARN', 'Release fetch failed, falling back to commit', reason);
-    return getCommitForChannel(channel);
+  const releases = await requestGitHub('/releases');
+  if (!Array.isArray(releases) || releases.length === 0) {
+    throw new Error('No releases found');
   }
+  const picked = pickRelease(releases, channel);
+  if (!picked) {
+    throw new Error(`No releases available for ${channel}`);
+  }
+  const release = mapRelease(picked);
+  if (!release.asset) {
+    throw new Error('No downloadable assets on release');
+  }
+  return release;
 };
 
 const ensureDir = async (dir) => {
@@ -201,13 +149,13 @@ const extractPayload = async (archivePath, stagingDir, sender) => {
   sendProgress(sender, { state: 'Updating', step: 'Installing', progress: 92, message: 'Staging build' });
 };
 
-const swapInstall = async (installDir, stagingDir, sender) => {
+const swapInstall = async (installDir, payloadDir, sender) => {
   sendProgress(sender, { state: 'Updating', step: 'Cleaning', progress: 96, message: 'Swapping build' });
   const backupDir = `${installDir}_old_${Date.now()}`;
   if (fs.existsSync(installDir)) {
     await fsp.rename(installDir, backupDir);
   }
-  await fsp.rename(stagingDir, installDir);
+  await fsp.rename(payloadDir, installDir);
   if (fs.existsSync(backupDir)) {
     await fsp.rm(backupDir, { recursive: true, force: true });
   }
@@ -244,6 +192,28 @@ const resolveExecutable = (installRoot, relativePath) => {
   const installDir = path.join(installRoot, 'install');
   const normalized = relativePath.replace(/^[\\/]+/, '');
   return path.join(installDir, normalized);
+};
+
+const resolveExecutableInDir = (baseDir, relativePath) => {
+  const normalized = relativePath.replace(/^[\\/]+/, '');
+  return path.join(baseDir, normalized);
+};
+
+const findPayloadRoot = async (stagingDir, relativePath) => {
+  const direct = resolveExecutableInDir(stagingDir, relativePath);
+  if (fs.existsSync(direct)) {
+    return stagingDir;
+  }
+  const entries = await fsp.readdir(stagingDir, { withFileTypes: true });
+  const dirs = entries.filter((entry) => entry.isDirectory());
+  if (dirs.length === 1) {
+    const candidate = path.join(stagingDir, dirs[0].name);
+    const candidateExe = resolveExecutableInDir(candidate, relativePath);
+    if (fs.existsSync(candidateExe)) {
+      return candidate;
+    }
+  }
+  return null;
 };
 
 const launchGame = (payload) => {
@@ -425,7 +395,21 @@ ipcMain.handle('launcher:performUpdate', async (event, payload) => {
     sendProgress(sender, { state: 'Updating', step: 'Downloading', progress: 0, message: 'Contacting GitHub' });
     await downloadAsset(release.asset, archivePath, sender);
     await extractPayload(archivePath, stagingDir, sender);
-    await swapInstall(installDir, stagingDir, sender);
+
+    const exeRelative = payload.gameExeRelative || '';
+    if (!exeRelative) {
+      throw new Error('Game executable path is not configured');
+    }
+    const payloadRoot = await findPayloadRoot(stagingDir, exeRelative);
+    if (!payloadRoot) {
+      await fsp.rm(stagingDir, { recursive: true, force: true });
+      throw new Error(`Payload missing game executable (${exeRelative})`);
+    }
+
+    await swapInstall(installDir, payloadRoot, sender);
+    if (payloadRoot !== stagingDir && fs.existsSync(stagingDir)) {
+      await fsp.rm(stagingDir, { recursive: true, force: true });
+    }
 
     const installedRecord = {
       version: release.version,
