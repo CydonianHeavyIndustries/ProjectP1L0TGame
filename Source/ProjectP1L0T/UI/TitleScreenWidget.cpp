@@ -87,6 +87,8 @@ void UTitleScreenWidget::HandlePlayClicked()
 		PC->bShowMouseCursor = false;
 		PC->bEnableClickEvents = false;
 		PC->bEnableMouseOverEvents = false;
+		PC->SetIgnoreMoveInput(false);
+		PC->SetIgnoreLookInput(false);
 		PC->SetPause(false);
 	}
 }

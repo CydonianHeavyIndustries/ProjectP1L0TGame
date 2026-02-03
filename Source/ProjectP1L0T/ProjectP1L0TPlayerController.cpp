@@ -240,14 +240,15 @@ void AProjectP1L0TPlayerController::ShowTitleScreen()
 	TitleScreenWidget->AddToViewport(0);
 	ActiveMenuContext = EMenuContext::Title;
 
-	FInputModeGameAndUI InputMode;
+	FInputModeUIOnly InputMode;
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 	InputMode.SetWidgetToFocus(TitleScreenWidget->TakeWidget());
 	SetInputMode(InputMode);
 	bShowMouseCursor = true;
 	bEnableClickEvents = true;
 	bEnableMouseOverEvents = true;
-	SetPause(true);
+	SetIgnoreMoveInput(true);
+	SetIgnoreLookInput(true);
 }
 
 void AProjectP1L0TPlayerController::RemoveTitleScreenWidget()
@@ -269,6 +270,8 @@ void AProjectP1L0TPlayerController::HideTitleScreen()
 	bShowMouseCursor = false;
 	bEnableClickEvents = false;
 	bEnableMouseOverEvents = false;
+	SetIgnoreMoveInput(false);
+	SetIgnoreLookInput(false);
 	SetPause(false);
 }
 

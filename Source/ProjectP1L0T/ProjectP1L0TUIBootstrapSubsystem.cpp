@@ -66,14 +66,15 @@ void UProjectP1L0TUIBootstrapSubsystem::HandlePostLoadMap(UWorld* World)
 	Widget->AddToViewport(0);
 	TitleScreenWidget = Widget;
 
-	FInputModeGameAndUI InputMode;
+	FInputModeUIOnly InputMode;
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 	InputMode.SetWidgetToFocus(Widget->TakeWidget());
 	PC->SetInputMode(InputMode);
 	PC->bShowMouseCursor = true;
 	PC->bEnableClickEvents = true;
 	PC->bEnableMouseOverEvents = true;
-	PC->SetPause(true);
+	PC->SetIgnoreMoveInput(true);
+	PC->SetIgnoreLookInput(true);
 
 	UE_LOG(LogProjectP1L0T, Display, TEXT("UIBootstrapSubsystem: Title screen displayed."));
 }
@@ -198,5 +199,7 @@ void UProjectP1L0TUIBootstrapSubsystem::HideFallbackPauseMenu(APlayerController*
 	PC->bShowMouseCursor = false;
 	PC->bEnableClickEvents = false;
 	PC->bEnableMouseOverEvents = false;
+	PC->SetIgnoreMoveInput(false);
+	PC->SetIgnoreLookInput(false);
 	PC->SetPause(false);
 }

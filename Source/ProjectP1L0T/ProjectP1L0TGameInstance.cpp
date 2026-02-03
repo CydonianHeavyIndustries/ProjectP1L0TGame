@@ -49,14 +49,15 @@ void UProjectP1L0TGameInstance::HandlePostLoadMap(UWorld* World)
 	Widget->AddToViewport(0);
 	TitleScreenWidget = Widget;
 
-	FInputModeGameAndUI InputMode;
+	FInputModeUIOnly InputMode;
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 	InputMode.SetWidgetToFocus(Widget->TakeWidget());
 	PC->SetInputMode(InputMode);
 	PC->bShowMouseCursor = true;
 	PC->bEnableClickEvents = true;
 	PC->bEnableMouseOverEvents = true;
-	PC->SetPause(true);
+	PC->SetIgnoreMoveInput(true);
+	PC->SetIgnoreLookInput(true);
 }
 
 void UProjectP1L0TGameInstance::EnsureFallbackInput(APlayerController* PC)
@@ -150,5 +151,7 @@ void UProjectP1L0TGameInstance::HideFallbackPauseMenu(APlayerController* PC)
 	PC->bShowMouseCursor = false;
 	PC->bEnableClickEvents = false;
 	PC->bEnableMouseOverEvents = false;
+	PC->SetIgnoreMoveInput(false);
+	PC->SetIgnoreLookInput(false);
 	PC->SetPause(false);
 }
