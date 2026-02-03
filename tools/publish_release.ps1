@@ -17,6 +17,7 @@ if (-not $token) {
 }
 
 $repoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+$versionFile = Join-Path $repoRoot "VERSION"
 
 if (-not $ZipPath) {
   $zipDir = Join-Path $repoRoot "Builds\Zips"
@@ -35,8 +36,15 @@ if (-not (Test-Path $ZipPath)) {
 }
 
 if (-not $Tag) {
+  if (Test-Path $versionFile) {
+    $ver = (Get-Content $versionFile -Raw).Trim()
+    if ($ver) { $Tag = "v$ver" }
+  }
+}
+
+if (-not $Tag) {
   $name = [System.IO.Path]::GetFileNameWithoutExtension($ZipPath)
-  if ($name -match "(\\d{4}\\.\\d{2}\\.\\d{2}\\.\\d{4})") {
+  if ($name -match "(\\d+\\.\\d+\\.\\d+)") {
     $Tag = "v$($Matches[1])"
   } else {
     $Tag = "v$([DateTime]::UtcNow.ToString('yyyy.MM.dd.HHmm'))"

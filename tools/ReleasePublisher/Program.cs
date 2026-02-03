@@ -35,10 +35,23 @@ static string? FindLatestZip(string repoRoot)
     return latest?.FullName;
 }
 
-static string DeriveTag(string zipPath)
+static string? ReadVersionFile(string repoRoot)
 {
+    var versionPath = Path.Combine(repoRoot, "VERSION");
+    if (!File.Exists(versionPath)) return null;
+    var text = File.ReadAllText(versionPath).Trim();
+    return string.IsNullOrWhiteSpace(text) ? null : text;
+}
+
+static string DeriveTag(string zipPath, string? version)
+{
+    if (!string.IsNullOrWhiteSpace(version))
+    {
+        return $"v{version}";
+    }
+
     var name = Path.GetFileNameWithoutExtension(zipPath);
-    var match = System.Text.RegularExpressions.Regex.Match(name, @"(\\d{4}\\.\\d{2}\\.\\d{2}\\.\\d{4})");
+    var match = System.Text.RegularExpressions.Regex.Match(name, @"(\\d+\\.\\d+\\.\\d+)");
     return match.Success ? $"v{match.Groups[1].Value}" : $"v{DateTime.UtcNow:yyyy.MM.dd.HHmm}";
 }
 
@@ -65,8 +78,10 @@ var owner = GetArg(args, "--owner") ?? "CydonianHeavyIndustries";
 var repo = GetArg(args, "--repo") ?? "ProjectP1L0TGame";
 var zipPath = GetArg(args, "--zip");
 var tag = GetArg(args, "--tag");
+var versionArg = GetArg(args, "--version");
 
 var repoRoot = FindRepoRoot();
+var version = versionArg ?? ReadVersionFile(repoRoot);
 if (string.IsNullOrWhiteSpace(zipPath))
 {
     zipPath = FindLatestZip(repoRoot);
@@ -78,7 +93,7 @@ if (string.IsNullOrWhiteSpace(zipPath) || !File.Exists(zipPath))
     return 1;
 }
 
-tag ??= DeriveTag(zipPath);
+tag ??= DeriveTag(zipPath, version);
 
 var apiBase = $"https://api.github.com/repos/{owner}/{repo}";
 using var http = new HttpClient();

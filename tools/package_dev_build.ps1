@@ -92,9 +92,14 @@ New-Item -ItemType Directory -Force $installDir | Out-Null
 Copy-Item -Path (Join-Path $stagedRoot.FullName '*') -Destination $installDir -Recurse -Force
 
 New-Item -ItemType Directory -Force $configDir | Out-Null
+$versionFile = Join-Path $repoRoot "VERSION"
 $versionStamp = Get-Date -Format "yyyy.MM.dd.HHmm"
+$version = $versionStamp
+if (Test-Path $versionFile) {
+  $version = (Get-Content $versionFile -Raw).Trim()
+}
 $installedRecord = @{
-  version = $versionStamp
+  version = $version
   channel = "dev"
   installedAt = (Get-Date).ToString("o")
   path = $InstallRoot
@@ -105,7 +110,7 @@ $installedRecord | ConvertTo-Json -Depth 4 | Set-Content -Encoding UTF8 (Join-Pa
 if ($Zip) {
   $zipDir = Join-Path $repoRoot "Builds\Zips"
   New-Item -ItemType Directory -Force $zipDir | Out-Null
-  $zipPath = Join-Path $zipDir "ProjectP1L0T-Dev-$versionStamp.zip"
+  $zipPath = Join-Path $zipDir "ProjectP1L0T-Dev-$version.zip"
   if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
   Write-Host "Creating zip: $zipPath"
   Compress-Archive -Path (Join-Path $installDir '*') -DestinationPath $zipPath -Force
