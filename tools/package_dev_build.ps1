@@ -1,9 +1,9 @@
 ﻿param(
   [string]$InstallRoot = "C:\ProjectP1L0T",
   [string]$Configuration = "Development",
-  [switch]$Zip
+  [switch]$Zip,
+  [switch]$PublishRelease
 )
-
 $ErrorActionPreference = "Stop"
 
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -109,6 +109,21 @@ if ($Zip) {
   if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
   Write-Host "Creating zip: $zipPath"
   Compress-Archive -Path (Join-Path $installDir '*') -DestinationPath $zipPath -Force
+
+  if ($PublishRelease -or $env:PUBLISH_RELEASE -eq "1") {
+    $exePublisher = Join-Path $repoRoot "tools\publish_release.exe"
+    $psPublisher = Join-Path $repoRoot "tools\publish_release.ps1"
+    if (Test-Path $exePublisher) {
+      Write-Host "Publishing release via publish_release.exe"
+      & $exePublisher --zip $zipPath | Write-Host
+    } elseif (Test-Path $psPublisher) {
+      Write-Host "Publishing release via publish_release.ps1"
+      powershell -ExecutionPolicy Bypass -File $psPublisher -ZipPath $zipPath | Write-Host
+    } else {
+      Write-Warning "No release publisher found. Skipping publish step."
+    }
+  }
 }
 
 Write-Host "Done. Launch from the launcher using the configured executable path."
+
