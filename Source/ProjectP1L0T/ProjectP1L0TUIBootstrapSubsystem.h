@@ -21,7 +21,9 @@ public:
 private:
 	void HandlePostLoadMap(UWorld* World);
 	void EnsureFallbackInput(APlayerController* PC);
+	void EnsureLogInput(APlayerController* PC);
 	void HandleFallbackMenuPressed();
+	void HandleLogTogglePressed();
 	void ShowFallbackPauseMenu(APlayerController* PC);
 	void HideFallbackPauseMenu(APlayerController* PC);
 
@@ -33,6 +35,9 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UInputComponent> FallbackInputComponent;
+
+	UPROPERTY()
+	TObjectPtr<UInputComponent> LogInputComponent;
 
 	TWeakObjectPtr<APlayerController> FallbackPlayerController;
 };

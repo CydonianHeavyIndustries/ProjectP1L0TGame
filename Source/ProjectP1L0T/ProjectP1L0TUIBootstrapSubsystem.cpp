@@ -4,6 +4,7 @@
 #include "Components/InputComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "Logging/ProjectP1L0TLogSubsystem.h"
 #include "ProjectP1L0T.h"
 #include "ProjectP1L0TPlayerController.h"
 #include "UI/PauseMenuWidget.h"
@@ -35,6 +36,8 @@ void UProjectP1L0TUIBootstrapSubsystem::HandlePostLoadMap(UWorld* World)
 	{
 		return;
 	}
+
+	EnsureLogInput(PC);
 
 	if (Cast<AProjectP1L0TPlayerController>(PC))
 	{
@@ -96,6 +99,27 @@ void UProjectP1L0TUIBootstrapSubsystem::EnsureFallbackInput(APlayerController* P
 	PC->PushInputComponent(FallbackInputComponent);
 }
 
+void UProjectP1L0TUIBootstrapSubsystem::EnsureLogInput(APlayerController* PC)
+{
+	if (!PC || LogInputComponent)
+	{
+		return;
+	}
+
+	LogInputComponent = NewObject<UInputComponent>(PC, TEXT("ProjectP1L0TLogInput"));
+	if (!LogInputComponent)
+	{
+		return;
+	}
+
+	LogInputComponent->RegisterComponent();
+	LogInputComponent->bBlockInput = false;
+	LogInputComponent->Priority = 0;
+	FInputActionBinding& LogBinding = LogInputComponent->BindKey(EKeys::F9, IE_Pressed, this, &UProjectP1L0TUIBootstrapSubsystem::HandleLogTogglePressed);
+	LogBinding.bExecuteWhenPaused = true;
+	PC->PushInputComponent(LogInputComponent);
+}
+
 void UProjectP1L0TUIBootstrapSubsystem::HandleFallbackMenuPressed()
 {
 	APlayerController* PC = FallbackPlayerController.Get();
@@ -119,6 +143,14 @@ void UProjectP1L0TUIBootstrapSubsystem::HandleFallbackMenuPressed()
 	}
 
 	ShowFallbackPauseMenu(PC);
+}
+
+void UProjectP1L0TUIBootstrapSubsystem::HandleLogTogglePressed()
+{
+	if (UProjectP1L0TLogSubsystem* LogSubsystem = GetGameInstance()->GetSubsystem<UProjectP1L0TLogSubsystem>())
+	{
+		LogSubsystem->ToggleOverlay();
+	}
 }
 
 void UProjectP1L0TUIBootstrapSubsystem::ShowFallbackPauseMenu(APlayerController* PC)
