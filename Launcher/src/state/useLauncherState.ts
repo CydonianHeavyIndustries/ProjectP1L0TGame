@@ -41,6 +41,7 @@ const coerceState = (value?: string): InstallState | undefined => {
 
 export const useLauncherState = (): LauncherState => {
   const installedRecord = useMemo(() => readInstalled(), []);
+  const installedAt = installedRecord?.installedAt;
   const [channel, setChannel] = useState<Channel>('dev');
   const [release, setRelease] = useState<GitHubRelease | null>(null);
   const [install, setInstall] = useState<InstallStatus>(() => initialInstallStatus(installedRecord?.version ?? null));
@@ -53,10 +54,10 @@ export const useLauncherState = (): LauncherState => {
   };
 
   const runUpdateCheck = async (logOutcome: boolean): Promise<UpdateCheckResult> => {
-    const payload = { channel, installedVersion };
+    const payload = { channel, installedVersion, installedAt };
     const result: UpdateCheckResult = window.launcher?.checkForUpdate
       ? ((await window.launcher.checkForUpdate(payload)) as UpdateCheckResult)
-      : await checkGitHubUpdate(payload.channel, payload.installedVersion);
+      : await checkGitHubUpdate(payload.channel, payload.installedVersion, payload.installedAt);
 
     if (result.status === 'error') {
       if (logOutcome) {

@@ -6,7 +6,7 @@ declare global {
       isDev: boolean;
       platform: string;
       version: string;
-      checkForUpdate: (payload: { channel: string; installedVersion: string }) => Promise<
+      checkForUpdate: (payload: { channel: string; installedVersion: string; installedAt?: string }) => Promise<
         | {
             status: 'ok';
             updateAvailable: boolean;

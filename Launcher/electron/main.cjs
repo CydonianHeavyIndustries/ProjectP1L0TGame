@@ -32,6 +32,8 @@ const writeLog = (level, message, meta) => {
 };
 
 const normalizeVersion = (value) => value.replace(/^v/i, '');
+const isSemver = (value) => /^\d+\.\d+\.\d+$/.test(normalizeVersion(value || ''));
+const isTimestampVersion = (value) => /^\d{4}\.\d{2}\.\d{2}\.\d{4}$/.test(normalizeVersion(value || ''));
 
 const compareSemver = (a, b) => {
   const left = normalizeVersion(a).split('.').map((part) => Number(part) || 0);
@@ -44,6 +46,14 @@ const compareSemver = (a, b) => {
     if (l < r) return -1;
   }
   return 0;
+};
+
+const shouldUpdateWithDates = (installedAt, publishedAt) => {
+  if (!installedAt || !publishedAt) return false;
+  const installedTime = Date.parse(installedAt);
+  const releaseTime = Date.parse(publishedAt);
+  if (Number.isNaN(installedTime) || Number.isNaN(releaseTime)) return false;
+  return releaseTime > installedTime;
 };
 
 const requestGitHub = async (endpoint) => {
@@ -360,7 +370,15 @@ const createWindow = () => {
 ipcMain.handle('launcher:checkUpdate', async (_event, payload) => {
   try {
     const release = await getReleaseForChannel(payload.channel);
-    const updateAvailable = compareSemver(payload.installedVersion || '0.0.0', release.version) < 0;
+    const installedVersion = payload.installedVersion || '0.0.0';
+    const compare = compareSemver(installedVersion, release.version);
+    let updateAvailable = compare < 0;
+    if (!updateAvailable && compare > 0) {
+      const semverMismatch = isSemver(release.version) && isTimestampVersion(installedVersion);
+      if (semverMismatch || !isSemver(installedVersion)) {
+        updateAvailable = shouldUpdateWithDates(payload.installedAt, release.publishedAt);
+      }
+    }
     return {
       status: 'ok',
       updateAvailable,

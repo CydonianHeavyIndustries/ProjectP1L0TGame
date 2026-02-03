@@ -16,6 +16,17 @@ interface RawRelease {
 
 const normalizeVersion = (tag: string) => tag.replace(/^v/i, '');
 
+const isSemver = (value: string) => /^\d+\.\d+\.\d+$/.test(normalizeVersion(value));
+const isTimestampVersion = (value: string) => /^\d{4}\.\d{2}\.\d{2}\.\d{4}$/.test(normalizeVersion(value));
+
+const shouldUpdateWithDates = (installedAt?: string, publishedAt?: string) => {
+  if (!installedAt || !publishedAt) return false;
+  const installedTime = Date.parse(installedAt);
+  const releaseTime = Date.parse(publishedAt);
+  if (Number.isNaN(installedTime) || Number.isNaN(releaseTime)) return false;
+  return releaseTime > installedTime;
+};
+
 const mapRelease = (release: RawRelease): GitHubRelease => {
   const asset = release.assets.find((item) => item.name.endsWith('.zip')) ?? release.assets[0];
   return {
@@ -67,10 +78,21 @@ const getReleaseOrCommit = async (channel: string): Promise<GitHubRelease> => {
   return release;
 };
 
-export const checkGitHubUpdate = async (channel: string, installedVersion: string): Promise<UpdateCheckResult> => {
+export const checkGitHubUpdate = async (
+  channel: string,
+  installedVersion: string,
+  installedAt?: string
+): Promise<UpdateCheckResult> => {
   try {
     const release = await getReleaseOrCommit(channel);
-    const updateAvailable = compareSemver(installedVersion, release.version) < 0;
+    const compare = compareSemver(installedVersion, release.version);
+    let updateAvailable = compare < 0;
+    if (!updateAvailable && compare > 0) {
+      const semverMismatch = isSemver(release.version) && isTimestampVersion(installedVersion);
+      if (semverMismatch || !isSemver(installedVersion)) {
+        updateAvailable = shouldUpdateWithDates(installedAt, release.publishedAt);
+      }
+    }
     return {
       status: 'ok',
       updateAvailable,
