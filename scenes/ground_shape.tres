@@ -1,0 +1,4 @@
+﻿[gd_resource type="BoxShape3D" format=3 uid="uid://ground_shape"]
+
+[resource]
+size = Vector3(50, 1, 50)

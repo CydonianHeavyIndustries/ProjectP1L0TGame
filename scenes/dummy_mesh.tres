@@ -1,0 +1,5 @@
+﻿[gd_resource type="BoxMesh" format=3 uid="uid://dummy_mesh"]
+
+[resource]
+size = Vector3(1, 2, 1)
+material = null

@@ -28,9 +28,9 @@ export const defaultSettings: LauncherSettings = {
   bandwidthLimitMbps: 0,
   autoUpdate: true,
   runOnStartup: false,
-  launchArgs: '-log -nosplash',
+  launchArgs: '',
   safeMode: false,
-  gameExeRelative: 'ProjectP1L0T/Binaries/Win64/ProjectP1L0T.exe'
+  gameExeRelative: 'ProjectP1L0T.exe'
 };
 
 export const readSettings = (): LauncherSettings => {

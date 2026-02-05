@@ -1,0 +1,5 @@
+﻿[gd_resource type="BoxMesh" format=3 uid="uid://ground_mesh"]
+
+[resource]
+size = Vector3(50, 1, 50)
+material = null

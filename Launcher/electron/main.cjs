@@ -267,12 +267,16 @@ const resolveRepoRoot = () => {
 
 const runPackagingScript = (payload) => {
   const repoRoot = resolveRepoRoot();
-  const ps1Path = path.join(repoRoot, 'tools', 'package_dev_build.ps1');
-  const batPath = path.join(repoRoot, 'package_dev_build.bat');
-  const hasPs1 = fs.existsSync(ps1Path);
-  const hasBat = fs.existsSync(batPath);
-  if (!hasPs1 && !hasBat) {
-    throw new Error(`Packaging script not found: ${ps1Path} or ${batPath}`);
+  const godotPs1Path = path.join(repoRoot, 'tools', 'package_godot_build.ps1');
+  const godotBatPath = path.join(repoRoot, 'tools', 'package_godot_build.bat');
+  const uePs1Path = path.join(repoRoot, 'tools', 'package_dev_build.ps1');
+  const ueBatPath = path.join(repoRoot, 'package_dev_build.bat');
+  const hasGodotPs1 = fs.existsSync(godotPs1Path);
+  const hasGodotBat = fs.existsSync(godotBatPath);
+  const hasUePs1 = fs.existsSync(uePs1Path);
+  const hasUeBat = fs.existsSync(ueBatPath);
+  if (!hasGodotPs1 && !hasGodotBat && !hasUePs1 && !hasUeBat) {
+    throw new Error(`Packaging script not found: ${godotPs1Path}, ${godotBatPath}, ${uePs1Path}, or ${ueBatPath}`);
   }
 
   const args = [];
@@ -291,11 +295,17 @@ const runPackagingScript = (payload) => {
 
     let command = '';
     let commandArgs = [];
-    if (hasPs1) {
+    if (hasGodotPs1) {
       command = 'powershell.exe';
-      commandArgs = ['-ExecutionPolicy', 'Bypass', '-File', ps1Path, ...args];
+      commandArgs = ['-ExecutionPolicy', 'Bypass', '-File', godotPs1Path, ...args];
+    } else if (hasGodotBat) {
+      command = godotBatPath;
+      commandArgs = [...args];
+    } else if (hasUePs1) {
+      command = 'powershell.exe';
+      commandArgs = ['-ExecutionPolicy', 'Bypass', '-File', uePs1Path, ...args];
     } else {
-      command = batPath;
+      command = ueBatPath;
       commandArgs = [...args];
     }
 
