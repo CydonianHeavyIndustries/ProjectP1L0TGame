@@ -72,6 +72,9 @@ const Home = ({ state }: { state: LauncherState }) => {
             <Button variant="ghost" onClick={() => actions.startRepair()} disabled={isBusy}>
               Repair
             </Button>
+            <Button variant="ghost" onClick={() => actions.launchLocalBuild()} disabled={isBusy}>
+              Local Play
+            </Button>
           </div>
           <div className="row">
             <label className="tag">Channel</label>
