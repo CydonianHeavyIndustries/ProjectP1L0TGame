@@ -33,11 +33,21 @@ export const defaultSettings: LauncherSettings = {
   gameExeRelative: 'ProjectP1L0T.exe'
 };
 
+const normalizeGameExe = (value?: string): string => {
+  if (!value) return defaultSettings.gameExeRelative;
+  const normalized = value.replace(/\\/g, '/').toLowerCase();
+  if (normalized === 'projectp1l0t/binaries/win64/projectp1l0t.exe') {
+    return defaultSettings.gameExeRelative;
+  }
+  return value;
+};
+
 export const readSettings = (): LauncherSettings => {
   if (typeof window === 'undefined') return defaultSettings;
   try {
     const raw = window.localStorage.getItem(SETTINGS_KEY);
-    return raw ? { ...defaultSettings, ...(JSON.parse(raw) as LauncherSettings) } : defaultSettings;
+    const merged = raw ? { ...defaultSettings, ...(JSON.parse(raw) as LauncherSettings) } : defaultSettings;
+    return { ...merged, gameExeRelative: normalizeGameExe(merged.gameExeRelative) };
   } catch {
     return defaultSettings;
   }
