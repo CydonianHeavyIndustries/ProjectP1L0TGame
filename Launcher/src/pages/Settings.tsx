@@ -33,6 +33,14 @@ const Settings = ({ state }: { state: LauncherState }) => {
                 onChange={(event) => actions.updateSettings({ localBuildRelative: event.target.value })}
               />
             </label>
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={settings.preferLocalBuild}
+                onChange={(event) => actions.updateSettings({ preferLocalBuild: event.target.checked })}
+              />
+              Prefer local build for Play
+            </label>
             <label className="stack">
               Bandwidth Limit (Mbps, 0 = unlimited)
               <input

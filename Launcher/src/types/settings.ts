@@ -7,4 +7,5 @@
   safeMode: boolean;
   gameExeRelative: string;
   localBuildRelative: string;
+  preferLocalBuild: boolean;
 }

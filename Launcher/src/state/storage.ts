@@ -31,7 +31,8 @@ export const defaultSettings: LauncherSettings = {
   launchArgs: '',
   safeMode: false,
   gameExeRelative: 'ProjectP1L0T.exe',
-  localBuildRelative: 'Builds/Godot/ProjectP1L0T.exe'
+  localBuildRelative: 'Builds/Godot/ProjectP1L0T.exe',
+  preferLocalBuild: true
 };
 
 const normalizeGameExe = (value?: string): string => {
@@ -48,6 +49,11 @@ const normalizeLocalBuild = (value?: string): string => {
   return value;
 };
 
+const normalizePreferLocal = (value?: boolean): boolean => {
+  if (typeof value === 'boolean') return value;
+  return defaultSettings.preferLocalBuild;
+};
+
 export const readSettings = (): LauncherSettings => {
   if (typeof window === 'undefined') return defaultSettings;
   try {
@@ -56,7 +62,8 @@ export const readSettings = (): LauncherSettings => {
     return {
       ...merged,
       gameExeRelative: normalizeGameExe(merged.gameExeRelative),
-      localBuildRelative: normalizeLocalBuild(merged.localBuildRelative)
+      localBuildRelative: normalizeLocalBuild(merged.localBuildRelative),
+      preferLocalBuild: normalizePreferLocal(merged.preferLocalBuild)
     };
   } catch {
     return defaultSettings;
