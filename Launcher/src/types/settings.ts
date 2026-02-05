@@ -6,4 +6,5 @@
   launchArgs: string;
   safeMode: boolean;
   gameExeRelative: string;
+  localBuildRelative: string;
 }

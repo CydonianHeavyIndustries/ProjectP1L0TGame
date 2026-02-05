@@ -15,7 +15,7 @@ declare global {
           }
         | { status: 'error'; reason: string }
       >;
-      performUpdate: (payload: { channel: string; installDir: string }) => Promise<
+      performUpdate: (payload: { channel: string; installDir: string; gameExeRelative?: string }) => Promise<
         | { status: 'ok'; version: string; installDir: string }
         | { status: 'error'; reason: string }
       >;
@@ -23,6 +23,8 @@ declare global {
         channel: string;
         installDir: string;
         gameExeRelative: string;
+        localBuildRelative?: string;
+        useLocalBuild?: boolean;
         launchArgs: string;
         safeMode: boolean;
         buildVersion: string;

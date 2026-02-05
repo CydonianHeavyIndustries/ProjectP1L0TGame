@@ -198,10 +198,29 @@ const parseArgs = (value) => {
   return args;
 };
 
-const resolveExecutable = (installRoot, relativePath) => {
+const normalizeRelativePath = (value) => value.replace(/^[\\/]+/, '');
+
+const resolveExecutable = (payload) => {
+  const relativePath = payload.gameExeRelative || '';
+  if (relativePath && path.isAbsolute(relativePath)) {
+    return relativePath;
+  }
+
+  if (payload.useLocalBuild) {
+    const repoRoot = resolveRepoRoot();
+    const localRel = payload.localBuildRelative || relativePath;
+    if (!localRel) {
+      throw new Error('Local build path is not configured');
+    }
+    return path.join(repoRoot, normalizeRelativePath(localRel));
+  }
+
+  const installRoot = payload.installDir && payload.installDir.trim().length > 0 ? payload.installDir : app.getPath('userData');
+  if (!relativePath) {
+    throw new Error('Game executable path is not configured');
+  }
   const installDir = path.join(installRoot, 'install');
-  const normalized = relativePath.replace(/^[\\/]+/, '');
-  return path.join(installDir, normalized);
+  return path.join(installDir, normalizeRelativePath(relativePath));
 };
 
 const resolveExecutableInDir = (baseDir, relativePath) => {
@@ -228,10 +247,7 @@ const findPayloadRoot = async (stagingDir, relativePath) => {
 
 const launchGame = (payload) => {
   const rootDir = payload.installDir && payload.installDir.trim().length > 0 ? payload.installDir : app.getPath('userData');
-  const exePath = resolveExecutable(rootDir, payload.gameExeRelative || '');
-  if (!payload.gameExeRelative || payload.gameExeRelative.trim().length === 0) {
-    throw new Error('Game executable path is not configured');
-  }
+  const exePath = resolveExecutable(payload);
   if (!fs.existsSync(exePath)) {
     throw new Error(`Game executable not found: ${exePath}`);
   }

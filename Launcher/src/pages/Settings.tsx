@@ -26,6 +26,14 @@ const Settings = ({ state }: { state: LauncherState }) => {
               />
             </label>
             <label className="stack">
+              Local Build Executable (relative to repo)
+              <input
+                type="text"
+                value={settings.localBuildRelative}
+                onChange={(event) => actions.updateSettings({ localBuildRelative: event.target.value })}
+              />
+            </label>
+            <label className="stack">
               Bandwidth Limit (Mbps, 0 = unlimited)
               <input
                 type="text"
@@ -71,8 +79,11 @@ const Settings = ({ state }: { state: LauncherState }) => {
               Safe mode
             </label>
             <div className="row">
-              <button className="button button-ghost" type="button">
-                Reset Config
+              <button className="button button-ghost" type="button" onClick={() => actions.resetSettings()}>
+                Reset Settings
+              </button>
+              <button className="button button-primary" type="button" onClick={() => actions.launchLocalBuild()}>
+                Launch Local Build
               </button>
             </div>
           </div>

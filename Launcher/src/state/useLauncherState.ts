@@ -7,7 +7,7 @@ import type { GitHubRelease } from '../types/github';
 import type { UpdateCheckResult, UpdateResult } from '../types/update';
 import { formatDate } from '../utils/format';
 import { checkGitHubUpdate } from './github';
-import { readInstalled, readSettings, writeInstalled, writeSettings } from './storage';
+import { defaultSettings, readInstalled, readSettings, writeInstalled, writeSettings } from './storage';
 
 const initialInstallStatus = (installedVersion: string | null): InstallStatus => ({
   state: installedVersion && installedVersion !== '0.0.0' ? 'Installed' : 'NotInstalled',
@@ -206,6 +206,12 @@ export const useLauncherState = (): LauncherState => {
     });
   };
 
+  const resetSettings = () => {
+    setSettings(defaultSettings);
+    writeSettings(defaultSettings);
+    pushLog('Settings reset');
+  };
+
   const clearLogs = () => {
     setLogs([`[${formatDate(new Date().toISOString())}] Logs cleared`]);
   };
@@ -229,6 +235,29 @@ export const useLauncherState = (): LauncherState => {
       return;
     }
     pushLog('Launch initiated');
+  };
+
+  const launchLocalBuild = async () => {
+    if (!window.launcher?.launchGame) {
+      pushLog('Launch failed (Launcher bridge unavailable)');
+      return;
+    }
+    const result = await window.launcher.launchGame({
+      channel,
+      installDir: settings.installDir,
+      gameExeRelative: settings.gameExeRelative,
+      localBuildRelative: settings.localBuildRelative,
+      useLocalBuild: true,
+      launchArgs: settings.launchArgs,
+      safeMode: settings.safeMode,
+      buildVersion: installedVersion
+    });
+    if (result.status === 'error') {
+      pushLog(`Launch failed (${result.reason})`);
+      setInstall((prev) => ({ ...prev, state: 'Error', error: result.reason }));
+      return;
+    }
+    pushLog('Local launch initiated');
   };
 
   const openInstallDir = () => {
@@ -260,7 +289,9 @@ export const useLauncherState = (): LauncherState => {
       triggerError,
       clearLogs,
       updateSettings,
+      resetSettings,
       requestLaunch,
+      launchLocalBuild,
       openInstallDir,
       openLogs
     }

@@ -12,7 +12,9 @@ export interface LauncherActions {
   triggerError: (message: string) => void;
   clearLogs: () => void;
   updateSettings: (next: Partial<LauncherSettings>) => void;
+  resetSettings: () => void;
   requestLaunch: () => void;
+  launchLocalBuild: () => void;
   openInstallDir: () => void;
   openLogs: () => void;
 }

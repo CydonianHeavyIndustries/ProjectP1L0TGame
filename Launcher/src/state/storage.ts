@@ -30,7 +30,8 @@ export const defaultSettings: LauncherSettings = {
   runOnStartup: false,
   launchArgs: '',
   safeMode: false,
-  gameExeRelative: 'ProjectP1L0T.exe'
+  gameExeRelative: 'ProjectP1L0T.exe',
+  localBuildRelative: 'Builds/Godot/ProjectP1L0T.exe'
 };
 
 const normalizeGameExe = (value?: string): string => {
@@ -42,12 +43,21 @@ const normalizeGameExe = (value?: string): string => {
   return value;
 };
 
+const normalizeLocalBuild = (value?: string): string => {
+  if (!value) return defaultSettings.localBuildRelative;
+  return value;
+};
+
 export const readSettings = (): LauncherSettings => {
   if (typeof window === 'undefined') return defaultSettings;
   try {
     const raw = window.localStorage.getItem(SETTINGS_KEY);
     const merged = raw ? { ...defaultSettings, ...(JSON.parse(raw) as LauncherSettings) } : defaultSettings;
-    return { ...merged, gameExeRelative: normalizeGameExe(merged.gameExeRelative) };
+    return {
+      ...merged,
+      gameExeRelative: normalizeGameExe(merged.gameExeRelative),
+      localBuildRelative: normalizeLocalBuild(merged.localBuildRelative)
+    };
   } catch {
     return defaultSettings;
   }
