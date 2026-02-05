@@ -366,3 +366,22 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Unreal Engine (legacy)
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+Content/
+Config/
+Source/
+*.sln
+*.uproject
+.vs/
+Build/
+Builds/Package/
+Builds/Zips/
+
+# Godot
+.godot/
+.import/

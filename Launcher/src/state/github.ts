@@ -1,4 +1,4 @@
-﻿import type { GitHubRelease } from '../types/github';
+import type { GitHubRelease } from '../types/github';
 import type { UpdateCheckResult } from '../types/update';
 import { compareSemver } from '../utils/format';
 

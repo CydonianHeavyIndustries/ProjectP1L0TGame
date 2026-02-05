@@ -1,0 +1,14 @@
+﻿{
+  "name": "lorekeeper-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Discord Lorekeeper bot for Project P1L0T wiki",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "register": "node register_commands.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.18.0"
+  }
+}

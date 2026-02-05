@@ -1,4 +1,4 @@
-﻿extends Control
+extends Control
 signal play_pressed
 
 @onready var play_button: Button = $VBox/Play

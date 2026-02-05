@@ -1,4 +1,4 @@
-﻿export {};
+export {};
 
 declare global {
   interface Window {
@@ -15,7 +15,7 @@ declare global {
           }
         | { status: 'error'; reason: string }
       >;
-      performUpdate: (payload: { channel: string; installDir: string; gameExeRelative?: string }) => Promise<
+      performUpdate: (payload: { channel: string; installDir: string; gameExeRelative: string }) => Promise<
         | { status: 'ok'; version: string; installDir: string }
         | { status: 'error'; reason: string }
       >;
@@ -23,8 +23,8 @@ declare global {
         channel: string;
         installDir: string;
         gameExeRelative: string;
-        localBuildRelative?: string;
-        useLocalBuild?: boolean;
+        useLocalBuild: boolean;
+        localBuildRelative: string;
         launchArgs: string;
         safeMode: boolean;
         buildVersion: string;

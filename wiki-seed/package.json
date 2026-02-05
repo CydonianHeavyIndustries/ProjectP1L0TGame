@@ -1,0 +1,9 @@
+﻿{
+  "name": "wiki-seed",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Seed GitHub wiki index pages for Project P1L0T",
+  "scripts": {
+    "seed": "node seed_wiki_pages.js"
+  }
+}

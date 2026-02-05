@@ -198,29 +198,10 @@ const parseArgs = (value) => {
   return args;
 };
 
-const normalizeRelativePath = (value) => value.replace(/^[\\/]+/, '');
-
-const resolveExecutable = (payload) => {
-  const relativePath = payload.gameExeRelative || '';
-  if (relativePath && path.isAbsolute(relativePath)) {
-    return relativePath;
-  }
-
-  if (payload.useLocalBuild) {
-    const repoRoot = resolveRepoRoot();
-    const localRel = payload.localBuildRelative || relativePath;
-    if (!localRel) {
-      throw new Error('Local build path is not configured');
-    }
-    return path.join(repoRoot, normalizeRelativePath(localRel));
-  }
-
-  const installRoot = payload.installDir && payload.installDir.trim().length > 0 ? payload.installDir : app.getPath('userData');
-  if (!relativePath) {
-    throw new Error('Game executable path is not configured');
-  }
+const resolveExecutable = (installRoot, relativePath) => {
   const installDir = path.join(installRoot, 'install');
-  return path.join(installDir, normalizeRelativePath(relativePath));
+  const normalized = relativePath.replace(/^[\\/]+/, '');
+  return path.join(installDir, normalized);
 };
 
 const resolveExecutableInDir = (baseDir, relativePath) => {
@@ -245,9 +226,21 @@ const findPayloadRoot = async (stagingDir, relativePath) => {
   return null;
 };
 
-const launchGame = (payload) => {
+const resolveLaunchTarget = (payload) => {
+  const relative = payload.useLocalBuild ? payload.localBuildRelative : payload.gameExeRelative;
+  if (!relative || relative.trim().length === 0) {
+    throw new Error('Game executable path is not configured');
+  }
+  if (payload.useLocalBuild) {
+    const repoRoot = resolveRepoRoot();
+    return resolveExecutableInDir(repoRoot, relative);
+  }
   const rootDir = payload.installDir && payload.installDir.trim().length > 0 ? payload.installDir : app.getPath('userData');
-  const exePath = resolveExecutable(payload);
+  return resolveExecutable(rootDir, relative);
+};
+
+const launchGame = (payload) => {
+  const exePath = resolveLaunchTarget(payload);
   if (!fs.existsSync(exePath)) {
     throw new Error(`Game executable not found: ${exePath}`);
   }
@@ -257,11 +250,6 @@ const launchGame = (payload) => {
   if (payload.safeMode) {
     args.push('-safemode');
   }
-  args.push(`-ENV=${payload.channel}`);
-  if (payload.buildVersion) {
-    args.push(`-BUILD_VERSION=${payload.buildVersion}`);
-  }
-  args.push('-LAUNCHER=CHII');
 
   writeLog('INFO', 'Launching game', `${exePath} ${args.join(' ')}`);
 
@@ -285,14 +273,10 @@ const runPackagingScript = (payload) => {
   const repoRoot = resolveRepoRoot();
   const godotPs1Path = path.join(repoRoot, 'tools', 'package_godot_build.ps1');
   const godotBatPath = path.join(repoRoot, 'tools', 'package_godot_build.bat');
-  const uePs1Path = path.join(repoRoot, 'tools', 'package_dev_build.ps1');
-  const ueBatPath = path.join(repoRoot, 'package_dev_build.bat');
   const hasGodotPs1 = fs.existsSync(godotPs1Path);
   const hasGodotBat = fs.existsSync(godotBatPath);
-  const hasUePs1 = fs.existsSync(uePs1Path);
-  const hasUeBat = fs.existsSync(ueBatPath);
-  if (!hasGodotPs1 && !hasGodotBat && !hasUePs1 && !hasUeBat) {
-    throw new Error(`Packaging script not found: ${godotPs1Path}, ${godotBatPath}, ${uePs1Path}, or ${ueBatPath}`);
+  if (!hasGodotPs1 && !hasGodotBat) {
+    throw new Error(`Packaging script not found: ${godotPs1Path} or ${godotBatPath}`);
   }
 
   const args = [];
@@ -307,22 +291,17 @@ const runPackagingScript = (payload) => {
   }
 
   return new Promise((resolve, reject) => {
-    writeLog('INFO', 'Packaging started', hasPs1 ? ps1Path : batPath);
+    const scriptPath = hasGodotPs1 ? godotPs1Path : godotBatPath;
+    writeLog('INFO', 'Packaging started', scriptPath);
 
     let command = '';
     let commandArgs = [];
     if (hasGodotPs1) {
       command = 'powershell.exe';
       commandArgs = ['-ExecutionPolicy', 'Bypass', '-File', godotPs1Path, ...args];
-    } else if (hasGodotBat) {
-      command = godotBatPath;
-      commandArgs = [...args];
-    } else if (hasUePs1) {
-      command = 'powershell.exe';
-      commandArgs = ['-ExecutionPolicy', 'Bypass', '-File', uePs1Path, ...args];
     } else {
-      command = ueBatPath;
-      commandArgs = [...args];
+      command = 'cmd.exe';
+      commandArgs = ['/c', godotBatPath, ...args];
     }
 
     writeLog('INFO', 'Packager', `${command} ${commandArgs.join(' ')}`.trim());

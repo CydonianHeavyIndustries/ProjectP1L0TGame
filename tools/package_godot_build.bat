@@ -12,6 +12,12 @@ set "ZIP_PATH=%ROOT%\Builds\ProjectP1L0T_Godot.zip"
 
 if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
 
+echo [P1L0T] Importing assets...
+"%GODOT%" --headless --path "%ROOT%" --import
+if errorlevel 1 (
+  echo [P1L0T] Import step failed (continuing to export).
+)
+
 echo [P1L0T] Exporting Godot build...
 "%GODOT%" --headless --path "%ROOT%" --export-release "%EXPORT_PRESET%" "%EXE_PATH%"
 if errorlevel 1 (

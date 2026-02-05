@@ -1,4 +1,4 @@
-﻿import type { LauncherState } from '../types/launcher';
+import type { LauncherState } from '../types/launcher';
 import Button from '../components/Button';
 import Panel from '../components/Panel';
 import ProgressBar from '../components/ProgressBar';

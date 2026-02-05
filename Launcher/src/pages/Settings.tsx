@@ -1,4 +1,5 @@
-﻿import type { LauncherState } from '../types/launcher';
+import type { LauncherState } from '../types/launcher';
+import Button from '../components/Button';
 import Panel from '../components/Panel';
 
 const Settings = ({ state }: { state: LauncherState }) => {
@@ -18,7 +19,7 @@ const Settings = ({ state }: { state: LauncherState }) => {
               />
             </label>
             <label className="stack">
-              Game Executable (relative to /install)
+              Installed Game Executable (relative to /install)
               <input
                 type="text"
                 value={settings.gameExeRelative}
@@ -26,20 +27,12 @@ const Settings = ({ state }: { state: LauncherState }) => {
               />
             </label>
             <label className="stack">
-              Local Build Executable (relative to repo)
+              Local Build Executable (relative to repo root)
               <input
                 type="text"
                 value={settings.localBuildRelative}
                 onChange={(event) => actions.updateSettings({ localBuildRelative: event.target.value })}
               />
-            </label>
-            <label className="toggle">
-              <input
-                type="checkbox"
-                checked={settings.preferLocalBuild}
-                onChange={(event) => actions.updateSettings({ preferLocalBuild: event.target.checked })}
-              />
-              Prefer local build for Play
             </label>
             <label className="stack">
               Bandwidth Limit (Mbps, 0 = unlimited)
@@ -65,6 +58,14 @@ const Settings = ({ state }: { state: LauncherState }) => {
               />
               Run on startup
             </label>
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={settings.useLocalBuild}
+                onChange={(event) => actions.updateSettings({ useLocalBuild: event.target.checked })}
+              />
+              Prefer local build for Play
+            </label>
           </div>
         </Panel>
 
@@ -87,12 +88,9 @@ const Settings = ({ state }: { state: LauncherState }) => {
               Safe mode
             </label>
             <div className="row">
-              <button className="button button-ghost" type="button" onClick={() => actions.resetSettings()}>
+              <Button variant="ghost" type="button" onClick={() => actions.resetSettings()}>
                 Reset Settings
-              </button>
-              <button className="button button-primary" type="button" onClick={() => actions.launchLocalBuild()}>
-                Launch Local Build
-              </button>
+              </Button>
             </div>
           </div>
         </Panel>

@@ -1,4 +1,4 @@
-﻿import type { LauncherState } from '../types/launcher';
+import type { LauncherState } from '../types/launcher';
 import Button from '../components/Button';
 import ChannelTag from '../components/ChannelTag';
 import InstallStateBadge from '../components/InstallStateBadge';
@@ -28,15 +28,16 @@ const parseReleaseNotes = (body?: string | null) => {
 };
 
 const Home = ({ state }: { state: LauncherState }) => {
-  const { channel, setChannel, release, install, installedVersion, actions } = state;
+  const { channel, setChannel, release, install, installedVersion, actions, settings } = state;
   const isBusy = install.state === 'Updating' || install.state === 'Repairing';
   const remoteVersion = release?.version ?? '—';
   const payloadSize = release?.asset?.size ? formatBytes(release.asset.size) : '—';
   const releaseDate = release?.publishedAt ? formatDate(release.publishedAt) : '—';
-  const primaryLabel = primaryActionLabel(install.state);
+  const primaryLabel = settings.useLocalBuild && !isBusy ? 'Play (Local)' : primaryActionLabel(install.state);
   const notes = parseReleaseNotes(release?.body);
 
   const handlePrimary = () => {
+    if (settings.useLocalBuild) return actions.requestLaunch();
     if (install.state === 'NotInstalled') return actions.startInstall();
     if (install.state === 'UpdateAvailable') return actions.startUpdate();
     if (install.state === 'RepairRecommended' || install.state === 'Error') return actions.startRepair();
@@ -68,6 +69,9 @@ const Home = ({ state }: { state: LauncherState }) => {
           <div className="row">
             <Button variant="primary" className="button-play" onClick={handlePrimary} disabled={isBusy}>
               {primaryLabel}
+            </Button>
+            <Button variant="ghost" onClick={() => actions.requestLocalLaunch()} disabled={isBusy}>
+              Local Play
             </Button>
             <Button variant="ghost" onClick={() => actions.startRepair()} disabled={isBusy}>
               Repair

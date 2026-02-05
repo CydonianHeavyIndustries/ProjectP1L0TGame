@@ -1,4 +1,4 @@
-﻿export interface GitHubAsset {
+export interface GitHubAsset {
   name: string;
   size: number;
   url: string;

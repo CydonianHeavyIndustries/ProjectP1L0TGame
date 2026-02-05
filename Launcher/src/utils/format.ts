@@ -1,4 +1,4 @@
-﻿export const formatBytes = (bytes: number): string => {
+export const formatBytes = (bytes: number): string => {
   if (bytes <= 0 || Number.isNaN(bytes)) {
     return '0 B';
   }

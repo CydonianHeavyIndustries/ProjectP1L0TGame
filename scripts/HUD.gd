@@ -1,4 +1,4 @@
-﻿extends Control
+extends Control
 
 @onready var hp_label: Label = Label.new()
 @onready var ammo_label: Label = Label.new()

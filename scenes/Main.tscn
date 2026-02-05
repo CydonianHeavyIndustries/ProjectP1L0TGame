@@ -1,4 +1,4 @@
-﻿[gd_scene load_steps=2 format=3 uid="uid://main"]
+[gd_scene load_steps=2 format=3 uid="uid://main"]
 
 [node name="Main" type="Node"]
 script = ExtResource( 1 )

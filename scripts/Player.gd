@@ -1,4 +1,4 @@
-﻿extends CharacterBody3D
+extends CharacterBody3D
 
 @export var walk_speed := 7.0
 @export var sprint_speed := 12.0

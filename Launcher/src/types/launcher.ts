@@ -1,4 +1,4 @@
-﻿import type { Channel } from './channel';
+import type { Channel } from './channel';
 import type { GitHubRelease } from './github';
 import type { InstallStatus } from './install';
 import type { LauncherSettings } from './settings';
@@ -14,7 +14,7 @@ export interface LauncherActions {
   updateSettings: (next: Partial<LauncherSettings>) => void;
   resetSettings: () => void;
   requestLaunch: () => void;
-  launchLocalBuild: () => void;
+  requestLocalLaunch: () => void;
   openInstallDir: () => void;
   openLogs: () => void;
 }

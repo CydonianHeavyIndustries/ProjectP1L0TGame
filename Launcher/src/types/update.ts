@@ -1,4 +1,4 @@
-﻿import type { GitHubRelease } from './github';
+import type { GitHubRelease } from './github';
 
 export type UpdateCheckResult =
   | {

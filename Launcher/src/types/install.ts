@@ -1,4 +1,4 @@
-﻿export type InstallState =
+export type InstallState =
   | 'NotInstalled'
   | 'Installed'
   | 'UpdateAvailable'

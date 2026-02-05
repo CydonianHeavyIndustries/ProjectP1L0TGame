@@ -1,4 +1,4 @@
-﻿extends Node
+extends Node
 
 @onready var title_scene: PackedScene = preload("res://scenes/TitleScreen.tscn")
 @onready var gameplay_scene: PackedScene = preload("res://scenes/Gameplay.tscn")

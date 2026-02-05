@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Channel } from '../types/channel';
 import type { InstallStatus, InstallState, InstallStep } from '../types/install';
 import type { LauncherSettings } from '../types/settings';
@@ -7,7 +7,7 @@ import type { GitHubRelease } from '../types/github';
 import type { UpdateCheckResult, UpdateResult } from '../types/update';
 import { formatDate } from '../utils/format';
 import { checkGitHubUpdate } from './github';
-import { defaultSettings, readInstalled, readSettings, writeInstalled, writeSettings } from './storage';
+import { defaultSettings, readInstalled, readSettings, resetSettings, writeInstalled, writeSettings } from './storage';
 
 const initialInstallStatus = (installedVersion: string | null): InstallStatus => ({
   state: installedVersion && installedVersion !== '0.0.0' ? 'Installed' : 'NotInstalled',
@@ -206,9 +206,9 @@ export const useLauncherState = (): LauncherState => {
     });
   };
 
-  const resetSettings = () => {
-    setSettings(defaultSettings);
-    writeSettings(defaultSettings);
+  const resetLauncherSettings = () => {
+    const next = resetSettings();
+    setSettings(next);
     pushLog('Settings reset');
   };
 
@@ -221,30 +221,25 @@ export const useLauncherState = (): LauncherState => {
       pushLog('Launch failed (Launcher bridge unavailable)');
       return;
     }
-    const payload = {
+    const result = await window.launcher.launchGame({
       channel,
       installDir: settings.installDir,
       gameExeRelative: settings.gameExeRelative,
+      useLocalBuild: settings.useLocalBuild,
       localBuildRelative: settings.localBuildRelative,
-      useLocalBuild: settings.preferLocalBuild,
       launchArgs: settings.launchArgs,
       safeMode: settings.safeMode,
       buildVersion: installedVersion
-    };
-    let result = await window.launcher.launchGame(payload);
-    if (result.status === 'error' && settings.preferLocalBuild) {
-      pushLog(`Local launch failed (${result.reason}), falling back to installed build`);
-      result = await window.launcher.launchGame({ ...payload, useLocalBuild: false });
-    }
+    });
     if (result.status === 'error') {
       pushLog(`Launch failed (${result.reason})`);
       setInstall((prev) => ({ ...prev, state: 'Error', error: result.reason }));
       return;
     }
-    pushLog(settings.preferLocalBuild ? 'Local launch initiated' : 'Launch initiated');
+    pushLog('Launch initiated');
   };
 
-  const launchLocalBuild = async () => {
+  const requestLocalLaunch = async () => {
     if (!window.launcher?.launchGame) {
       pushLog('Launch failed (Launcher bridge unavailable)');
       return;
@@ -253,8 +248,8 @@ export const useLauncherState = (): LauncherState => {
       channel,
       installDir: settings.installDir,
       gameExeRelative: settings.gameExeRelative,
-      localBuildRelative: settings.localBuildRelative,
       useLocalBuild: true,
+      localBuildRelative: settings.localBuildRelative || defaultSettings.localBuildRelative,
       launchArgs: settings.launchArgs,
       safeMode: settings.safeMode,
       buildVersion: installedVersion
@@ -296,9 +291,9 @@ export const useLauncherState = (): LauncherState => {
       triggerError,
       clearLogs,
       updateSettings,
-      resetSettings,
+      resetSettings: resetLauncherSettings,
       requestLaunch,
-      launchLocalBuild,
+      requestLocalLaunch,
       openInstallDir,
       openLogs
     }

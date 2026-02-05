@@ -1,4 +1,4 @@
-﻿interface LogConsoleProps {
+interface LogConsoleProps {
   lines: string[];
 }
 

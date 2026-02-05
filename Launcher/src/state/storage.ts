@@ -1,4 +1,4 @@
-﻿import type { InstalledRecord } from '../types/install';
+import type { InstalledRecord } from '../types/install';
 import type { LauncherSettings } from '../types/settings';
 
 const INSTALLED_KEY = 'p1lot_installed';
@@ -31,43 +31,24 @@ export const defaultSettings: LauncherSettings = {
   launchArgs: '',
   safeMode: false,
   gameExeRelative: 'ProjectP1L0T.exe',
-  localBuildRelative: 'Builds/Godot/ProjectP1L0T.exe',
-  preferLocalBuild: true
-};
-
-const normalizeGameExe = (value?: string): string => {
-  if (!value) return defaultSettings.gameExeRelative;
-  const normalized = value.replace(/\\/g, '/').toLowerCase();
-  if (normalized === 'projectp1l0t/binaries/win64/projectp1l0t.exe') {
-    return defaultSettings.gameExeRelative;
-  }
-  return value;
-};
-
-const normalizeLocalBuild = (value?: string): string => {
-  if (!value) return defaultSettings.localBuildRelative;
-  return value;
-};
-
-const normalizePreferLocal = (value?: boolean): boolean => {
-  if (typeof value === 'boolean') return value;
-  return defaultSettings.preferLocalBuild;
+  useLocalBuild: false,
+  localBuildRelative: 'Builds/Godot/ProjectP1L0T.exe'
 };
 
 export const readSettings = (): LauncherSettings => {
   if (typeof window === 'undefined') return defaultSettings;
   try {
     const raw = window.localStorage.getItem(SETTINGS_KEY);
-    const merged = raw ? { ...defaultSettings, ...(JSON.parse(raw) as LauncherSettings) } : defaultSettings;
-    return {
-      ...merged,
-      gameExeRelative: normalizeGameExe(merged.gameExeRelative),
-      localBuildRelative: normalizeLocalBuild(merged.localBuildRelative),
-      preferLocalBuild: normalizePreferLocal(merged.preferLocalBuild)
-    };
+    return raw ? { ...defaultSettings, ...(JSON.parse(raw) as LauncherSettings) } : defaultSettings;
   } catch {
     return defaultSettings;
   }
+};
+
+export const resetSettings = (): LauncherSettings => {
+  if (typeof window === 'undefined') return { ...defaultSettings };
+  window.localStorage.removeItem(SETTINGS_KEY);
+  return { ...defaultSettings };
 };
 
 export const writeSettings = (settings: LauncherSettings): void => {

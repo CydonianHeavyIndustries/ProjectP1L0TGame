@@ -1,4 +1,4 @@
-﻿extends StaticBody3D
+extends StaticBody3D
 
 @export var max_health := 150.0
 var current_health := 150.0

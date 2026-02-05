@@ -1,4 +1,4 @@
-﻿export interface LauncherSettings {
+export interface LauncherSettings {
   installDir: string;
   bandwidthLimitMbps: number;
   autoUpdate: boolean;
@@ -6,6 +6,6 @@
   launchArgs: string;
   safeMode: boolean;
   gameExeRelative: string;
+  useLocalBuild: boolean;
   localBuildRelative: string;
-  preferLocalBuild: boolean;
 }

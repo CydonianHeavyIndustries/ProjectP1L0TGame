@@ -1,4 +1,4 @@
-﻿import type { InstallState } from '../types/install';
+import type { InstallState } from '../types/install';
 import StatChip from './StatChip';
 
 const installStateAccent = (state: InstallState) => {

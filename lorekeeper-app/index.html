@@ -1,0 +1,161 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lorekeeper</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <div class="flicker-overlay"></div>
+    <section id="setup" class="panel hidden">
+      <h1>Lorekeeper Setup</h1>
+      <p>Clone the GitHub Wiki repo before continuing.</p>
+      <label for="repo-url">Wiki repo URL</label>
+      <input id="repo-url" type="text" />
+      <div class="row">
+        <button id="clone-btn">Clone Wiki</button>
+        <span id="setup-status" class="status"></span>
+      </div>
+    </section>
+
+    <section id="main" class="book-shell hidden">
+      <div class="book">
+        <div class="page page-left ancient-page page-edge-left">
+          <div class="corner-ornament corner-ornament-tl"></div>
+          <div class="corner-ornament corner-ornament-bl"></div>
+          <div class="page-content">
+            <header class="page-header">
+              <div class="title-block">
+                <div class="title mystical-glow">The Lorekeeper</div>
+                <div class="subtitle">Grimoire of Forbidden Knowledge</div>
+              </div>
+              <button id="index-toggle" class="ghost">Show Index</button>
+            </header>
+
+            <div id="index-panel" class="index-panel hidden">
+              <div class="section-title mystical-glow">Table of Contents</div>
+              <div id="page-list" class="page-list aged-scrollbar"></div>
+            </div>
+
+            <div id="chat-panel" class="chat-panel">
+            <div class="section-title mystical-glow">Chatbox</div>
+            <div id="chat-log" class="chat-log aged-scrollbar"></div>
+            <div class="chat-input">
+              <textarea id="user-input" rows="3" placeholder="Chat with Lorekeeper... say 'start edits' when ready to draft changes."></textarea>
+              <button id="send-btn">Send</button>
+            </div>
+              <div class="row">
+                <span id="chat-status" class="status"></span>
+              </div>
+            </div>
+
+            <div class="page-footer mystical-glow">~ i ~</div>
+          </div>
+        </div>
+
+        <div class="spine leather-spine">
+          <div class="spine-band"></div>
+          <div class="spine-band spine-band-mid"></div>
+          <div class="spine-band spine-band-low"></div>
+        </div>
+
+        <div class="page page-right ancient-page page-edge-right">
+          <div class="corner-ornament corner-ornament-tr"></div>
+          <div class="corner-ornament corner-ornament-br"></div>
+          <div id="wax-seal" class="wax-seal hidden"></div>
+          <div class="page-content">
+            <header class="page-header">
+              <div>
+                <div id="page-title" class="title mystical-glow">Select a page</div>
+                <p id="canon-rules" class="canon"></p>
+              </div>
+              <div class="header-actions">
+                <button id="sync-btn" class="ghost">Sync</button>
+                <button id="settings-btn" class="ghost">Settings</button>
+                <button id="check-btn" class="ghost" disabled>Check Mods</button>
+                <button id="apply-btn" disabled>Apply Draft</button>
+                <button id="push-btn" disabled>Commit & Push</button>
+              </div>
+            </header>
+
+            <section id="settings-panel" class="settings hidden">
+              <div class="settings-header">
+                <h3>Settings</h3>
+                <button id="settings-close" class="ghost">Close</button>
+              </div>
+              <label for="ai-provider">AI Provider</label>
+              <select id="ai-provider">
+                <option value="ollama">Ollama (Local)</option>
+                <option value="openai">OpenAI</option>
+              </select>
+
+              <div id="ollama-settings">
+                <label for="ollama-host">Ollama Host</label>
+                <input id="ollama-host" type="text" placeholder="http://localhost:11434" />
+                <label for="ollama-model">Ollama Model</label>
+                <div class="row">
+                  <input id="ollama-model" type="text" placeholder="llama3.1" list="ollama-models" />
+                  <button id="fetch-ollama-models" class="ghost">Fetch Models</button>
+                </div>
+                <datalist id="ollama-models"></datalist>
+              </div>
+
+              <div id="openai-settings">
+                <label for="openai-key">OpenAI API Key</label>
+                <input id="openai-key" type="password" placeholder="sk-..." />
+                <label for="openai-model">OpenAI Model</label>
+                <div class="row">
+                  <input id="openai-model" type="text" placeholder="gpt-4o" list="openai-models" />
+                  <button id="fetch-models" class="ghost">Fetch Models</button>
+                </div>
+                <datalist id="openai-models"></datalist>
+                <label class="row">
+                  <input id="openai-stream" type="checkbox" />
+                  Stream plan output
+                </label>
+                <label class="row">
+                  <input id="openai-fallback" type="checkbox" />
+                  Auto-fallback on model access error
+                </label>
+                <label for="openai-fallback-model">Fallback model</label>
+                <input id="openai-fallback-model" type="text" placeholder="gpt-4o-mini" />
+              </div>
+
+              <div class="row">
+                <button id="save-settings">Save</button>
+                <span id="settings-status" class="status"></span>
+              </div>
+              <div class="row">
+                <span class="status">Log file:</span>
+                <span id="log-path" class="log-path"></span>
+                <button id="copy-log" class="ghost">Copy</button>
+              </div>
+            </section>
+
+            <section class="panel-block">
+              <h3>Preview</h3>
+              <div id="page-preview" class="preview-body">No page selected.</div>
+            </section>
+
+            <section class="panel-block">
+              <h3>AI Edit Plan (JSON)</h3>
+              <pre id="plan-output">No plan generated.</pre>
+            </section>
+
+            <section class="panel-block">
+              <h3>Modified Files (Diff)</h3>
+              <pre id="diff-output">No changes yet.</pre>
+            </section>
+
+            <div class="page-footer mystical-glow">~ ii ~</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

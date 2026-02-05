@@ -1,4 +1,4 @@
-﻿[gd_scene load_steps=3 format=3 uid="uid://title"]
+[gd_scene load_steps=3 format=3 uid="uid://title"]
 
 [node name="TitleScreen" type="Control"]
 anchors_preset = 15

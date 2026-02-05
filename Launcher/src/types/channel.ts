@@ -1,1 +1,1 @@
-﻿export type Channel = 'dev' | 'test' | 'live';
+export type Channel = 'dev' | 'test' | 'live';

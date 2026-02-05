@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Home from './pages/Home';
 import Updates from './pages/Updates';
 import Settings from './pages/Settings';
