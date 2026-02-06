@@ -1,6 +1,8 @@
 extends StaticBody3D
 
 @export var max_health := 150.0
+@export var healthbar_height := 1.85
+@export var healthbar_forward := 0.18
 var current_health := 150.0
 var is_ko := false
 var _fill_base_pos := Vector3.ZERO
@@ -42,6 +44,9 @@ func _cache_mesh_parts() -> void:
 				mesh_parts.append(child)
 
 func _setup_healthbar() -> void:
+	if health_back and health_back.get_parent() is Node3D:
+		var bar := health_back.get_parent() as Node3D
+		bar.position = Vector3(0.0, healthbar_height, healthbar_forward)
 	if health_fill:
 		_fill_base_pos = health_fill.position
 	if health_fill_mesh and health_fill_mesh.mesh is QuadMesh:
@@ -54,6 +59,7 @@ func _setup_healthbar() -> void:
 		back_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		back_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 		health_back.material_override = back_mat
+		health_back.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 	if health_fill_mesh:
 		var fill_mat := StandardMaterial3D.new()
@@ -62,6 +68,7 @@ func _setup_healthbar() -> void:
 		fill_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		fill_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 		health_fill_mesh.material_override = fill_mat
+		health_fill_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 func _update_healthbar() -> void:
 	if not health_fill:
