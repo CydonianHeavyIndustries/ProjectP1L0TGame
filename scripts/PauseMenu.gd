@@ -9,6 +9,8 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	set_process_input(true)
 	set_process_unhandled_input(true)
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	z_index = 100
 	visible = false
 	add_to_group("pause_menu")
 	if resume_button:

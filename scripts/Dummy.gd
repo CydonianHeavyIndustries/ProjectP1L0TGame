@@ -5,14 +5,16 @@ var current_health := 150.0
 var is_ko := false
 var _fill_base_pos := Vector3.ZERO
 var _fill_width := 1.0
+var mesh_parts: Array[MeshInstance3D] = []
 
-@onready var mesh: MeshInstance3D = $DummyMesh
+@onready var mesh_root: Node = $DummyMesh
 @onready var health_back: MeshInstance3D = $HealthBar/HealthBack
 @onready var health_fill: Node3D = $HealthBar/HealthFill
 @onready var health_fill_mesh: MeshInstance3D = $HealthBar/HealthFill/HealthFillMesh
 
 func _ready() -> void:
 	current_health = max_health
+	_cache_mesh_parts()
 	_setup_healthbar()
 	_update_healthbar()
 	_update_color(false)
@@ -27,11 +29,17 @@ func take_damage(amount: float) -> void:
 		_start_ko_jump()
 
 func _update_color(dead: bool) -> void:
-	if not mesh:
-		return
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.8, 0.2, 0.2) if dead else Color(0.95, 0.8, 0.2)
-	mesh.material_override = mat
+	for part in mesh_parts:
+		part.material_override = mat
+
+func _cache_mesh_parts() -> void:
+	mesh_parts.clear()
+	if mesh_root:
+		for child in mesh_root.get_children():
+			if child is MeshInstance3D:
+				mesh_parts.append(child)
 
 func _setup_healthbar() -> void:
 	if health_fill:
