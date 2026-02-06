@@ -25,8 +25,9 @@ extends CharacterBody3D
 @export var wallrun_stick_time := 0.35
 @export var wallrun_gravity_start := 0.6
 @export var wallrun_gravity_end := 14.0
-@export var wallrun_stick_force := 20.0
-@export var wallrun_ray_length := 1.8
+@export var wallrun_stick_force := 16.0
+@export var wallrun_ray_length := 1.1
+@export var wallrun_contact_gap := 0.22
 @export var wallrun_ray_height := 0.35
 @export var wallrun_ray_height_top := 1.05
 
@@ -528,6 +529,12 @@ func _try_start_wallrun(direction: Vector3) -> void:
 		return
 	var hit = _get_wallrun_hit()
 	if hit and hit.has("normal"):
+		if hit.has("position"):
+			var origin = global_transform.origin + Vector3(0, wallrun_ray_height, 0)
+			var dist = origin.distance_to(hit["position"])
+			var max_dist = min(wallrun_ray_length * 0.95, base_capsule_radius + wallrun_contact_gap)
+			if dist > max_dist:
+				return
 		wallrun_normal = hit["normal"]
 		wallrunning = true
 		wallrun_timer = wallrun_duration
