@@ -122,6 +122,9 @@ var hurt_audio: AudioStreamPlayer = null
 var hit_stream: AudioStreamGenerator = null
 var hurt_stream: AudioStreamGenerator = null
 var hit_vfx_material: StandardMaterial3D = null
+var _jump_down := false
+var _sprint_down := false
+var _crouch_down := false
 
 @onready var cam: Camera3D = $Camera
 @onready var gun_pivot: Node3D = $Camera/GunPivot
@@ -255,17 +258,21 @@ func _physics_process(delta: float) -> void:
 		return
 	if is_on_floor() or wallrunning:
 		air_jumps_left = max_air_jumps
-	if Input.is_action_just_pressed("jump"):
+	var sprint_key = Input.is_key_pressed(KEY_SHIFT)
+	var sprint_pressed = Input.is_action_pressed("sprint") or sprint_key
+	var sprint_just_pressed = Input.is_action_just_pressed("sprint") or (sprint_key and not _sprint_down)
+	var crouch_key = Input.is_key_pressed(KEY_C)
+	var crouch_pressed = Input.is_action_pressed("crouch") or Input.is_action_pressed("slide") or crouch_key
+	var crouch_just_pressed = Input.is_action_just_pressed("crouch") or Input.is_action_just_pressed("slide") or (crouch_key and not _crouch_down)
+	var jump_key = Input.is_key_pressed(KEY_SPACE)
+	var jump_just_pressed = Input.is_action_just_pressed("jump") or (jump_key and not _jump_down)
+	if jump_just_pressed:
 		wallrun_intent = wallrun_intent_time
 	if wallrun_intent > 0.0:
 		wallrun_intent = max(0.0, wallrun_intent - delta)
 	if wallrun_cooldown > 0.0:
 		wallrun_cooldown = max(0.0, wallrun_cooldown - delta)
 	var input_dir = _get_move_input()
-	var sprint_pressed = Input.is_action_pressed("sprint")
-	var sprint_just_pressed = Input.is_action_just_pressed("sprint")
-	var crouch_pressed = Input.is_action_pressed("crouch") or Input.is_action_pressed("slide")
-	var crouch_just_pressed = Input.is_action_just_pressed("crouch") or Input.is_action_just_pressed("slide")
 	var prone_just_pressed = Input.is_action_just_pressed("prone")
 	var prone_pressed = Input.is_action_pressed("prone")
 	var direction = (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
@@ -297,7 +304,7 @@ func _physics_process(delta: float) -> void:
 		slide_horizontal = slide_horizontal.move_toward(Vector3.ZERO, slide_friction * delta)
 		velocity.x = slide_horizontal.x
 		velocity.z = slide_horizontal.z
-		if Input.is_action_just_pressed("jump"):
+		if jump_just_pressed:
 			sliding = false
 			slide_timer = 0.0
 			is_crouching = false
@@ -362,7 +369,7 @@ func _physics_process(delta: float) -> void:
 					var curve = pow(t, wallrun_gravity_curve)
 					var grav = lerp(wallrun_gravity_start, wallrun_gravity_end, curve)
 					velocity.y -= grav * delta
-				if Input.is_action_just_pressed("jump"):
+				if jump_just_pressed:
 					var horiz = Vector3(velocity.x, 0, velocity.z)
 					var takeoff_dir = horiz
 					if takeoff_dir.length() < 0.1:
@@ -383,10 +390,10 @@ func _physics_process(delta: float) -> void:
 			velocity.y -= grav * delta
 			if (wallrun_intent > 0.0 or Input.is_action_pressed("jump")) and input_dir.length() > 0.1 and not is_prone:
 				_try_start_wallrun(input_dir)
-			if Input.is_action_just_pressed("jump") and air_jumps_left > 0 and not is_prone:
+			if jump_just_pressed and air_jumps_left > 0 and not is_prone:
 				air_jumps_left -= 1
 				velocity.y = double_jump_velocity
-		elif Input.is_action_just_pressed("jump"):
+		elif jump_just_pressed:
 			if is_prone:
 				is_prone = false
 				is_crouching = false
@@ -402,9 +409,16 @@ func _physics_process(delta: float) -> void:
 	elif is_crouching or sliding:
 		target_offset = base_cam_pos + Vector3(0, crouch_cam_offset, 0)
 	cam.position = cam.position.lerp(target_offset, 1.0 - exp(-cam_height_lerp * delta))
+	_jump_down = jump_key
+	_sprint_down = sprint_key
+	_crouch_down = crouch_key
 
 func _get_move_input() -> Vector2:
 	var input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	if input_dir == Vector2.ZERO:
+		var x = int(Input.is_key_pressed(KEY_D)) - int(Input.is_key_pressed(KEY_A))
+		var y = int(Input.is_key_pressed(KEY_W)) - int(Input.is_key_pressed(KEY_S))
+		input_dir = Vector2(x, y)
 	return input_dir.normalized()
 
 func _capture_mouse() -> void:
