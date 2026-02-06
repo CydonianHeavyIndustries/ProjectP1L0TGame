@@ -102,6 +102,18 @@ func _process(delta: float) -> void:
 		_hud_hint("Quests & jobs (placeholder)")
 	if Input.is_action_just_pressed("socials"):
 		_hud_hint("Socials (placeholder)")
+	if Input.is_action_just_pressed("inventory"):
+		_hud_hint("Inventory (placeholder)")
+	if Input.is_action_just_pressed("weapon_primary"):
+		_hud_hint("Main weapon (placeholder)")
+	if Input.is_action_just_pressed("weapon_secondary"):
+		_hud_hint("Secondary weapon (placeholder)")
+	if Input.is_action_just_pressed("weapon_tertiary"):
+		_hud_hint("Tertiary weapon (placeholder)")
+	if Input.is_action_just_pressed("weapon_melee"):
+		_hud_hint("Melee slot (placeholder)")
+	if Input.is_action_just_pressed("weapon_extras"):
+		_hud_hint("Extras slot (placeholder)")
 	if Input.is_action_just_pressed("chat"):
 		_hud_hint("Chat (placeholder)")
 
@@ -226,6 +238,12 @@ func _ensure_input_mappings() -> void:
 	_ensure_key_action("map", 77)
 	_ensure_key_action("quests", 76)
 	_ensure_key_action("socials", 80)
+	_ensure_key_action("inventory", 73)
+	_ensure_key_action("weapon_primary", 49)
+	_ensure_key_action("weapon_secondary", 50)
+	_ensure_key_action("weapon_tertiary", 51)
+	_ensure_key_action("weapon_melee", 52)
+	_ensure_key_action("weapon_extras", 53)
 	_ensure_key_action("chat", 13)
 	_ensure_key_action("ui_cancel", 16777217)
 	_ensure_mouse_action("fire", 1)
