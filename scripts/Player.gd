@@ -36,6 +36,7 @@ var wallrun_normal := Vector3.ZERO
 func _ready() -> void:
 	current_health = max_health
 	ammo_in_mag = mag_size
+	_ensure_input_mappings()
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	add_to_group("player")
 
@@ -57,10 +58,7 @@ func _process(delta: float) -> void:
 		_try_fire()
 
 func _physics_process(delta: float) -> void:
-	var input_dir = Vector2.ZERO
-	input_dir.x = Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
-	input_dir.y = Input.get_action_strength("move_forward") - Input.get_action_strength("move_back")
-	input_dir = input_dir.normalized()
+	var input_dir = _get_move_input()
 
 	var speed = sprint_speed if Input.is_action_pressed("sprint") else walk_speed
 
@@ -105,6 +103,59 @@ func _physics_process(delta: float) -> void:
 			velocity.y = jump_velocity
 
 	move_and_slide()
+
+func _get_move_input() -> Vector2:
+	var input_dir = Vector2.ZERO
+	input_dir.x = Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
+	input_dir.y = Input.get_action_strength("move_forward") - Input.get_action_strength("move_back")
+	if input_dir == Vector2.ZERO:
+		if Input.is_key_pressed(68):
+			input_dir.x += 1
+		if Input.is_key_pressed(65):
+			input_dir.x -= 1
+		if Input.is_key_pressed(87):
+			input_dir.y += 1
+		if Input.is_key_pressed(83):
+			input_dir.y -= 1
+	return input_dir.normalized()
+
+func _ensure_input_mappings() -> void:
+	_ensure_key_action("move_forward", 87)
+	_ensure_key_action("move_back", 83)
+	_ensure_key_action("move_left", 65)
+	_ensure_key_action("move_right", 68)
+	_ensure_key_action("jump", 32)
+	_ensure_key_action("sprint", 16777248)
+	_ensure_key_action("slide", 67)
+	_ensure_key_action("reload", 82)
+	_ensure_key_action("ui_cancel", 16777217)
+	_ensure_mouse_action("fire", 1)
+
+func _ensure_key_action(action: StringName, keycode: int) -> void:
+	if not InputMap.has_action(action):
+		InputMap.add_action(action)
+	var has_key := false
+	for ev in InputMap.action_get_events(action):
+		if ev is InputEventKey and ev.keycode == keycode:
+			has_key = true
+			break
+	if not has_key:
+		var ev_key := InputEventKey.new()
+		ev_key.keycode = keycode
+		InputMap.action_add_event(action, ev_key)
+
+func _ensure_mouse_action(action: StringName, button_index: int) -> void:
+	if not InputMap.has_action(action):
+		InputMap.add_action(action)
+	var has_button := false
+	for ev in InputMap.action_get_events(action):
+		if ev is InputEventMouseButton and ev.button_index == button_index:
+			has_button = true
+			break
+	if not has_button:
+		var ev_button := InputEventMouseButton.new()
+		ev_button.button_index = button_index
+		InputMap.action_add_event(action, ev_button)
 
 func _try_start_wallrun(direction: Vector3) -> void:
 	if wallrunning:
