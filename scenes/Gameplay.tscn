@@ -1,4 +1,4 @@
-[gd_scene load_steps=26 format=3]
+[gd_scene load_steps=27 format=3]
 
 [ext_resource type="Script" path="res://scripts/Player.gd" id=1]
 [ext_resource type="Shape3D" path="res://scenes/ground_shape.tres" id=2]
@@ -30,7 +30,7 @@ material = ExtResource( 10 )
 [sub_resource type="CylinderMesh" id=4]
 top_radius = 0.03
 bottom_radius = 0.035
-height = 0.55
+height = 0.85
 radial_segments = 16
 material = ExtResource( 10 )
 
@@ -43,7 +43,7 @@ size = Vector3(0.18, 0.07, 0.24)
 material = ExtResource( 10 )
 
 [sub_resource type="BoxMesh" id=7]
-size = Vector3(0.12, 0.25, 0.2)
+size = Vector3(0.14, 0.3, 0.24)
 material = ExtResource( 11 )
 
 [sub_resource type="BoxMesh" id=10]
@@ -57,6 +57,10 @@ material = ExtResource( 11 )
 [sub_resource type="BoxMesh" id=12]
 size = Vector3(0.12, 0.18, 0.18)
 material = ExtResource( 11 )
+
+[sub_resource type="BoxMesh" id=13]
+size = Vector3(0.46, 0.18, 0.4)
+material = ExtResource( 10 )
 
 [sub_resource type="QuadMesh" id=8]
 size = Vector2(1.2, 0.16)
@@ -93,9 +97,13 @@ rotation = Vector3(-0.55, 0, 0)
 mesh = SubResource( 10 )
 
 [node name="Barrel" type="MeshInstance3D" parent="World/Player/Camera/Gun"]
-position = Vector3(0, 0.02, -1.1)
+position = Vector3(0, 0.02, -1.35)
 rotation = Vector3(1.5708, 0, 0)
 mesh = SubResource( 4 )
+
+[node name="Receiver" type="MeshInstance3D" parent="World/Player/Camera/Gun"]
+position = Vector3(0, 0.06, -0.35)
+mesh = SubResource( 13 )
 
 [node name="Grip" type="MeshInstance3D" parent="World/Player/Camera/Gun"]
 position = Vector3(-0.06, -0.3, 0.08)
@@ -114,7 +122,7 @@ position = Vector3(0, 0.05, 0.44)
 mesh = SubResource( 11 )
 
 [node name="Mag" type="Node3D" parent="World/Player/Camera/Gun"]
-position = Vector3(0.1, -0.3, 0.18)
+position = Vector3(0.12, -0.32, 0.24)
 
 [node name="MagMesh" type="MeshInstance3D" parent="World/Player/Camera/Gun/Mag"]
 mesh = SubResource( 7 )
