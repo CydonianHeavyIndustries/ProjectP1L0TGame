@@ -20,11 +20,11 @@ $repoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $versionFile = Join-Path $repoRoot "VERSION"
 
 if (-not $ZipPath) {
-  $zipDir = Join-Path $repoRoot "Builds\Zips"
-  $latestZip = Get-ChildItem -Path $zipDir -Filter "*.zip" -ErrorAction SilentlyContinue |
+  $zipDir = Join-Path $repoRoot "Builds"
+  $latestZip = Get-ChildItem -Path $zipDir -Filter "*Godot*.zip" -Recurse -ErrorAction SilentlyContinue |
     Sort-Object LastWriteTime -Descending | Select-Object -First 1
   if (-not $latestZip) {
-    Write-Error "No zip builds found in $zipDir. Run tools/package_dev_build.ps1 -Zip first."
+    Write-Error "No zip builds found in $zipDir. Run tools/package_godot_build.bat first."
     exit 1
   }
   $ZipPath = $latestZip.FullName

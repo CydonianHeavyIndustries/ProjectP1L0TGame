@@ -16,7 +16,7 @@ static string FindRepoRoot()
     while (dir != null)
     {
         if (Directory.Exists(Path.Combine(dir.FullName, ".git")) ||
-            File.Exists(Path.Combine(dir.FullName, "ProjectP1L0T.uproject")))
+            File.Exists(Path.Combine(dir.FullName, "project.godot")))
         {
             return dir.FullName;
         }
@@ -27,10 +27,11 @@ static string FindRepoRoot()
 
 static string? FindLatestZip(string repoRoot)
 {
-    var zipDir = Path.Combine(repoRoot, "Builds", "Zips");
-    if (!Directory.Exists(zipDir)) return null;
-    var latest = new DirectoryInfo(zipDir).GetFiles("*.zip")
-        .OrderByDescending(f => f.LastWriteTimeUtc)
+    var buildsDir = Path.Combine(repoRoot, "Builds");
+    if (!Directory.Exists(buildsDir)) return null;
+    var latest = Directory.EnumerateFiles(buildsDir, "*Godot*.zip", SearchOption.AllDirectories)
+        .Select(path => new FileInfo(path))
+        .OrderByDescending(file => file.LastWriteTimeUtc)
         .FirstOrDefault();
     return latest?.FullName;
 }
@@ -89,7 +90,7 @@ if (string.IsNullOrWhiteSpace(zipPath))
 
 if (string.IsNullOrWhiteSpace(zipPath) || !File.Exists(zipPath))
 {
-    Console.Error.WriteLine("Zip not found. Use --zip <path> or create one with tools/package_dev_build.ps1 -Zip.");
+    Console.Error.WriteLine("Zip not found. Use --zip <path> or create one with tools/package_godot_build.bat.");
     return 1;
 }
 
