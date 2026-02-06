@@ -32,6 +32,7 @@ var wallrun_timer := 0.0
 var wallrun_normal := Vector3.ZERO
 
 @onready var cam: Camera3D = $Camera
+@onready var gun: Node3D = $Camera/Gun
 
 func _ready() -> void:
 	current_health = max_health
@@ -229,6 +230,8 @@ func _start_reload() -> void:
 	if reserve_ammo <= 0:
 		return
 	is_reloading = true
+	if gun and gun.has_method("start_reload"):
+		gun.start_reload(reload_time)
 	var timer = get_tree().create_timer(reload_time)
 	timer.timeout.connect(_finish_reload)
 
