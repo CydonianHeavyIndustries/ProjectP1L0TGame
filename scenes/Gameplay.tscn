@@ -1,4 +1,22 @@
-[gd_scene load_steps=10 format=3 uid="uid://gameplay"]
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/Player.gd" id=1]
+[ext_resource type="Shape3D" path="res://scenes/ground_shape.tres" id=2]
+[ext_resource type="Mesh" path="res://scenes/ground_mesh.tres" id=3]
+[ext_resource type="Mesh" path="res://scenes/wall_mesh.tres" id=4]
+[ext_resource type="Shape3D" path="res://scenes/wall_shape.tres" id=5]
+[ext_resource type="Shape3D" path="res://scenes/dummy_shape.tres" id=6]
+[ext_resource type="Script" path="res://scripts/Dummy.gd" id=7]
+[ext_resource type="Mesh" path="res://scenes/dummy_mesh.tres" id=8]
+[ext_resource type="Script" path="res://scripts/HUD.gd" id=9]
+
+[sub_resource type="CapsuleShape3D" id=1]
+radius = 0.35
+height = 1.2
+
+[sub_resource type="CapsuleMesh" id=2]
+radius = 0.35
+height = 1.2
 
 [node name="Gameplay" type="Node3D"]
 
@@ -60,21 +78,3 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource( 9 )
-
-[sub_resource type="CapsuleShape3D" id=1]
-radius = 0.35
-height = 1.2
-
-[sub_resource type="CapsuleMesh" id=2]
-radius = 0.35
-height = 1.2
-
-[ext_resource type="Script" path="res://scripts/Player.gd" id=1]
-[ext_resource type="Shape3D" path="res://scenes/ground_shape.tres" id=2]
-[ext_resource type="Mesh" path="res://scenes/ground_mesh.tres" id=3]
-[ext_resource type="Mesh" path="res://scenes/wall_mesh.tres" id=4]
-[ext_resource type="Shape3D" path="res://scenes/wall_shape.tres" id=5]
-[ext_resource type="Shape3D" path="res://scenes/dummy_shape.tres" id=6]
-[ext_resource type="Script" path="res://scripts/Dummy.gd" id=7]
-[ext_resource type="Mesh" path="res://scenes/dummy_mesh.tres" id=8]
-[ext_resource type="Script" path="res://scripts/HUD.gd" id=9]
