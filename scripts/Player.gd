@@ -453,14 +453,19 @@ func _ensure_default_input() -> void:
 	_ensure_key_action("move_right", KEY_D)
 	_ensure_key_action("jump", KEY_SPACE)
 	_ensure_key_action("sprint", KEY_SHIFT)
+	_ensure_key_action("crouch", KEY_C)
+	_ensure_key_action("slide", KEY_C)
 
 func _ensure_key_action(action: String, keycode: int) -> void:
-	if InputMap.has_action(action):
-		return
-	InputMap.add_action(action)
-	var ev := InputEventKey.new()
-	ev.keycode = keycode
-	InputMap.action_add_event(action, ev)
+	if not InputMap.has_action(action):
+		InputMap.add_action(action)
+	var events := InputMap.action_get_events(action)
+	for ev in events:
+		if ev is InputEventKey and ev.keycode == keycode:
+			return
+	var add := InputEventKey.new()
+	add.keycode = keycode
+	InputMap.action_add_event(action, add)
 
 func _handle_reload_input(delta: float) -> void:
 	if Input.is_action_just_pressed("reload"):
