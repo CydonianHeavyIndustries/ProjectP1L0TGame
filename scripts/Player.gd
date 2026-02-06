@@ -75,7 +75,7 @@ func _physics_process(delta: float) -> void:
 		if slide_timer <= 0.0:
 			sliding = false
 
-	var direction = (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
+	var direction = (transform.basis * Vector3(input_dir.x, 0, -input_dir.y)).normalized()
 	if direction:
 		velocity.x = direction.x * speed
 		velocity.z = direction.z * speed
@@ -218,7 +218,7 @@ func _fire_hitscan() -> void:
 			target.take_damage(fire_damage)
 
 func _apply_recoil() -> void:
-	cam.rotate_x(-recoil_strength)
+	cam.rotate_x(recoil_strength)
 	cam.rotation.x = clamp(cam.rotation.x, -1.3, 1.3)
 
 func _start_reload() -> void:
