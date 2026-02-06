@@ -24,7 +24,7 @@ radius = 0.35
 height = 1.2
 
 [sub_resource type="BoxMesh" id=3]
-size = Vector3(0.55, 0.18, 1.05)
+size = Vector3(0.55, 0.18, 1.35)
 material = ExtResource( 10 )
 
 [sub_resource type="CylinderMesh" id=4]
@@ -47,7 +47,7 @@ size = Vector3(0.12, 0.25, 0.2)
 material = ExtResource( 11 )
 
 [sub_resource type="BoxMesh" id=10]
-size = Vector3(0.46, 0.12, 0.35)
+size = Vector3(0.48, 0.12, 0.48)
 material = ExtResource( 11 )
 
 [sub_resource type="QuadMesh" id=8]
@@ -76,16 +76,16 @@ rotation = Vector3(0, 0.02, 0)
 script = ExtResource( 12 )
 
 [node name="Body" type="MeshInstance3D" parent="World/Player/Camera/Gun"]
-position = Vector3(0, 0.04, -0.08)
+position = Vector3(0, 0.04, -0.18)
 mesh = SubResource( 3 )
 
 [node name="Wedge" type="MeshInstance3D" parent="World/Player/Camera/Gun"]
-position = Vector3(0, 0.06, -0.62)
+position = Vector3(0, 0.06, -0.92)
 rotation = Vector3(-0.55, 0, 0)
 mesh = SubResource( 10 )
 
 [node name="Barrel" type="MeshInstance3D" parent="World/Player/Camera/Gun"]
-position = Vector3(0, 0.02, -0.88)
+position = Vector3(0, 0.02, -1.1)
 rotation = Vector3(1.5708, 0, 0)
 mesh = SubResource( 4 )
 
