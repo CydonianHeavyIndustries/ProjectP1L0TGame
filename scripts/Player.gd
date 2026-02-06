@@ -9,6 +9,8 @@ extends CharacterBody3D
 @export var slide_time := 0.35
 @export var slide_friction := 6.0
 @export var gravity := 9.8
+@export var gravity_fall_multiplier := 1.85
+@export var gravity_jump_cut_multiplier := 2.4
 @export var max_health := 100.0
 @export var accel_ground := 24.0
 @export var accel_air := 10.0
@@ -25,6 +27,8 @@ extends CharacterBody3D
 @export var wallrun_stick_time := 0.35
 @export var wallrun_gravity_start := 0.6
 @export var wallrun_gravity_end := 14.0
+@export var wallrun_gravity_curve := 1.8
+@export var wallrun_stick_gravity := 0.25
 @export var wallrun_stick_force := 16.0
 @export var wallrun_ray_length := 1.1
 @export var wallrun_contact_gap := 0.22
@@ -290,10 +294,12 @@ func _physics_process(delta: float) -> void:
 			velocity.z = wall_dir.z * wallrun_speed
 			velocity += -wallrun_normal * wallrun_stick_force * delta
 			if wallrun_elapsed < wallrun_stick_time:
-				velocity.y = max(velocity.y, 0.1)
+				var stick_grav = wallrun_gravity_start * wallrun_stick_gravity
+				velocity.y = max(velocity.y - (stick_grav * delta), 0.05)
 			else:
 				var t = clamp((wallrun_elapsed - wallrun_stick_time) / max(0.01, wallrun_duration - wallrun_stick_time), 0.0, 1.0)
-				var grav = lerp(wallrun_gravity_start, wallrun_gravity_end, t)
+				var curve = pow(t, wallrun_gravity_curve)
+				var grav = lerp(wallrun_gravity_start, wallrun_gravity_end, curve)
 				velocity.y -= grav * delta
 			if Input.is_action_just_pressed("jump"):
 				velocity.y = jump_velocity
@@ -301,7 +307,12 @@ func _physics_process(delta: float) -> void:
 				_stop_wallrun()
 	else:
 		if not is_on_floor():
-			velocity.y -= gravity * delta
+			var grav = gravity
+			if velocity.y < 0.0:
+				grav = gravity * gravity_fall_multiplier
+			elif velocity.y > 0.0 and not Input.is_action_pressed("jump"):
+				grav = gravity * gravity_jump_cut_multiplier
+			velocity.y -= grav * delta
 			if input_dir.y > 0.2 and not is_prone:
 				_try_start_wallrun(direction)
 		elif Input.is_action_just_pressed("jump"):
