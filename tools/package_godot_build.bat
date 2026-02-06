@@ -2,8 +2,26 @@
 setlocal enabledelayedexpansion
 
 set "ROOT=%~dp0.."
-set "GODOT=%GODOT_PATH%"
-if "%GODOT%"=="" set "GODOT=godot"
+set "GODOT="
+if not "%GODOT_PATH%"=="" set "GODOT=%GODOT_PATH%"
+if "%GODOT%"=="" if exist "%ROOT%tools\\godot\\godot.exe" set "GODOT=%ROOT%tools\\godot\\godot.exe"
+if "%GODOT%"=="" if exist "%ROOT%tools\\godot.exe" set "GODOT=%ROOT%tools\\godot.exe"
+if "%GODOT%"=="" if exist "C:\\Program Files\\Godot\\godot.exe" set "GODOT=C:\\Program Files\\Godot\\godot.exe"
+if "%GODOT%"=="" if exist "C:\\Program Files\\Godot\\Godot.exe" set "GODOT=C:\\Program Files\\Godot\\Godot.exe"
+if "%GODOT%"=="" if exist "C:\\Program Files\\Godot Engine\\godot.exe" set "GODOT=C:\\Program Files\\Godot Engine\\godot.exe"
+if "%GODOT%"=="" if exist "C:\\Program Files\\Godot4\\godot.exe" set "GODOT=C:\\Program Files\\Godot4\\godot.exe"
+if "%GODOT%"=="" if exist "C:\\Program Files (x86)\\Godot\\godot.exe" set "GODOT=C:\\Program Files (x86)\\Godot\\godot.exe"
+if "%GODOT%"=="" if exist "C:\\Program Files (x86)\\Godot Engine\\godot.exe" set "GODOT=C:\\Program Files (x86)\\Godot Engine\\godot.exe"
+if "%GODOT%"=="" if exist "C:\\Program Files (x86)\\Godot4\\godot.exe" set "GODOT=C:\\Program Files (x86)\\Godot4\\godot.exe"
+if "%GODOT%"=="" (
+  where godot >nul 2>&1
+  if not errorlevel 1 set "GODOT=godot"
+)
+if "%GODOT%"=="" (
+  echo [P1L0T] Godot executable not found.
+  echo [P1L0T] Set GODOT_PATH or place godot.exe at tools\\godot\\godot.exe.
+  exit /b 1
+)
 
 set "EXPORT_PRESET=Windows Desktop"
 set "BUILD_DIR=%ROOT%\Builds\Godot"
