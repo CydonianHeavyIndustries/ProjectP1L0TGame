@@ -160,7 +160,7 @@ func _ready() -> void:
 		spawn_transform = global_transform
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_FOCUS_IN and not get_tree().paused:
+	if what == NOTIFICATION_APPLICATION_FOCUS_IN and not get_tree().paused:
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 func _input(event: InputEvent) -> void:

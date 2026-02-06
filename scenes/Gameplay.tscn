@@ -339,7 +339,7 @@ material_override = SubResource( 23 )
 [node name="Dummy" type="StaticBody3D" parent="World"]
 position = Vector3(0, 1, -24)
 script = ExtResource( 7 )
-[node name=SafeZoneArea parent=World instance=ExtResource( 17 )]
+[node name="SafeZoneArea" parent="World" instance=ExtResource( 17 )]
 position = Vector3(0, 1, 0)
 
 [node name="Turret" parent="World" instance=ExtResource( 16 )]
@@ -454,4 +454,4 @@ text = "Credits"
 text = "Quit to Desktop"
 
 
-[node name=CoreSystems parent=. instance=ExtResource( 18 )]
+[node name="CoreSystems" parent="." instance=ExtResource( 18 )]
