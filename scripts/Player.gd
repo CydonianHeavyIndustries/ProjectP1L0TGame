@@ -10,7 +10,7 @@ extends CharacterBody3D
 @export var wallrun_speed := 11.0
 @export var wallrun_gravity := 2.5
 @export var wallrun_duration := 1.1
-@export var wallrun_min_speed := 6.5
+@export var wallrun_min_speed := 3.5
 @export var wallrun_push := 5.5
 
 @export var fire_rate := 8.0
