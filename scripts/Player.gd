@@ -16,6 +16,8 @@ extends CharacterBody3D
 @export var crouch_cam_offset := -0.45
 @export var prone_cam_offset := -0.85
 @export var cam_height_lerp := 10.0
+@export var crouch_capsule_height := 0.7
+@export var prone_capsule_height := 0.35
 @export var wallrun_speed := 11.0
 @export var wallrun_duration := 1.1
 @export var wallrun_min_speed := 3.5
@@ -25,6 +27,7 @@ extends CharacterBody3D
 @export var wallrun_gravity_end := 14.0
 @export var wallrun_stick_force := 16.0
 @export var wallrun_ray_length := 1.8
+@export var wallrun_ray_height := 0.35
 
 @export var fire_rate := 8.0
 @export var fire_damage := 25.0
@@ -59,9 +62,15 @@ var titan_hold_time := 0.0
 var titan_radial_open := false
 var hud: Node = null
 var pause_menu: Node = null
+var base_collider_pos := Vector3.ZERO
+var base_capsule_height := 1.2
+var base_capsule_radius := 0.35
+var crouch_key_down := false
+var prone_key_down := false
 
 @onready var cam: Camera3D = $Camera
 @onready var gun: Node3D = $Camera/Gun
+@onready var collider: CollisionShape3D = $PlayerCollision
 
 func _ready() -> void:
 	current_health = max_health
@@ -73,6 +82,7 @@ func _ready() -> void:
 	add_to_group("player")
 	base_cam_pos = cam.position
 	base_fov = cam.fov
+	_cache_collider()
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
@@ -133,14 +143,20 @@ func _process(delta: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	var input_dir = _get_move_input()
+	var crouch_pressed = Input.is_action_pressed("crouch") or Input.is_key_pressed(KEY_CTRL)
+	var crouch_just_pressed = Input.is_action_just_pressed("crouch") or (Input.is_key_pressed(KEY_CTRL) and not crouch_key_down)
+	var prone_just_pressed = Input.is_action_just_pressed("prone") or (Input.is_key_pressed(KEY_X) and not prone_key_down)
+	var prone_pressed = Input.is_action_pressed("prone") or Input.is_key_pressed(KEY_X)
 
-	if Input.is_action_just_pressed("prone"):
+	if prone_just_pressed:
 		is_prone = not is_prone
 		if is_prone:
 			is_crouching = false
 
-	var crouch_pressed = Input.is_action_pressed("crouch")
-	if Input.is_action_just_pressed("crouch") and not sliding and is_on_floor():
+	if is_prone and crouch_just_pressed:
+		is_prone = false
+		is_crouching = true
+	if crouch_just_pressed and not sliding and is_on_floor():
 		if Input.is_action_pressed("sprint") and not is_prone:
 			sliding = true
 			slide_timer = slide_time
@@ -159,6 +175,8 @@ func _physics_process(delta: float) -> void:
 			is_crouching = false
 		else:
 			is_crouching = crouch_pressed
+	elif not crouch_pressed and not is_prone:
+		is_crouching = false
 
 	var speed = walk_speed
 	if is_prone:
@@ -214,7 +232,12 @@ func _physics_process(delta: float) -> void:
 				is_crouching = false
 			velocity.y = jump_velocity
 
+	_apply_stance()
+
 	move_and_slide()
+
+	crouch_key_down = crouch_pressed
+	prone_key_down = prone_pressed
 
 	var target_offset := base_cam_pos
 	if is_prone:
@@ -276,6 +299,32 @@ func _cache_hud() -> void:
 
 func _cache_pause_menu() -> void:
 	pause_menu = get_tree().get_first_node_in_group("pause_menu")
+
+func _cache_collider() -> void:
+	if collider and collider.shape is CapsuleShape3D:
+		var capsule := collider.shape as CapsuleShape3D
+		base_capsule_height = capsule.height
+		base_capsule_radius = capsule.radius
+		base_collider_pos = collider.position
+
+func _apply_stance() -> void:
+	if collider == null:
+		return
+	if not (collider.shape is CapsuleShape3D):
+		return
+	var capsule := collider.shape as CapsuleShape3D
+	var target_height := base_capsule_height
+	if is_prone:
+		target_height = prone_capsule_height
+	elif is_crouching or sliding:
+		target_height = crouch_capsule_height
+	target_height = max(0.1, target_height)
+	if abs(capsule.height - target_height) > 0.001:
+		capsule.height = target_height
+	var base_total := base_capsule_height + (base_capsule_radius * 2.0)
+	var new_total := target_height + (base_capsule_radius * 2.0)
+	var delta := (base_total - new_total) * 0.5
+	collider.position.y = base_collider_pos.y - delta
 
 func _ensure_key_action(action: StringName, keycode: int) -> void:
 	if not InputMap.has_action(action):
@@ -357,7 +406,7 @@ func _try_start_wallrun(direction: Vector3) -> void:
 	if velocity.length() < wallrun_min_speed:
 		return
 	var space = get_world_3d().direct_space_state
-	var origin = global_transform.origin
+	var origin = global_transform.origin + Vector3(0, wallrun_ray_height, 0)
 	var left = -global_transform.basis.x
 	var right = global_transform.basis.x
 	var params_left = PhysicsRayQueryParameters3D.create(origin, origin + left * wallrun_ray_length)
