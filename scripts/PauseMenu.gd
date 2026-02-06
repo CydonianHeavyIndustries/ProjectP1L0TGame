@@ -2,6 +2,13 @@ extends Control
 
 @onready var resume_button: Button = $Panel/VBox/ResumeButton
 @onready var quit_button: Button = $Panel/VBox/QuitButton
+@onready var placeholder_buttons: Array[Button] = [
+	$Panel/VBox/SettingsButton,
+	$Panel/VBox/ControlsButton,
+	$Panel/VBox/AudioButton,
+	$Panel/VBox/GraphicsButton,
+	$Panel/VBox/CreditsButton
+]
 
 var is_open := false
 
@@ -17,6 +24,9 @@ func _ready() -> void:
 		resume_button.pressed.connect(_on_resume_pressed)
 	if quit_button:
 		quit_button.pressed.connect(_on_quit_pressed)
+	for button in placeholder_buttons:
+		if button:
+			button.pressed.connect(func(): _on_placeholder_pressed(button.text))
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
@@ -50,3 +60,10 @@ func _on_resume_pressed() -> void:
 
 func _on_quit_pressed() -> void:
 	get_tree().quit()
+
+func _on_placeholder_pressed(label: String) -> void:
+	var hud = get_tree().get_first_node_in_group("hud")
+	if hud and hud.has_method("log_placeholder"):
+		hud.log_placeholder(label)
+	else:
+		print("Not Implemented:", label)

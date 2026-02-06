@@ -1,10 +1,12 @@
-extends CharacterBody3D
+﻿extends CharacterBody3D
 
 @export var walk_speed := 7.0
 @export var sprint_speed := 12.0
 @export var crouch_speed := 4.5
 @export var prone_speed := 2.4
-@export var jump_velocity := 4.5
+@export var jump_velocity := 5.4
+@export var double_jump_velocity := 5.0
+@export var max_air_jumps := 1
 @export var slide_speed := 16.0
 @export var slide_time := 0.35
 @export var slide_friction := 6.0
@@ -24,18 +26,22 @@ extends CharacterBody3D
 @export var wallrun_duration := 1.2
 @export var wallrun_min_speed := 3.5
 @export var wallrun_push := 5.5
-@export var wallrun_stick_time := 0.35
-@export var wallrun_gravity_start := 0.6
-@export var wallrun_gravity_end := 14.0
-@export var wallrun_gravity_curve := 1.8
-@export var wallrun_stick_gravity := 0.25
-@export var wallrun_stick_force := 16.0
-@export var wallrun_ray_length := 1.1
-@export var wallrun_contact_gap := 0.22
+@export var wallrun_jump_speed := 12.0
+@export var wallrun_jump_up := 5.2
+@export var wallrun_stick_time := 0.32
+@export var wallrun_gravity_start := 1.8
+@export var wallrun_gravity_end := 18.0
+@export var wallrun_gravity_curve := 1.7
+@export var wallrun_stick_gravity := 0.2
+@export var wallrun_stick_force := 20.0
+@export var wallrun_ray_length := 0.9
+@export var wallrun_contact_gap := 0.12
 @export var wallrun_ray_height := 0.35
 @export var wallrun_ray_height_top := 1.05
 @export var wallrun_roll := 0.22
 @export var wallrun_roll_speed := 10.0
+@export var wallrun_reentry_delay := 0.18
+@export var wallrun_intent_time := 0.2
 
 @export var fire_rate := 8.0
 @export var fire_damage := 25.0
@@ -58,10 +64,15 @@ extends CharacterBody3D
 @export var blink_range := 12.0
 @export var blink_cooldown_time := 6.0
 @export var slide_cancel_boost := 2.0
+@export var slide_min_speed := 4.0
+@export var respawn_delay := 2.0
+@export var hit_vfx_scale := 0.25
+@export var hit_vfx_lifetime := 0.12
 
 var current_health := 100.0
 var sliding := false
 var slide_timer := 0.0
+var slide_dir := Vector3.ZERO
 var fire_cooldown := 0.0
 var ammo_in_mag := 24
 var is_reloading := false
@@ -72,6 +83,10 @@ var wallrunning := false
 var wallrun_timer := 0.0
 var wallrun_elapsed := 0.0
 var wallrun_normal := Vector3.ZERO
+var wallrun_cooldown := 0.0
+var last_wall_normal := Vector3.ZERO
+var wallrun_intent := 0.0
+var air_jumps_left := 0
 var is_crouching := false
 var is_prone := false
 var is_aiming := false
@@ -95,10 +110,15 @@ var pause_menu: Node = null
 var base_collider_pos := Vector3.ZERO
 var base_capsule_height := 1.2
 var base_capsule_radius := 0.35
-var crouch_key_down := false
-var prone_key_down := false
 var recoil_offset := 0.0
 var recoil_applied := 0.0
+var is_dead := false
+var spawn_transform := Transform3D.IDENTITY
+var hit_audio: AudioStreamPlayer = null
+var hurt_audio: AudioStreamPlayer = null
+var hit_stream: AudioStreamGenerator = null
+var hurt_stream: AudioStreamGenerator = null
+var hit_vfx_material: StandardMaterial3D = null
 
 @onready var cam: Camera3D = $Camera
 @onready var gun_pivot: Node3D = $Camera/GunPivot
@@ -110,7 +130,7 @@ var recoil_applied := 0.0
 func _ready() -> void:
 	current_health = max_health
 	ammo_in_mag = mag_size
-	_ensure_input_mappings()
+	air_jumps_left = max_air_jumps
 	call_deferred("_capture_mouse")
 	call_deferred("_cache_hud")
 	call_deferred("_cache_pause_menu")
@@ -122,6 +142,12 @@ func _ready() -> void:
 	_cache_collider()
 	if blink_marker:
 		blink_marker.visible = false
+	_setup_feedback()
+	var spawn = get_tree().get_first_node_in_group("player_spawn")
+	if spawn and spawn is Node3D:
+		spawn_transform = (spawn as Node3D).global_transform
+	else:
+		spawn_transform = global_transform
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
@@ -131,6 +157,8 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("fullscreen"):
 		_toggle_fullscreen()
 		get_viewport().set_input_as_handled()
+		return
+	if is_dead:
 		return
 	if get_tree().paused:
 		return
@@ -142,6 +170,8 @@ func _input(event: InputEvent) -> void:
 		cam.rotation.x = clamp(cam.rotation.x, -1.3, 1.3)
 
 func _process(delta: float) -> void:
+	if is_dead:
+		return
 	fire_cooldown = max(0.0, fire_cooldown - delta)
 	grenade_cooldown = max(0.0, grenade_cooldown - delta)
 	blink_cooldown = max(0.0, blink_cooldown - delta)
@@ -159,7 +189,7 @@ func _process(delta: float) -> void:
 	else:
 		reload_progress = 0.0
 
-	if Input.is_action_pressed("fire"):
+	if not reload_radial_open and not titan_radial_open and Input.is_action_pressed("fire"):
 		_try_fire()
 
 	if Input.is_action_just_pressed("melee"):
@@ -167,37 +197,37 @@ func _process(delta: float) -> void:
 			melee_timer = melee_cooldown
 			if gun and gun.has_method("start_melee"):
 				gun.start_melee()
-		_hud_hint("Melee (placeholder)")
+		_hud_placeholder("Melee (placeholder)")
 	if Input.is_action_just_pressed("class_ability"):
-		_hud_hint("Blink ability (hold MMB)")
+		_hud_placeholder("Blink ability (hold MMB)")
 	if Input.is_action_just_pressed("tactical"):
-		_hud_hint("Grenade (placeholder)")
+		_hud_placeholder("Grenade (placeholder)")
 	if Input.is_action_just_pressed("special1"):
-		_hud_hint("Special skill 1 (placeholder)")
+		_hud_placeholder("Special skill 1 (placeholder)")
 	if Input.is_action_just_pressed("interact"):
-		_hud_hint("Interact (placeholder)")
+		_hud_placeholder("Interact (placeholder)")
 	if Input.is_action_just_pressed("map"):
-		_hud_hint("Map (placeholder)")
+		_hud_placeholder("Map (placeholder)")
 	if Input.is_action_just_pressed("quests"):
-		_hud_hint("Quests & jobs (placeholder)")
+		_hud_placeholder("Quests & jobs (placeholder)")
 	if Input.is_action_just_pressed("socials"):
-		_hud_hint("Socials (placeholder)")
+		_hud_placeholder("Socials (placeholder)")
 	if Input.is_action_just_pressed("inventory"):
-		_hud_hint("Inventory (placeholder)")
+		_hud_placeholder("Inventory (placeholder)")
 	if Input.is_action_just_pressed("weapon_primary"):
-		_hud_hint("Main weapon (placeholder)")
+		_hud_placeholder("Main weapon (placeholder)")
 	if Input.is_action_just_pressed("weapon_secondary"):
-		_hud_hint("Secondary weapon (placeholder)")
+		_hud_placeholder("Secondary weapon (placeholder)")
 	if Input.is_action_just_pressed("weapon_tertiary"):
-		_hud_hint("Tertiary weapon (placeholder)")
+		_hud_placeholder("Tertiary weapon (placeholder)")
 	if Input.is_action_just_pressed("weapon_melee"):
-		_hud_hint("Melee slot (placeholder)")
+		_hud_placeholder("Melee slot (placeholder)")
 	if Input.is_action_just_pressed("weapon_extras"):
-		_hud_hint("Extras slot (placeholder)")
+		_hud_placeholder("Extras slot (placeholder)")
 	if Input.is_action_just_pressed("chat"):
-		_hud_hint("Chat (placeholder)")
+		_hud_placeholder("Chat (placeholder)")
 
-	is_aiming = Input.is_action_pressed("aim") and not is_reloading and not reload_hold and not reload_radial_open
+	is_aiming = Input.is_action_pressed("aim") and not is_reloading and not reload_hold and not reload_radial_open and not titan_radial_open and not sliding
 	var target_fov = aim_fov if is_aiming else base_fov
 	cam.fov = lerp(cam.fov, target_fov, 1.0 - exp(-aim_speed * delta))
 	if gun_pivot:
@@ -207,11 +237,24 @@ func _process(delta: float) -> void:
 	_update_wallrun_roll(delta)
 
 func _physics_process(delta: float) -> void:
+	if is_dead:
+		return
+	if is_on_floor() or wallrunning:
+		air_jumps_left = max_air_jumps
+	if Input.is_action_just_pressed("jump"):
+		wallrun_intent = wallrun_intent_time
+	if wallrun_intent > 0.0:
+		wallrun_intent = max(0.0, wallrun_intent - delta)
+	if wallrun_cooldown > 0.0:
+		wallrun_cooldown = max(0.0, wallrun_cooldown - delta)
 	var input_dir = _get_move_input()
-	var crouch_pressed = Input.is_action_pressed("crouch") or Input.is_action_pressed("slide") or Input.is_key_pressed(KEY_CTRL)
-	var crouch_just_pressed = Input.is_action_just_pressed("crouch") or Input.is_action_just_pressed("slide") or (Input.is_key_pressed(KEY_CTRL) and not crouch_key_down)
-	var prone_just_pressed = Input.is_action_just_pressed("prone") or (Input.is_key_pressed(KEY_X) and not prone_key_down)
-	var prone_pressed = Input.is_action_pressed("prone") or Input.is_key_pressed(KEY_X)
+	var sprint_pressed = Input.is_action_pressed("sprint")
+	var sprint_just_pressed = Input.is_action_just_pressed("sprint")
+	var crouch_pressed = Input.is_action_pressed("crouch") or Input.is_action_pressed("slide")
+	var crouch_just_pressed = Input.is_action_just_pressed("crouch") or Input.is_action_just_pressed("slide")
+	var prone_just_pressed = Input.is_action_just_pressed("prone")
+	var prone_pressed = Input.is_action_pressed("prone")
+	var direction = (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
 
 	if prone_just_pressed:
 		is_prone = not is_prone
@@ -221,23 +264,34 @@ func _physics_process(delta: float) -> void:
 	if is_prone and crouch_just_pressed:
 		is_prone = false
 		is_crouching = true
-	if crouch_just_pressed and not sliding and is_on_floor():
-		if Input.is_action_pressed("sprint") and not is_prone:
-			sliding = true
-			slide_timer = slide_time
+	var wants_slide = sprint_pressed and crouch_pressed and (crouch_just_pressed or sprint_just_pressed) and not sliding and is_on_floor() and not is_prone and input_dir.length() > 0.1
+	if wants_slide:
+		sliding = true
+		slide_timer = slide_time
+		if direction.length() > 0.1:
+			slide_dir = direction
 		else:
-			is_crouching = true
+			slide_dir = -transform.basis.z
+		velocity.x = slide_dir.x * slide_speed
+		velocity.z = slide_dir.z * slide_speed
+	elif crouch_just_pressed and not sliding and is_on_floor():
+		is_crouching = true
 
 	if sliding:
 		slide_timer -= delta
+		var slide_horizontal = Vector3(velocity.x, 0, velocity.z)
+		slide_horizontal = slide_horizontal.move_toward(Vector3.ZERO, slide_friction * delta)
+		velocity.x = slide_horizontal.x
+		velocity.z = slide_horizontal.z
 		if Input.is_action_just_pressed("jump"):
 			sliding = false
 			slide_timer = 0.0
 			is_crouching = false
 			if is_on_floor():
 				velocity.y = jump_velocity
-				velocity += -transform.basis.z * slide_cancel_boost
-		if slide_timer <= 0.0:
+				velocity += slide_dir * slide_cancel_boost
+		var slide_speed_now = Vector3(velocity.x, 0, velocity.z).length()
+		if slide_timer <= 0.0 or slide_speed_now < slide_min_speed:
 			sliding = false
 			if crouch_pressed and not is_prone:
 				is_crouching = true
@@ -255,56 +309,56 @@ func _physics_process(delta: float) -> void:
 		speed = prone_speed
 	elif is_crouching:
 		speed = crouch_speed
-	elif Input.is_action_pressed("sprint"):
+	elif sprint_pressed:
 		speed = sprint_speed
 	if sliding:
 		speed = slide_speed
-
-	var direction = (transform.basis * Vector3(input_dir.x, 0, -input_dir.y)).normalized()
-	var accel = accel_ground if is_on_floor() else accel_air
-	var decel = slide_friction if sliding else decel_ground
-	var target_velocity = direction * speed
-	var horizontal = Vector3(velocity.x, 0, velocity.z)
-	if direction != Vector3.ZERO:
-		horizontal = horizontal.move_toward(target_velocity, accel * delta)
-	else:
-		horizontal = horizontal.move_toward(Vector3.ZERO, decel * delta)
-	velocity.x = horizontal.x
-	velocity.z = horizontal.z
+	if not sliding:
+		var accel = accel_ground if is_on_floor() else accel_air
+		var decel = decel_ground
+		var target_velocity = direction * speed
+		var horizontal = Vector3(velocity.x, 0, velocity.z)
+		if direction != Vector3.ZERO:
+			horizontal = horizontal.move_toward(target_velocity, accel * delta)
+		else:
+			horizontal = horizontal.move_toward(Vector3.ZERO, decel * delta)
+		velocity.x = horizontal.x
+		velocity.z = horizontal.z
 
 	if wallrunning:
 		wallrun_timer -= delta
 		wallrun_elapsed += delta
 		var hit = _get_wallrun_hit()
-		if hit and hit.has("normal"):
-			wallrun_normal = hit["normal"]
-		if wallrun_timer <= 0.0 or is_on_floor() or input_dir.y < 0.2 or not hit:
+		if wallrun_timer <= 0.0 or is_on_floor() or not hit or input_dir.length() < 0.1:
 			_stop_wallrun()
 		else:
-			var wall_dir = wallrun_normal.cross(Vector3.UP).normalized()
-			var desired_dir = Vector3(input_dir.x, 0, -input_dir.y)
-			var desired_world = Vector3.ZERO
-			if desired_dir.length() > 0.1:
-				desired_world = (global_transform.basis * desired_dir).normalized()
-			else:
-				desired_world = Vector3(velocity.x, 0, velocity.z).normalized()
-			if desired_world.length() > 0.1 and wall_dir.dot(desired_world) < 0:
-				wall_dir = -wall_dir
-			velocity.x = wall_dir.x * wallrun_speed
-			velocity.z = wall_dir.z * wallrun_speed
-			velocity += -wallrun_normal * wallrun_stick_force * delta
-			if wallrun_elapsed < wallrun_stick_time:
-				var stick_grav = wallrun_gravity_start * wallrun_stick_gravity
-				velocity.y = max(velocity.y - (stick_grav * delta), 0.05)
-			else:
-				var t = clamp((wallrun_elapsed - wallrun_stick_time) / max(0.01, wallrun_duration - wallrun_stick_time), 0.0, 1.0)
-				var curve = pow(t, wallrun_gravity_curve)
-				var grav = lerp(wallrun_gravity_start, wallrun_gravity_end, curve)
-				velocity.y -= grav * delta
-			if Input.is_action_just_pressed("jump"):
-				velocity.y = jump_velocity
-				velocity += wallrun_normal * wallrun_push
+			wallrun_normal = hit["normal"]
+			var wall_dir = _compute_wallrun_dir(wallrun_normal, input_dir)
+			if wall_dir == Vector3.ZERO:
 				_stop_wallrun()
+			else:
+				velocity.x = wall_dir.x * wallrun_speed
+				velocity.z = wall_dir.z * wallrun_speed
+				velocity += -wallrun_normal * wallrun_stick_force * delta
+				if wallrun_elapsed < wallrun_stick_time:
+					var stick_grav = wallrun_gravity_start * wallrun_stick_gravity
+					velocity.y = max(velocity.y - (stick_grav * delta), 0.05)
+				else:
+					var t = clamp((wallrun_elapsed - wallrun_stick_time) / max(0.01, wallrun_duration - wallrun_stick_time), 0.0, 1.0)
+					var curve = pow(t, wallrun_gravity_curve)
+					var grav = lerp(wallrun_gravity_start, wallrun_gravity_end, curve)
+					velocity.y -= grav * delta
+				if Input.is_action_just_pressed("jump"):
+					var horiz = Vector3(velocity.x, 0, velocity.z)
+					var takeoff_dir = horiz
+					if takeoff_dir.length() < 0.1:
+						takeoff_dir = _compute_wallrun_dir(wallrun_normal, input_dir)
+					if takeoff_dir.length() > 0.1:
+						takeoff_dir = takeoff_dir.normalized()
+					velocity = takeoff_dir * wallrun_jump_speed
+					velocity.y = wallrun_jump_up
+					velocity += wallrun_normal * wallrun_push
+					_stop_wallrun()
 	else:
 		if not is_on_floor():
 			var grav = gravity
@@ -313,8 +367,11 @@ func _physics_process(delta: float) -> void:
 			elif velocity.y > 0.0 and not Input.is_action_pressed("jump"):
 				grav = gravity * gravity_jump_cut_multiplier
 			velocity.y -= grav * delta
-			if input_dir.y > 0.2 and not is_prone:
-				_try_start_wallrun(direction)
+			if (wallrun_intent > 0.0 or Input.is_action_pressed("jump")) and input_dir.length() > 0.1 and not is_prone:
+				_try_start_wallrun(input_dir)
+			if Input.is_action_just_pressed("jump") and air_jumps_left > 0 and not is_prone:
+				air_jumps_left -= 1
+				velocity.y = double_jump_velocity
 		elif Input.is_action_just_pressed("jump"):
 			if is_prone:
 				is_prone = false
@@ -325,9 +382,6 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
-	crouch_key_down = crouch_pressed
-	prone_key_down = prone_pressed
-
 	var target_offset := base_cam_pos
 	if is_prone:
 		target_offset = base_cam_pos + Vector3(0, prone_cam_offset, 0)
@@ -336,51 +390,8 @@ func _physics_process(delta: float) -> void:
 	cam.position = cam.position.lerp(target_offset, 1.0 - exp(-cam_height_lerp * delta))
 
 func _get_move_input() -> Vector2:
-	var input_dir = Vector2.ZERO
-	input_dir.x = Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
-	input_dir.y = Input.get_action_strength("move_forward") - Input.get_action_strength("move_back")
-	if input_dir == Vector2.ZERO:
-		if Input.is_key_pressed(68):
-			input_dir.x += 1
-		if Input.is_key_pressed(65):
-			input_dir.x -= 1
-		if Input.is_key_pressed(87):
-			input_dir.y += 1
-		if Input.is_key_pressed(83):
-			input_dir.y -= 1
+	var input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	return input_dir.normalized()
-
-func _ensure_input_mappings() -> void:
-	_ensure_key_action("move_forward", 87)
-	_ensure_key_action("move_back", 83)
-	_ensure_key_action("move_left", 65)
-	_ensure_key_action("move_right", 68)
-	_ensure_key_action("jump", 32)
-	_ensure_key_action("sprint", 16777248)
-	_ensure_key_action("crouch", 16777237)
-	_ensure_key_action("slide", 16777237)
-	_ensure_key_action("reload", 82)
-	_ensure_key_action("melee", 70)
-	_ensure_key_action("tactical", 71)
-	_ensure_key_action("special1", 81)
-	_ensure_key_action("prone", 88)
-	_ensure_key_action("titan_drop", 86)
-	_ensure_key_action("interact", 69)
-	_ensure_key_action("map", 77)
-	_ensure_key_action("quests", 76)
-	_ensure_key_action("socials", 80)
-	_ensure_key_action("inventory", 73)
-	_ensure_key_action("weapon_primary", 49)
-	_ensure_key_action("weapon_secondary", 50)
-	_ensure_key_action("weapon_tertiary", 51)
-	_ensure_key_action("weapon_melee", 52)
-	_ensure_key_action("weapon_extras", 53)
-	_ensure_key_action("chat", 13)
-	_ensure_key_action("ui_cancel", 16777217)
-	_ensure_key_action("fullscreen", KEY_F11)
-	_ensure_mouse_action("fire", 1)
-	_ensure_mouse_action("aim", 2)
-	_ensure_mouse_action("class_ability", 3)
 
 func _capture_mouse() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
@@ -417,32 +428,6 @@ func _apply_stance() -> void:
 	var delta := (base_total - new_total) * 0.5
 	collider.position.y = base_collider_pos.y - delta
 
-func _ensure_key_action(action: StringName, keycode: int) -> void:
-	if not InputMap.has_action(action):
-		InputMap.add_action(action)
-	var has_key := false
-	for ev in InputMap.action_get_events(action):
-		if ev is InputEventKey and ev.keycode == keycode:
-			has_key = true
-			break
-	if not has_key:
-		var ev_key := InputEventKey.new()
-		ev_key.keycode = keycode
-		InputMap.action_add_event(action, ev_key)
-
-func _ensure_mouse_action(action: StringName, button_index: int) -> void:
-	if not InputMap.has_action(action):
-		InputMap.add_action(action)
-	var has_button := false
-	for ev in InputMap.action_get_events(action):
-		if ev is InputEventMouseButton and ev.button_index == button_index:
-			has_button = true
-			break
-	if not has_button:
-		var ev_button := InputEventMouseButton.new()
-		ev_button.button_index = button_index
-		InputMap.action_add_event(action, ev_button)
-
 func _handle_reload_input(delta: float) -> void:
 	if Input.is_action_just_pressed("reload"):
 		reload_hold = true
@@ -456,6 +441,11 @@ func _handle_reload_input(delta: float) -> void:
 	if Input.is_action_just_released("reload") and reload_hold:
 		if reload_radial_open:
 			_show_gun_radial(false)
+			var choice := ""
+			if hud and hud.has_method("get_gun_radial_choice"):
+				choice = hud.get_gun_radial_choice()
+			if choice != "":
+				_hud_placeholder("Gun menu: %s" % choice)
 		else:
 			_start_reload()
 		reload_hold = false
@@ -473,8 +463,13 @@ func _handle_titan_input(delta: float) -> void:
 	if Input.is_action_just_released("titan_drop") and titan_hold:
 		if titan_radial_open:
 			_show_titan_radial(false)
+			var choice := ""
+			if hud and hud.has_method("get_titan_radial_choice"):
+				choice = hud.get_titan_radial_choice()
+			if choice != "":
+				_hud_placeholder("Titan: %s" % choice)
 		else:
-			_hud_hint("Titan drop (placeholder)")
+			_hud_placeholder("Titan drop (placeholder)")
 		titan_hold = false
 
 func _handle_grenade_input() -> void:
@@ -531,24 +526,48 @@ func _set_blink_marker_visible(show: bool) -> void:
 func _show_gun_radial(show: bool) -> void:
 	if hud and hud.has_method("show_gun_radial"):
 		hud.show_gun_radial(show)
+	_set_radial_mouse(show)
 
 func _show_titan_radial(show: bool) -> void:
 	if hud and hud.has_method("show_titan_radial"):
 		hud.show_titan_radial(show)
+	_set_radial_mouse(show)
+
+func _set_radial_mouse(show: bool) -> void:
+	if show:
+		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	else:
+		if not get_tree().paused:
+			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 func _hud_hint(text: String) -> void:
 	if hud and hud.has_method("show_hint"):
 		hud.show_hint(text)
+	else:
+		print(text)
 
-func _try_start_wallrun(direction: Vector3) -> void:
+func _hud_placeholder(text: String) -> void:
+	if hud and hud.has_method("log_placeholder"):
+		hud.log_placeholder(text)
+	else:
+		_hud_hint(text)
+
+func _try_start_wallrun(input_dir: Vector2) -> void:
 	if wallrunning:
 		return
-	if direction.length() < 0.1:
+	if input_dir.length() < 0.1:
 		return
 	if velocity.length() < wallrun_min_speed:
 		return
 	var hit = _get_wallrun_hit()
 	if hit and hit.has("normal"):
+		if wallrun_cooldown > 0.0 and last_wall_normal != Vector3.ZERO:
+			var dot = hit["normal"].dot(last_wall_normal)
+			if dot > 0.8:
+				return
+		var wall_dir = _compute_wallrun_dir(hit["normal"], input_dir)
+		if wall_dir == Vector3.ZERO:
+			return
 		if hit.has("position"):
 			var origin = global_transform.origin + Vector3(0, wallrun_ray_height, 0)
 			var dist = origin.distance_to(hit["position"])
@@ -559,12 +578,29 @@ func _try_start_wallrun(direction: Vector3) -> void:
 		wallrunning = true
 		wallrun_timer = wallrun_duration
 		wallrun_elapsed = 0.0
+		wallrun_intent = 0.0
 		velocity.y = max(velocity.y, 0.8)
+		velocity.x = wall_dir.x * wallrun_speed
+		velocity.z = wall_dir.z * wallrun_speed
+
+func _compute_wallrun_dir(normal: Vector3, input_dir: Vector2) -> Vector3:
+	if input_dir.length() < 0.1:
+		return Vector3.ZERO
+	var desired = (global_transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
+	if desired.length() < 0.1:
+		return Vector3.ZERO
+	var wall_dir = normal.cross(Vector3.UP).normalized()
+	if wall_dir.dot(desired) < 0.0:
+		wall_dir = -wall_dir
+	return wall_dir
 
 func _stop_wallrun() -> void:
 	wallrunning = false
 	wallrun_timer = 0.0
 	wallrun_elapsed = 0.0
+	if wallrun_normal != Vector3.ZERO:
+		last_wall_normal = wallrun_normal
+		wallrun_cooldown = wallrun_reentry_delay
 	wallrun_normal = Vector3.ZERO
 
 func _get_wallrun_hit() -> Dictionary:
@@ -576,24 +612,30 @@ func _get_wallrun_hit() -> Dictionary:
 	var params_left_low = PhysicsRayQueryParameters3D.create(origin_low, origin_low + left * wallrun_ray_length)
 	params_left_low.exclude = [self]
 	var hit_left_low = space.intersect_ray(params_left_low)
-	if hit_left_low:
+	if hit_left_low and _is_wall_surface(hit_left_low):
 		return hit_left_low
 	var params_right_low = PhysicsRayQueryParameters3D.create(origin_low, origin_low + right * wallrun_ray_length)
 	params_right_low.exclude = [self]
 	var hit_right_low = space.intersect_ray(params_right_low)
-	if hit_right_low:
+	if hit_right_low and _is_wall_surface(hit_right_low):
 		return hit_right_low
 	var params_left_high = PhysicsRayQueryParameters3D.create(origin_high, origin_high + left * wallrun_ray_length)
 	params_left_high.exclude = [self]
 	var hit_left_high = space.intersect_ray(params_left_high)
-	if hit_left_high:
+	if hit_left_high and _is_wall_surface(hit_left_high):
 		return hit_left_high
 	var params_right_high = PhysicsRayQueryParameters3D.create(origin_high, origin_high + right * wallrun_ray_length)
 	params_right_high.exclude = [self]
 	var hit_right_high = space.intersect_ray(params_right_high)
-	if hit_right_high:
+	if hit_right_high and _is_wall_surface(hit_right_high):
 		return hit_right_high
 	return {}
+
+func _is_wall_surface(hit: Dictionary) -> bool:
+	if not hit.has("normal"):
+		return false
+	var normal: Vector3 = hit["normal"]
+	return abs(normal.dot(Vector3.UP)) < 0.3
 
 func _toggle_pause() -> void:
 	if pause_menu and pause_menu.has_method("toggle"):
@@ -624,11 +666,23 @@ func _fire_hitscan() -> void:
 		var target = result["collider"]
 		if target and target.has_method("take_damage"):
 			target.take_damage(fire_damage)
+			_on_hit(result)
 
 func _apply_recoil() -> void:
 	recoil_offset = clamp(recoil_offset - recoil_strength, -recoil_max, recoil_max)
 	if gun and gun.has_method("kick"):
 		gun.kick(recoil_strength)
+
+func _on_hit(result: Dictionary) -> void:
+	if hud and hud.has_method("show_hitmarker"):
+		hud.show_hitmarker()
+	_play_beep(hit_audio, hit_stream, 1200.0, 0.06, -10.0)
+	if result.has("position"):
+		var hit_pos: Vector3 = result["position"]
+		var hit_normal: Vector3 = Vector3.ZERO
+		if result.has("normal"):
+			hit_normal = result["normal"]
+		_spawn_hit_vfx(hit_pos, hit_normal)
 
 func _update_recoil(delta: float) -> void:
 	if cam == null:
@@ -648,6 +702,67 @@ func _update_wallrun_roll(delta: float) -> void:
 		var wall_on_right = wallrun_normal.dot(global_transform.basis.x) > 0.0
 		target_roll = -wallrun_roll if wall_on_right else wallrun_roll
 	cam.rotation.z = lerp(cam.rotation.z, target_roll, 1.0 - exp(-wallrun_roll_speed * delta))
+
+func _setup_feedback() -> void:
+	hit_audio = AudioStreamPlayer.new()
+	hit_stream = AudioStreamGenerator.new()
+	hit_stream.mix_rate = 44100
+	hit_stream.buffer_length = 0.2
+	hit_audio.stream = hit_stream
+	hit_audio.volume_db = -8.0
+	add_child(hit_audio)
+
+	hurt_audio = AudioStreamPlayer.new()
+	hurt_stream = AudioStreamGenerator.new()
+	hurt_stream.mix_rate = 44100
+	hurt_stream.buffer_length = 0.2
+	hurt_audio.stream = hurt_stream
+	hurt_audio.volume_db = -6.0
+	add_child(hurt_audio)
+
+	hit_vfx_material = StandardMaterial3D.new()
+	hit_vfx_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	hit_vfx_material.albedo_color = Color(1.0, 0.8, 0.3, 0.95)
+	hit_vfx_material.emission = Color(1.0, 0.6, 0.2, 1.0)
+	hit_vfx_material.emission_energy_multiplier = 1.6
+	hit_vfx_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+
+func _play_beep(player: AudioStreamPlayer, stream: AudioStreamGenerator, freq: float, duration: float, volume_db: float) -> void:
+	if player == null or stream == null:
+		return
+	player.volume_db = volume_db
+	player.play()
+	var playback = player.get_stream_playback()
+	if playback == null:
+		return
+	playback.clear_buffer()
+	var rate = stream.mix_rate
+	var frames = int(rate * duration)
+	var data := PackedVector2Array()
+	data.resize(frames)
+	var phase = 0.0
+	var inc = TAU * freq / rate
+	for i in range(frames):
+		var env = 1.0 - (float(i) / float(frames))
+		var sample = sin(phase) * 0.22 * env
+		data[i] = Vector2(sample, sample)
+		phase += inc
+	playback.push_buffer(data)
+
+func _spawn_hit_vfx(pos: Vector3, normal: Vector3) -> void:
+	var mesh := SphereMesh.new()
+	mesh.radius = hit_vfx_scale
+	mesh.height = hit_vfx_scale * 2.0
+	var fx := MeshInstance3D.new()
+	fx.mesh = mesh
+	fx.material_override = hit_vfx_material
+	fx.global_position = pos + (normal * 0.03)
+	if get_parent():
+		get_parent().add_child(fx)
+	var tween := fx.create_tween()
+	tween.tween_property(fx, "scale", Vector3.ONE * 0.6, hit_vfx_lifetime * 0.5).from(Vector3.ONE * 1.2)
+	tween.tween_property(fx, "scale", Vector3.ZERO, hit_vfx_lifetime * 0.5)
+	tween.tween_callback(fx.queue_free)
 
 func _start_reload() -> void:
 	if is_reloading:
@@ -700,4 +815,32 @@ func _toggle_fullscreen() -> void:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 func take_damage(amount: float) -> void:
+	if is_dead:
+		return
 	current_health = max(0.0, current_health - amount)
+	if hud and hud.has_method("show_damage_flash"):
+		hud.show_damage_flash()
+	_play_beep(hurt_audio, hurt_stream, 220.0, 0.12, -6.0)
+	if current_health <= 0.0:
+		_die()
+
+func _die() -> void:
+	if is_dead:
+		return
+	is_dead = true
+	current_health = 0.0
+	velocity = Vector3.ZERO
+	_hud_hint("You died")
+	var timer = get_tree().create_timer(respawn_delay)
+	timer.timeout.connect(_respawn)
+
+func _respawn() -> void:
+	is_dead = false
+	current_health = max_health
+	is_crouching = false
+	is_prone = false
+	sliding = false
+	wallrunning = false
+	global_transform = spawn_transform
+	velocity = Vector3.ZERO
+	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)

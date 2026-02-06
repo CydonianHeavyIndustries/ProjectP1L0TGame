@@ -1,7 +1,7 @@
-[gd_scene load_steps=40 format=3]
+[gd_scene load_steps=41 format=3]
 
 [ext_resource type="Script" path="res://scripts/Player.gd" id=1]
-[ext_resource type="Shape3D" path="res://scenes/ground_shape.tres" id=2]
+[ext_resource type="Shape3D" path="res://scenes/ground_shape_box.tres" id=2]
 [ext_resource type="Mesh" path="res://scenes/ground_mesh.tres" id=3]
 [ext_resource type="Mesh" path="res://scenes/wall_mesh.tres" id=4]
 [ext_resource type="Shape3D" path="res://scenes/wall_shape.tres" id=5]
@@ -15,6 +15,7 @@
 [ext_resource type="Environment" path="res://scenes/sky_environment.tres" id=13]
 [ext_resource type="Script" path="res://scripts/PauseMenu.gd" id=14]
 [ext_resource type="Material" path="res://materials/placeholder_dummy.tres" id=15]
+[ext_resource type="PackedScene" path="res://scenes/Turret.tscn" id=16]
 
 [sub_resource type="CapsuleShape3D" id=1]
 radius = 0.35
@@ -129,6 +130,9 @@ environment = ExtResource( 13 )
 
 [node name="World" type="Node3D" parent="."]
 
+[node name="PlayerSpawn" type="Node3D" parent="World" groups=["player_spawn"]]
+position = Vector3(0, 1.5, 0)
+
 [node name="Player" type="CharacterBody3D" parent="World"]
 position = Vector3(0, 1.5, 0)
 script = ExtResource( 1 )
@@ -143,6 +147,7 @@ rotation = Vector3(0, 0.02, 0)
 
 [node name="Gun" type="Node3D" parent="World/Player/Camera/GunPivot"]
 script = ExtResource( 12 )
+scale = Vector3(0.7, 0.7, 1)
 
 [node name="Body" type="MeshInstance3D" parent="World/Player/Camera/GunPivot/Gun"]
 position = Vector3(0, 0.04, -0.18)
@@ -226,6 +231,7 @@ position = Vector3(0, 0, 0)
 
 [node name="Collision" type="CollisionShape3D" parent="World/Floor"]
 shape = ExtResource( 2 )
+position = Vector3(0, -0.05, 0)
 
 [node name="FloorMesh" type="MeshInstance3D" parent="World/Floor"]
 mesh = ExtResource( 3 )
@@ -333,6 +339,9 @@ material_override = SubResource( 23 )
 position = Vector3(0, 1, -24)
 script = ExtResource( 7 )
 
+[node name="Turret" parent="World" instance=ExtResource( 16 )]
+position = Vector3(3.5, 0, -18)
+
 [node name="DummyCollision" type="CollisionShape3D" parent="World/Dummy"]
 shape = ExtResource( 6 )
 
@@ -422,6 +431,21 @@ horizontal_alignment = 1
 
 [node name="ResumeButton" type="Button" parent="HUD/PauseMenu/Panel/VBox"]
 text = "Resume"
+
+[node name="SettingsButton" type="Button" parent="HUD/PauseMenu/Panel/VBox"]
+text = "Settings"
+
+[node name="ControlsButton" type="Button" parent="HUD/PauseMenu/Panel/VBox"]
+text = "Controls"
+
+[node name="AudioButton" type="Button" parent="HUD/PauseMenu/Panel/VBox"]
+text = "Audio"
+
+[node name="GraphicsButton" type="Button" parent="HUD/PauseMenu/Panel/VBox"]
+text = "Graphics"
+
+[node name="CreditsButton" type="Button" parent="HUD/PauseMenu/Panel/VBox"]
+text = "Credits"
 
 [node name="QuitButton" type="Button" parent="HUD/PauseMenu/Panel/VBox"]
 text = "Quit to Desktop"

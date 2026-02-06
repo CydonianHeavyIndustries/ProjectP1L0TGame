@@ -3,6 +3,7 @@ extends Control
 @onready var hp_label: Label = Label.new()
 @onready var ammo_label: Label = Label.new()
 @onready var crosshair: Label = Label.new()
+@onready var hitmarker: Label = Label.new()
 @onready var hint_label: Label = Label.new()
 @onready var gun_radial: Control = Control.new()
 @onready var titan_radial: Control = Control.new()
@@ -20,8 +21,13 @@ extends Control
 @onready var blink_frame: Panel = Panel.new()
 @onready var blink_back: ColorRect = ColorRect.new()
 @onready var blink_fill: ColorRect = ColorRect.new()
+@onready var damage_flash: ColorRect = ColorRect.new()
+@onready var hit_audio: AudioStreamPlayer = AudioStreamPlayer.new()
+@onready var hurt_audio: AudioStreamPlayer = AudioStreamPlayer.new()
 
 var hint_timer := 0.0
+var hitmarker_timer := 0.0
+var damage_flash_timer := 0.0
 var _health_fill_max := 0.0
 var _reload_fill_max := 0.0
 var _cooldown_fill_max := 0.0
@@ -36,6 +42,20 @@ const HUD_WARN := Color(1.0, 0.55, 0.25, 0.9)
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_to_group("hud")
+	add_child(damage_flash)
+	damage_flash.anchor_left = 0.0
+	damage_flash.anchor_top = 0.0
+	damage_flash.anchor_right = 1.0
+	damage_flash.anchor_bottom = 1.0
+	damage_flash.offset_left = 0.0
+	damage_flash.offset_top = 0.0
+	damage_flash.offset_right = 0.0
+	damage_flash.offset_bottom = 0.0
+	damage_flash.color = Color(1.0, 0.1, 0.1, 0.0)
+	damage_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	add_child(hit_audio)
+	add_child(hurt_audio)
 	add_child(hp_label)
 	hp_label.text = "HP: 100"
 	hp_label.position = Vector2(22, 18)
@@ -50,6 +70,11 @@ func _ready() -> void:
 	crosshair.text = "+"
 	crosshair.position = (get_viewport_rect().size / 2) - Vector2(4, 6)
 	_style_label(crosshair, 18, HUD_ACCENT, true)
+
+	add_child(hitmarker)
+	hitmarker.text = "X"
+	hitmarker.visible = false
+	_style_label(hitmarker, 16, HUD_WARN, true)
 
 	add_child(hint_label)
 	hint_label.visible = false
@@ -86,6 +111,20 @@ func _process(_delta: float) -> void:
 
 	var viewport_center = get_viewport_rect().size / 2
 	crosshair.position = viewport_center - Vector2(4, 6)
+	hitmarker.position = viewport_center - Vector2(6, 8)
+	if hitmarker_timer > 0.0:
+		hitmarker_timer = max(0.0, hitmarker_timer - _delta)
+		var t = hitmarker_timer / 0.12
+		hitmarker.scale = Vector2(1.0, 1.0) * (1.0 + (0.4 * t))
+		hitmarker.modulate = Color(HUD_WARN.r, HUD_WARN.g, HUD_WARN.b, clamp(t, 0.0, 1.0))
+		if hitmarker_timer <= 0.0:
+			hitmarker.visible = false
+	if damage_flash_timer > 0.0:
+		damage_flash_timer = max(0.0, damage_flash_timer - _delta)
+		var t_flash = damage_flash_timer / 0.2
+		damage_flash.color = Color(1.0, 0.1, 0.1, 0.35 * clamp(t_flash, 0.0, 1.0))
+	else:
+		damage_flash.color = Color(1.0, 0.1, 0.1, 0.0)
 	if gun_radial.visible:
 		_position_radial(gun_radial)
 	if titan_radial.visible:
@@ -105,6 +144,26 @@ func show_titan_radial(show: bool) -> void:
 	titan_radial.visible = show
 	if show:
 		_position_radial(titan_radial)
+
+func show_hitmarker() -> void:
+	hitmarker.visible = true
+	hitmarker_timer = 0.12
+	_play_tone(hit_audio, 1200.0, 0.05, -8.0)
+
+func show_damage_flash() -> void:
+	damage_flash_timer = 0.2
+	damage_flash.color = Color(1.0, 0.1, 0.1, 0.35)
+	_play_tone(hurt_audio, 220.0, 0.1, -6.0)
+
+func get_gun_radial_choice() -> String:
+	return _get_radial_choice(gun_radial)
+
+func get_titan_radial_choice() -> String:
+	return _get_radial_choice(titan_radial)
+
+func log_placeholder(label: String) -> void:
+	show_hint("%s (Not Implemented)" % label)
+	print("Not Implemented:", label)
 
 func _setup_health_bar() -> void:
 	add_child(health_frame)
@@ -296,11 +355,13 @@ func _build_radial_menu(title: String, slots: Array) -> Control:
 	root.anchors_preset = Control.PRESET_TOP_LEFT
 	root.size = Vector2(300, 300)
 	root.position = Vector2.ZERO
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
 	var bg := Panel.new()
 	bg.anchor_right = 1.0
 	bg.anchor_bottom = 1.0
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var style := StyleBoxFlat.new()
 	style.bg_color = HUD_BG
 	style.border_color = HUD_EDGE
@@ -333,6 +394,7 @@ func _build_radial_menu(title: String, slots: Array) -> Control:
 		var pos = center + Vector2(cos(angle), sin(angle)) * radius
 		slot_label.position = pos - (slot_label.custom_minimum_size * 0.5)
 		root.add_child(slot_label)
+	root.set_meta("slots", slots)
 
 	return root
 
@@ -348,6 +410,57 @@ func _position_radial(menu: Control) -> void:
 	target.x = clamp(target.x, 0.0, max(0.0, viewport_size.x - menu_size.x))
 	target.y = clamp(target.y, 0.0, max(0.0, viewport_size.y - menu_size.y))
 	menu.position = target
+
+func _get_radial_choice(menu: Control) -> String:
+	if menu == null:
+		return ""
+	if not menu.has_meta("slots"):
+		return ""
+	var slots: Array = menu.get_meta("slots")
+	if slots.is_empty():
+		return ""
+	var menu_size = menu.size
+	if menu_size == Vector2.ZERO:
+		menu_size = Vector2(300, 300)
+	var center = menu.position + (menu_size * 0.5)
+	var mouse_pos = get_viewport().get_mouse_position()
+	var dir = mouse_pos - center
+	if dir.length() < 12.0:
+		return str(slots[0])
+	var angle = atan2(dir.y, dir.x) + (PI / 2.0)
+	if angle < 0.0:
+		angle += TAU
+	var step = TAU / float(slots.size())
+	var idx = int(floor(angle / step)) % slots.size()
+	return str(slots[idx])
+
+func _play_tone(player: AudioStreamPlayer, freq: float, duration: float, volume_db: float) -> void:
+	if player == null:
+		return
+	if player.stream == null or not (player.stream is AudioStreamGenerator):
+		var gen := AudioStreamGenerator.new()
+		gen.mix_rate = 44100
+		gen.buffer_length = 0.2
+		player.stream = gen
+	player.volume_db = volume_db
+	player.play()
+	var playback = player.get_stream_playback()
+	if playback == null:
+		return
+	playback.clear_buffer()
+	var gen_stream := player.stream as AudioStreamGenerator
+	var rate = gen_stream.mix_rate
+	var frames = int(rate * duration)
+	var data := PackedVector2Array()
+	data.resize(frames)
+	var phase := 0.0
+	var inc: float = TAU * freq / float(rate)
+	for i in range(frames):
+		var env = 1.0 - (float(i) / float(frames))
+		var sample = sin(phase) * 0.22 * env
+		data[i] = Vector2(sample, sample)
+		phase += inc
+	playback.push_buffer(data)
 
 func _make_frame_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
