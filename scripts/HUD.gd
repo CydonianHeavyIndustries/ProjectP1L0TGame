@@ -5,6 +5,7 @@ extends Control
 @onready var crosshair: Label = Label.new()
 
 func _ready() -> void:
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hp_label)
 	hp_label.text = "HP: 100"
 	hp_label.position = Vector2(20, 20)

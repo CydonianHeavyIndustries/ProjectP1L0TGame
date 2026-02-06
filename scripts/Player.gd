@@ -37,12 +37,15 @@ func _ready() -> void:
 	current_health = max_health
 	ammo_in_mag = mag_size
 	_ensure_input_mappings()
-	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	call_deferred("_capture_mouse")
 	add_to_group("player")
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
-		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED)
+		var next_mode = Input.MOUSE_MODE_VISIBLE if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED
+		Input.set_mouse_mode(next_mode)
+	if event is InputEventMouseButton and event.pressed and Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
+		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 		rotate_y(-event.relative.x * 0.002)
 		cam.rotate_x(-event.relative.y * 0.002)
@@ -130,6 +133,9 @@ func _ensure_input_mappings() -> void:
 	_ensure_key_action("reload", 82)
 	_ensure_key_action("ui_cancel", 16777217)
 	_ensure_mouse_action("fire", 1)
+
+func _capture_mouse() -> void:
+	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 func _ensure_key_action(action: StringName, keycode: int) -> void:
 	if not InputMap.has_action(action):
