@@ -95,6 +95,14 @@ export const useLauncherState = (): LauncherState => {
   }, [channel]);
 
   useEffect(() => {
+    if (settings.useLocalBuild) return;
+    const updated = { ...settings, useLocalBuild: true };
+    setSettings(updated);
+    writeSettings(updated);
+    pushLog('Local Godot build enforced');
+  }, []);
+
+  useEffect(() => {
     if (!window.launcher?.onUpdateProgress) return undefined;
     const unsubscribe = window.launcher.onUpdateProgress((payload) => {
       setInstall((prev) => ({

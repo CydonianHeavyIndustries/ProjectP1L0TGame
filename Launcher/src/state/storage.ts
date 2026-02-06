@@ -31,7 +31,7 @@ export const defaultSettings: LauncherSettings = {
   launchArgs: '',
   safeMode: false,
   gameExeRelative: 'ProjectP1L0T.exe',
-  useLocalBuild: false,
+  useLocalBuild: true,
   localBuildRelative: 'Builds/Godot/ProjectP1L0T.exe'
 };
 
