@@ -1,4 +1,4 @@
-[gd_scene load_steps=43 format=3]
+[gd_scene load_steps=45 format=3]
 
 [ext_resource type="Script" path="res://scripts/Player.gd" id=1]
 [ext_resource type="Shape3D" path="res://scenes/ground_shape_box.tres" id=2]
@@ -16,6 +16,8 @@
 [ext_resource type="Script" path="res://scripts/PauseMenu.gd" id=14]
 [ext_resource type="Material" path="res://materials/placeholder_dummy.tres" id=15]
 [ext_resource type="PackedScene" path="res://scenes/Turret.tscn" id=16]
+[ext_resource type="PackedScene" path="res://scenes/SafeZoneArea.tscn" id=17]
+[ext_resource type="PackedScene" path="res://scenes/CoreSystems.tscn" id=18]
 
 [sub_resource type="CapsuleShape3D" id=1]
 radius = 0.35
