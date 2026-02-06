@@ -7,7 +7,10 @@ var is_open := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	set_process_input(true)
+	set_process_unhandled_input(true)
 	visible = false
+	add_to_group("pause_menu")
 	if resume_button:
 		resume_button.pressed.connect(_on_resume_pressed)
 	if quit_button:

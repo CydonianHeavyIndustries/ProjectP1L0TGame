@@ -17,10 +17,14 @@ extends CharacterBody3D
 @export var prone_cam_offset := -0.85
 @export var cam_height_lerp := 10.0
 @export var wallrun_speed := 11.0
-@export var wallrun_gravity := 2.5
 @export var wallrun_duration := 1.1
 @export var wallrun_min_speed := 3.5
 @export var wallrun_push := 5.5
+@export var wallrun_stick_time := 0.28
+@export var wallrun_gravity_start := 1.5
+@export var wallrun_gravity_end := 14.0
+@export var wallrun_stick_force := 16.0
+@export var wallrun_ray_length := 1.8
 
 @export var fire_rate := 8.0
 @export var fire_damage := 25.0
@@ -41,6 +45,7 @@ var ammo_in_mag := 24
 var is_reloading := false
 var wallrunning := false
 var wallrun_timer := 0.0
+var wallrun_elapsed := 0.0
 var wallrun_normal := Vector3.ZERO
 var is_crouching := false
 var is_prone := false
@@ -53,6 +58,7 @@ var titan_hold := false
 var titan_hold_time := 0.0
 var titan_radial_open := false
 var hud: Node = null
+var pause_menu: Node = null
 
 @onready var cam: Camera3D = $Camera
 @onready var gun: Node3D = $Camera/Gun
@@ -63,11 +69,16 @@ func _ready() -> void:
 	_ensure_input_mappings()
 	call_deferred("_capture_mouse")
 	call_deferred("_cache_hud")
+	call_deferred("_cache_pause_menu")
 	add_to_group("player")
 	base_cam_pos = cam.position
 	base_fov = cam.fov
 
 func _input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		_toggle_pause()
+		get_viewport().set_input_as_handled()
+		return
 	if get_tree().paused:
 		return
 	if event is InputEventMouseButton and event.pressed and Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
@@ -173,15 +184,22 @@ func _physics_process(delta: float) -> void:
 
 	if wallrunning:
 		wallrun_timer -= delta
+		wallrun_elapsed += delta
 		if wallrun_timer <= 0.0 or is_on_floor():
 			_stop_wallrun()
 		else:
 			var wall_dir = wallrun_normal.cross(Vector3.UP).normalized()
 			if wall_dir.dot(-transform.basis.z) < 0:
 				wall_dir = -wall_dir
-			velocity.y = -wallrun_gravity
 			velocity.x = wall_dir.x * wallrun_speed
 			velocity.z = wall_dir.z * wallrun_speed
+			velocity += -wallrun_normal * wallrun_stick_force * delta
+			if wallrun_elapsed < wallrun_stick_time:
+				velocity.y = max(velocity.y, 0.1)
+			else:
+				var t = clamp((wallrun_elapsed - wallrun_stick_time) / max(0.01, wallrun_duration - wallrun_stick_time), 0.0, 1.0)
+				var grav = lerp(wallrun_gravity_start, wallrun_gravity_end, t)
+				velocity.y -= grav * delta
 			if Input.is_action_just_pressed("jump"):
 				velocity.y = jump_velocity
 				velocity += wallrun_normal * wallrun_push
@@ -255,6 +273,9 @@ func _capture_mouse() -> void:
 
 func _cache_hud() -> void:
 	hud = get_tree().get_first_node_in_group("hud")
+
+func _cache_pause_menu() -> void:
+	pause_menu = get_tree().get_first_node_in_group("pause_menu")
 
 func _ensure_key_action(action: StringName, keycode: int) -> void:
 	if not InputMap.has_action(action):
@@ -339,10 +360,10 @@ func _try_start_wallrun(direction: Vector3) -> void:
 	var origin = global_transform.origin
 	var left = -global_transform.basis.x
 	var right = global_transform.basis.x
-	var params_left = PhysicsRayQueryParameters3D.create(origin, origin + left * 1.1)
+	var params_left = PhysicsRayQueryParameters3D.create(origin, origin + left * wallrun_ray_length)
 	params_left.exclude = [self]
 	var hit_left = space.intersect_ray(params_left)
-	var params_right = PhysicsRayQueryParameters3D.create(origin, origin + right * 1.1)
+	var params_right = PhysicsRayQueryParameters3D.create(origin, origin + right * wallrun_ray_length)
 	params_right.exclude = [self]
 	var hit_right = space.intersect_ray(params_right)
 	var hit = hit_left if hit_left else hit_right
@@ -350,11 +371,17 @@ func _try_start_wallrun(direction: Vector3) -> void:
 		wallrun_normal = hit["normal"]
 		wallrunning = true
 		wallrun_timer = wallrun_duration
+		wallrun_elapsed = 0.0
 
 func _stop_wallrun() -> void:
 	wallrunning = false
 	wallrun_timer = 0.0
+	wallrun_elapsed = 0.0
 	wallrun_normal = Vector3.ZERO
+
+func _toggle_pause() -> void:
+	if pause_menu and pause_menu.has_method("toggle"):
+		pause_menu.toggle()
 
 func _try_fire() -> void:
 	if is_reloading:
