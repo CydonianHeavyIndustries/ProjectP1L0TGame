@@ -6,7 +6,7 @@ extends Node
 var current_scene: Node
 
 func _ready() -> void:
-	_show_title()
+	_show_gameplay()
 
 func _show_title() -> void:
 	_clear_current()
