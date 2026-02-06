@@ -2,11 +2,20 @@ extends CharacterBody3D
 
 @export var walk_speed := 7.0
 @export var sprint_speed := 12.0
+@export var crouch_speed := 4.5
+@export var prone_speed := 2.4
 @export var jump_velocity := 4.5
 @export var slide_speed := 16.0
 @export var slide_time := 0.35
+@export var slide_friction := 6.0
 @export var gravity := 9.8
 @export var max_health := 100.0
+@export var accel_ground := 24.0
+@export var accel_air := 10.0
+@export var decel_ground := 18.0
+@export var crouch_cam_offset := -0.45
+@export var prone_cam_offset := -0.85
+@export var cam_height_lerp := 10.0
 @export var wallrun_speed := 11.0
 @export var wallrun_gravity := 2.5
 @export var wallrun_duration := 1.1
@@ -20,6 +29,9 @@ extends CharacterBody3D
 @export var mag_size := 24
 @export var reserve_ammo := 120
 @export var reload_time := 1.2
+@export var aim_fov := 55.0
+@export var aim_speed := 10.0
+@export var radial_hold_time := 0.35
 
 var current_health := 100.0
 var sliding := false
@@ -30,6 +42,17 @@ var is_reloading := false
 var wallrunning := false
 var wallrun_timer := 0.0
 var wallrun_normal := Vector3.ZERO
+var is_crouching := false
+var is_prone := false
+var base_cam_pos := Vector3.ZERO
+var base_fov := 70.0
+var reload_hold := false
+var reload_hold_time := 0.0
+var reload_radial_open := false
+var titan_hold := false
+var titan_hold_time := 0.0
+var titan_radial_open := false
+var hud: Node = null
 
 @onready var cam: Camera3D = $Camera
 @onready var gun: Node3D = $Camera/Gun
@@ -39,7 +62,10 @@ func _ready() -> void:
 	ammo_in_mag = mag_size
 	_ensure_input_mappings()
 	call_deferred("_capture_mouse")
+	call_deferred("_cache_hud")
 	add_to_group("player")
+	base_cam_pos = cam.position
+	base_fov = cam.fov
 
 func _input(event: InputEvent) -> void:
 	if get_tree().paused:
@@ -54,34 +80,84 @@ func _input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	fire_cooldown = max(0.0, fire_cooldown - delta)
 
-	if Input.is_action_just_pressed("reload"):
-		_start_reload()
+	_handle_reload_input(delta)
+	_handle_titan_input(delta)
 
 	if Input.is_action_pressed("fire"):
 		_try_fire()
 
+	if Input.is_action_just_pressed("melee"):
+		_hud_hint("Melee (placeholder)")
+	if Input.is_action_just_pressed("class_ability"):
+		_hud_hint("Class ability (placeholder)")
+	if Input.is_action_just_pressed("tactical"):
+		_hud_hint("Tactical ordinance (placeholder)")
+	if Input.is_action_just_pressed("special1"):
+		_hud_hint("Special skill 1 (placeholder)")
+	if Input.is_action_just_pressed("interact"):
+		_hud_hint("Interact (placeholder)")
+	if Input.is_action_just_pressed("map"):
+		_hud_hint("Map (placeholder)")
+	if Input.is_action_just_pressed("quests"):
+		_hud_hint("Quests & jobs (placeholder)")
+	if Input.is_action_just_pressed("socials"):
+		_hud_hint("Socials (placeholder)")
+	if Input.is_action_just_pressed("chat"):
+		_hud_hint("Chat (placeholder)")
+
+	var target_fov = aim_fov if Input.is_action_pressed("aim") else base_fov
+	cam.fov = lerp(cam.fov, target_fov, 1.0 - exp(-aim_speed * delta))
+
 func _physics_process(delta: float) -> void:
 	var input_dir = _get_move_input()
 
-	var speed = sprint_speed if Input.is_action_pressed("sprint") else walk_speed
+	if Input.is_action_just_pressed("prone"):
+		is_prone = not is_prone
+		if is_prone:
+			is_crouching = false
 
-	if Input.is_action_just_pressed("slide") and not sliding and is_on_floor():
-		sliding = true
-		slide_timer = slide_time
+	var crouch_pressed = Input.is_action_pressed("crouch")
+	if Input.is_action_just_pressed("crouch") and not sliding and is_on_floor():
+		if Input.is_action_pressed("sprint") and not is_prone:
+			sliding = true
+			slide_timer = slide_time
+		else:
+			is_crouching = true
 
 	if sliding:
-		speed = slide_speed
 		slide_timer -= delta
 		if slide_timer <= 0.0:
 			sliding = false
+			if crouch_pressed and not is_prone:
+				is_crouching = true
+
+	if not sliding:
+		if is_prone:
+			is_crouching = false
+		else:
+			is_crouching = crouch_pressed
+
+	var speed = walk_speed
+	if is_prone:
+		speed = prone_speed
+	elif is_crouching:
+		speed = crouch_speed
+	elif Input.is_action_pressed("sprint"):
+		speed = sprint_speed
+	if sliding:
+		speed = slide_speed
 
 	var direction = (transform.basis * Vector3(input_dir.x, 0, -input_dir.y)).normalized()
-	if direction:
-		velocity.x = direction.x * speed
-		velocity.z = direction.z * speed
+	var accel = accel_ground if is_on_floor() else accel_air
+	var decel = slide_friction if sliding else decel_ground
+	var target_velocity = direction * speed
+	var horizontal = Vector3(velocity.x, 0, velocity.z)
+	if direction != Vector3.ZERO:
+		horizontal = horizontal.move_toward(target_velocity, accel * delta)
 	else:
-		velocity.x = move_toward(velocity.x, 0, speed)
-		velocity.z = move_toward(velocity.z, 0, speed)
+		horizontal = horizontal.move_toward(Vector3.ZERO, decel * delta)
+	velocity.x = horizontal.x
+	velocity.z = horizontal.z
 
 	if wallrunning:
 		wallrun_timer -= delta
@@ -103,9 +179,19 @@ func _physics_process(delta: float) -> void:
 			velocity.y -= gravity * delta
 			_try_start_wallrun(direction)
 		elif Input.is_action_just_pressed("jump"):
+			if is_prone:
+				is_prone = false
+				is_crouching = false
 			velocity.y = jump_velocity
 
 	move_and_slide()
+
+	var target_offset := base_cam_pos
+	if is_prone:
+		target_offset = base_cam_pos + Vector3(0, prone_cam_offset, 0)
+	elif is_crouching or sliding:
+		target_offset = base_cam_pos + Vector3(0, crouch_cam_offset, 0)
+	cam.position = cam.position.lerp(target_offset, 1.0 - exp(-cam_height_lerp * delta))
 
 func _get_move_input() -> Vector2:
 	var input_dir = Vector2.ZERO
@@ -129,13 +215,28 @@ func _ensure_input_mappings() -> void:
 	_ensure_key_action("move_right", 68)
 	_ensure_key_action("jump", 32)
 	_ensure_key_action("sprint", 16777248)
-	_ensure_key_action("slide", 67)
+	_ensure_key_action("crouch", 16777237)
 	_ensure_key_action("reload", 82)
+	_ensure_key_action("melee", 70)
+	_ensure_key_action("tactical", 71)
+	_ensure_key_action("special1", 81)
+	_ensure_key_action("prone", 88)
+	_ensure_key_action("titan_drop", 86)
+	_ensure_key_action("interact", 69)
+	_ensure_key_action("map", 77)
+	_ensure_key_action("quests", 76)
+	_ensure_key_action("socials", 80)
+	_ensure_key_action("chat", 13)
 	_ensure_key_action("ui_cancel", 16777217)
 	_ensure_mouse_action("fire", 1)
+	_ensure_mouse_action("aim", 2)
+	_ensure_mouse_action("class_ability", 3)
 
 func _capture_mouse() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+func _cache_hud() -> void:
+	hud = get_tree().get_first_node_in_group("hud")
 
 func _ensure_key_action(action: StringName, keycode: int) -> void:
 	if not InputMap.has_action(action):
@@ -162,6 +263,52 @@ func _ensure_mouse_action(action: StringName, button_index: int) -> void:
 		var ev_button := InputEventMouseButton.new()
 		ev_button.button_index = button_index
 		InputMap.action_add_event(action, ev_button)
+
+func _handle_reload_input(delta: float) -> void:
+	if Input.is_action_just_pressed("reload"):
+		reload_hold = true
+		reload_hold_time = 0.0
+		reload_radial_open = false
+	if reload_hold:
+		reload_hold_time += delta
+		if reload_hold_time >= radial_hold_time and not reload_radial_open:
+			reload_radial_open = true
+			_show_gun_radial(true)
+	if Input.is_action_just_released("reload") and reload_hold:
+		if reload_radial_open:
+			_show_gun_radial(false)
+		else:
+			_start_reload()
+		reload_hold = false
+
+func _handle_titan_input(delta: float) -> void:
+	if Input.is_action_just_pressed("titan_drop"):
+		titan_hold = true
+		titan_hold_time = 0.0
+		titan_radial_open = false
+	if titan_hold:
+		titan_hold_time += delta
+		if titan_hold_time >= radial_hold_time and not titan_radial_open:
+			titan_radial_open = true
+			_show_titan_radial(true)
+	if Input.is_action_just_released("titan_drop") and titan_hold:
+		if titan_radial_open:
+			_show_titan_radial(false)
+		else:
+			_hud_hint("Titan drop (placeholder)")
+		titan_hold = false
+
+func _show_gun_radial(show: bool) -> void:
+	if hud and hud.has_method("show_gun_radial"):
+		hud.show_gun_radial(show)
+
+func _show_titan_radial(show: bool) -> void:
+	if hud and hud.has_method("show_titan_radial"):
+		hud.show_titan_radial(show)
+
+func _hud_hint(text: String) -> void:
+	if hud and hud.has_method("show_hint"):
+		hud.show_hint(text)
 
 func _try_start_wallrun(direction: Vector3) -> void:
 	if wallrunning:
