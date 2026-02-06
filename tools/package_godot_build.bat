@@ -58,7 +58,9 @@ if not exist "%TEMPLATE_MARKER%" (
   )
 )
 
-if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
+if exist "%BUILD_DIR%" rmdir /s /q "%BUILD_DIR%"
+mkdir "%BUILD_DIR%"
+if exist "%ZIP_PATH%" del /f /q "%ZIP_PATH%"
 
 echo [P1L0T] Importing assets...
 "%GODOT%" --headless --path "%ROOT%" --import
