@@ -134,6 +134,7 @@ func _ready() -> void:
 	current_health = max_health
 	ammo_in_mag = mag_size
 	air_jumps_left = max_air_jumps
+	_ensure_default_input()
 	call_deferred("_capture_mouse")
 	call_deferred("_cache_hud")
 	call_deferred("_cache_pause_menu")
@@ -154,6 +155,10 @@ func _ready() -> void:
 		spawn_transform = (spawn as Node3D).global_transform
 	else:
 		spawn_transform = global_transform
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_FOCUS_IN and not get_tree().paused:
+		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
@@ -410,6 +415,10 @@ func _cache_hud() -> void:
 
 func _cache_pause_menu() -> void:
 	pause_menu = get_tree().get_first_node_in_group("pause_menu")
+	if pause_menu and pause_menu.has_method("close"):
+		pause_menu.close()
+	else:
+		get_tree().paused = false
 
 func _cache_collider() -> void:
 	if collider and collider.shape is CapsuleShape3D:
@@ -436,6 +445,22 @@ func _apply_stance() -> void:
 	var new_total := target_height + (base_capsule_radius * 2.0)
 	var delta := (base_total - new_total) * 0.5
 	collider.position.y = base_collider_pos.y - delta
+
+func _ensure_default_input() -> void:
+	_ensure_key_action("move_forward", KEY_W)
+	_ensure_key_action("move_back", KEY_S)
+	_ensure_key_action("move_left", KEY_A)
+	_ensure_key_action("move_right", KEY_D)
+	_ensure_key_action("jump", KEY_SPACE)
+	_ensure_key_action("sprint", KEY_SHIFT)
+
+func _ensure_key_action(action: String, keycode: int) -> void:
+	if InputMap.has_action(action):
+		return
+	InputMap.add_action(action)
+	var ev := InputEventKey.new()
+	ev.keycode = keycode
+	InputMap.action_add_event(action, ev)
 
 func _handle_reload_input(delta: float) -> void:
 	if Input.is_action_just_pressed("reload"):
