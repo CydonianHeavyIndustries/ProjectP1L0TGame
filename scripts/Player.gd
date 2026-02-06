@@ -35,6 +35,8 @@ extends CharacterBody3D
 @export var fire_damage := 25.0
 @export var fire_range := 60.0
 @export var recoil_strength := 0.008
+@export var recoil_return_speed := 16.0
+@export var recoil_max := 0.25
 @export var mag_size := 24
 @export var reserve_ammo := 120
 @export var reload_time := 1.2
@@ -89,6 +91,8 @@ var base_capsule_height := 1.2
 var base_capsule_radius := 0.35
 var crouch_key_down := false
 var prone_key_down := false
+var recoil_offset := 0.0
+var recoil_applied := 0.0
 
 @onready var cam: Camera3D = $Camera
 @onready var gun_pivot: Node3D = $Camera/GunPivot
@@ -193,6 +197,7 @@ func _process(delta: float) -> void:
 	if gun_pivot:
 		var target_pos = base_gun_pos + (aim_gun_offset if is_aiming else Vector3.ZERO)
 		gun_pivot.position = gun_pivot.position.lerp(target_pos, 1.0 - exp(-aim_gun_lerp * delta))
+	_update_recoil(delta)
 
 func _physics_process(delta: float) -> void:
 	var input_dir = _get_move_input()
@@ -606,10 +611,19 @@ func _fire_hitscan() -> void:
 			target.take_damage(fire_damage)
 
 func _apply_recoil() -> void:
-	cam.rotate_x(recoil_strength)
-	cam.rotation.x = clamp(cam.rotation.x, -1.3, 1.3)
+	recoil_offset = clamp(recoil_offset + recoil_strength, -recoil_max, recoil_max)
 	if gun and gun.has_method("kick"):
 		gun.kick(recoil_strength)
+
+func _update_recoil(delta: float) -> void:
+	if cam == null:
+		return
+	recoil_offset = lerp(recoil_offset, 0.0, 1.0 - exp(-recoil_return_speed * delta))
+	var delta_offset = recoil_offset - recoil_applied
+	if abs(delta_offset) > 0.000001:
+		cam.rotate_x(delta_offset)
+		cam.rotation.x = clamp(cam.rotation.x, -1.3, 1.3)
+		recoil_applied = recoil_offset
 
 func _start_reload() -> void:
 	if is_reloading:
