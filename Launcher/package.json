@@ -1,6 +1,6 @@
 {
   "name": "projectp1l0t-launcher",
-  "version": "0.1.54",
+  "version": "0.1.55",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",

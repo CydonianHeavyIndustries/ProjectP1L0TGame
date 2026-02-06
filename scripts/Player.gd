@@ -30,6 +30,8 @@ extends CharacterBody3D
 @export var wallrun_contact_gap := 0.22
 @export var wallrun_ray_height := 0.35
 @export var wallrun_ray_height_top := 1.05
+@export var wallrun_roll := 0.22
+@export var wallrun_roll_speed := 10.0
 
 @export var fire_rate := 8.0
 @export var fire_damage := 25.0
@@ -198,6 +200,7 @@ func _process(delta: float) -> void:
 		var target_pos = base_gun_pos + (aim_gun_offset if is_aiming else Vector3.ZERO)
 		gun_pivot.position = gun_pivot.position.lerp(target_pos, 1.0 - exp(-aim_gun_lerp * delta))
 	_update_recoil(delta)
+	_update_wallrun_roll(delta)
 
 func _physics_process(delta: float) -> void:
 	var input_dir = _get_move_input()
@@ -624,6 +627,15 @@ func _update_recoil(delta: float) -> void:
 		cam.rotate_x(delta_offset)
 		cam.rotation.x = clamp(cam.rotation.x, -1.3, 1.3)
 		recoil_applied = recoil_offset
+
+func _update_wallrun_roll(delta: float) -> void:
+	if cam == null:
+		return
+	var target_roll := 0.0
+	if wallrunning and wallrun_normal != Vector3.ZERO:
+		var wall_on_right = wallrun_normal.dot(global_transform.basis.x) > 0.0
+		target_roll = -wallrun_roll if wall_on_right else wallrun_roll
+	cam.rotation.z = lerp(cam.rotation.z, target_roll, 1.0 - exp(-wallrun_roll_speed * delta))
 
 func _start_reload() -> void:
 	if is_reloading:
