@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3]
+[gd_scene load_steps=26 format=3]
 
 [ext_resource type="Script" path="res://scripts/Player.gd" id=1]
 [ext_resource type="Shape3D" path="res://scenes/ground_shape.tres" id=2]
@@ -50,6 +50,14 @@ material = ExtResource( 11 )
 size = Vector3(0.48, 0.12, 0.48)
 material = ExtResource( 11 )
 
+[sub_resource type="BoxMesh" id=11]
+size = Vector3(0.22, 0.16, 0.32)
+material = ExtResource( 11 )
+
+[sub_resource type="BoxMesh" id=12]
+size = Vector3(0.12, 0.18, 0.18)
+material = ExtResource( 11 )
+
 [sub_resource type="QuadMesh" id=8]
 size = Vector2(1.2, 0.16)
 
@@ -93,9 +101,17 @@ mesh = SubResource( 4 )
 position = Vector3(-0.06, -0.3, 0.08)
 mesh = SubResource( 5 )
 
+[node name="ForeGrip" type="MeshInstance3D" parent="World/Player/Camera/Gun"]
+position = Vector3(-0.06, -0.22, -0.46)
+mesh = SubResource( 12 )
+
 [node name="Sight" type="MeshInstance3D" parent="World/Player/Camera/Gun"]
 position = Vector3(0, 0.16, -0.2)
 mesh = SubResource( 6 )
+
+[node name="Stock" type="MeshInstance3D" parent="World/Player/Camera/Gun"]
+position = Vector3(0, 0.05, 0.44)
+mesh = SubResource( 11 )
 
 [node name="Mag" type="Node3D" parent="World/Player/Camera/Gun"]
 position = Vector3(0.1, -0.3, 0.18)
