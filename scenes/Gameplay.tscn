@@ -345,7 +345,7 @@ script = ExtResource( 7 )
 position = Vector3(0, 1, 0)
 
 [node name="Turret" parent="World" instance=ExtResource( 16 )]
-position = Vector3(3.5, 0, -18)
+position = Vector3(0, 0, -18)
 
 [node name="DummyCollision" type="CollisionShape3D" parent="World/Dummy"]
 shape = ExtResource( 6 )
