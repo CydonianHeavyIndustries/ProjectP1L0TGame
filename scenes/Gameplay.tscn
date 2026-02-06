@@ -18,11 +18,11 @@
 
 [sub_resource type="CapsuleShape3D" id=1]
 radius = 0.35
-height = 1.2
+height = 1.3
 
 [sub_resource type="CapsuleMesh" id=2]
 radius = 0.35
-height = 1.2
+height = 1.3
 
 [sub_resource type="BoxMesh" id=3]
 size = Vector3(0.42, 0.12, 1.35)
@@ -135,6 +135,7 @@ script = ExtResource( 1 )
 
 [node name="Camera" type="Camera3D" parent="World/Player"]
 current = true
+position = Vector3(0, 0.6, 0)
 
 [node name="GunPivot" type="Node3D" parent="World/Player/Camera"]
 position = Vector3(0.3, -0.25, -0.7)
@@ -221,7 +222,7 @@ shape = SubResource( 1 )
 mesh = SubResource( 2 )
 
 [node name="Floor" type="StaticBody3D" parent="World"]
-position = Vector3(0, -0.1, 0)
+position = Vector3(0, -0.2, 0)
 
 [node name="Collision" type="CollisionShape3D" parent="World/Floor"]
 shape = ExtResource( 2 )
