@@ -3,5 +3,5 @@
 [ext_resource type="Material" path="res://materials/placeholder_floor.tres" id=1]
 
 [resource]
-size = Vector3(10000, 1, 10000)
+size = Vector3(10000, 0.2, 10000)
 material = ExtResource( 1 )

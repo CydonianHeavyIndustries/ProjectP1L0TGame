@@ -271,13 +271,13 @@ func _physics_process(delta: float) -> void:
 		else:
 			var wall_dir = wallrun_normal.cross(Vector3.UP).normalized()
 			var desired_dir = Vector3(input_dir.x, 0, -input_dir.y)
+			var desired_world = Vector3.ZERO
 			if desired_dir.length() > 0.1:
-				desired_dir = desired_dir.normalized()
-				if wall_dir.dot(desired_dir) < 0:
-					wall_dir = -wall_dir
+				desired_world = (global_transform.basis * desired_dir).normalized()
 			else:
-				if wall_dir.dot(-transform.basis.z) < 0:
-					wall_dir = -wall_dir
+				desired_world = Vector3(velocity.x, 0, velocity.z).normalized()
+			if desired_world.length() > 0.1 and wall_dir.dot(desired_world) < 0:
+				wall_dir = -wall_dir
 			velocity.x = wall_dir.x * wallrun_speed
 			velocity.z = wall_dir.z * wallrun_speed
 			velocity += -wallrun_normal * wallrun_stick_force * delta

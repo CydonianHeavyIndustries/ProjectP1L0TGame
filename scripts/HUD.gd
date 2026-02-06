@@ -120,6 +120,7 @@ func _setup_health_bar() -> void:
 	health_back.offset_top = 2
 	health_back.offset_bottom = -2
 	health_back.color = HUD_BG
+	health_back.clip_contents = true
 
 	health_back.add_child(health_fill)
 	health_fill.anchor_left = 0.0
@@ -256,6 +257,7 @@ func _setup_cooldown_bars() -> void:
 
 func _update_health_bar(ratio: float) -> void:
 	ratio = clamp(ratio, 0.0, 1.0)
+	health_fill.offset_left = 0.0
 	health_fill.offset_right = _health_fill_max * ratio
 
 func _update_reload_bar(progress: float, active: bool) -> void:

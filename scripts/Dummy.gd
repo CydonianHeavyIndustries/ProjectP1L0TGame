@@ -77,8 +77,15 @@ func _update_healthbar() -> void:
 	if max_health > 0.0:
 		ratio = current_health / max_health
 	ratio = clamp(ratio, 0.0, 1.0)
-	health_fill.scale.x = ratio
-	health_fill.position.x = _fill_base_pos.x - (_fill_width * (1.0 - ratio) * 0.5)
+	if health_fill_mesh and health_fill_mesh.mesh is QuadMesh:
+		var quad := health_fill_mesh.mesh as QuadMesh
+		var new_width = max(0.01, _fill_width * ratio)
+		quad.size.x = new_width
+		health_fill_mesh.mesh = quad
+		health_fill_mesh.position.x = -(_fill_width - new_width) * 0.5
+	else:
+		health_fill.scale.x = ratio
+		health_fill.position.x = _fill_base_pos.x - (_fill_width * (1.0 - ratio) * 0.5)
 
 func _start_ko_jump() -> void:
 	if is_ko:
