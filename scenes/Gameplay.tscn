@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://scripts/Player.gd" id=1]
 [ext_resource type="Shape3D" path="res://scenes/ground_shape.tres" id=2]
@@ -12,6 +12,7 @@
 [ext_resource type="Material" path="res://materials/placeholder_gun.tres" id=10]
 [ext_resource type="Material" path="res://materials/placeholder_gun_accent.tres" id=11]
 [ext_resource type="Script" path="res://scripts/Gun.gd" id=12]
+[ext_resource type="Environment" path="res://scenes/sky_environment.tres" id=13]
 
 [sub_resource type="CapsuleShape3D" id=1]
 radius = 0.35
@@ -45,6 +46,9 @@ size = Vector3(0.12, 0.25, 0.2)
 material = ExtResource( 11 )
 
 [node name="Gameplay" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = ExtResource( 13 )
 
 [node name="World" type="Node3D" parent="."]
 
