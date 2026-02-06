@@ -4,7 +4,7 @@ extends Node3D
 @export var mag_eject_rotation := Vector3(-0.6, 0.0, -0.4)
 @export var mag_anim_time := 0.28
 @export var recoil_kick := Vector3(0.0, 0.0, 0.06)
-@export var recoil_rot := Vector3(-0.04, 0.0, 0.0)
+@export var recoil_rot := Vector3(0.04, 0.0, 0.0)
 @export var recoil_time := 0.06
 @export var melee_offset := Vector3(0.08, -0.04, -0.1)
 @export var melee_rot := Vector3(-0.25, 0.1, 0.0)
@@ -14,6 +14,8 @@ extends Node3D
 
 var _mag_home := Vector3.ZERO
 var _mag_home_rot := Vector3.ZERO
+var _gun_home := Vector3.ZERO
+var _gun_home_rot := Vector3.ZERO
 var _reload_tween: Tween
 var _recoil_tween: Tween
 var _melee_tween: Tween
@@ -21,6 +23,8 @@ func _ready() -> void:
 	if mag:
 		_mag_home = mag.position
 		_mag_home_rot = mag.rotation
+	_gun_home = position
+	_gun_home_rot = rotation
 
 func start_reload(total_time: float) -> void:
 	if mag == null:
@@ -42,14 +46,12 @@ func kick(_strength: float) -> void:
 	if _recoil_tween:
 		_recoil_tween.kill()
 	_recoil_tween = create_tween()
-	var start_pos = position
-	var start_rot = rotation
-	var kick_pos = start_pos + recoil_kick
-	var kick_rot = start_rot + recoil_rot
+	var kick_pos = _gun_home + recoil_kick
+	var kick_rot = _gun_home_rot + recoil_rot
 	_recoil_tween.tween_property(self, "position", kick_pos, recoil_time).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	_recoil_tween.parallel().tween_property(self, "rotation", kick_rot, recoil_time).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	_recoil_tween.tween_property(self, "position", start_pos, recoil_time * 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	_recoil_tween.parallel().tween_property(self, "rotation", start_rot, recoil_time * 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	_recoil_tween.tween_property(self, "position", _gun_home, recoil_time * 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	_recoil_tween.parallel().tween_property(self, "rotation", _gun_home_rot, recoil_time * 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
 func start_melee() -> void:
 	if _melee_tween:
@@ -61,5 +63,5 @@ func start_melee() -> void:
 	var hit_rot = start_rot + melee_rot
 	_melee_tween.tween_property(self, "position", hit_pos, melee_time).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	_melee_tween.parallel().tween_property(self, "rotation", hit_rot, melee_time).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	_melee_tween.tween_property(self, "position", start_pos, melee_time * 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	_melee_tween.parallel().tween_property(self, "rotation", start_rot, melee_time * 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	_melee_tween.tween_property(self, "position", _gun_home, melee_time * 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	_melee_tween.parallel().tween_property(self, "rotation", _gun_home_rot, melee_time * 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)

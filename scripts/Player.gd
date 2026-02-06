@@ -625,7 +625,7 @@ func _fire_hitscan() -> void:
 			target.take_damage(fire_damage)
 
 func _apply_recoil() -> void:
-	recoil_offset = clamp(recoil_offset + recoil_strength, -recoil_max, recoil_max)
+	recoil_offset = clamp(recoil_offset - recoil_strength, -recoil_max, recoil_max)
 	if gun and gun.has_method("kick"):
 		gun.kick(recoil_strength)
 
