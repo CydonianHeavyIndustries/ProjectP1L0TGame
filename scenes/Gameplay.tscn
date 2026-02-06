@@ -248,6 +248,80 @@ shape = ExtResource( 5 )
 [node name="WallRightMesh" type="MeshInstance3D" parent="World/WallRight"]
 mesh = ExtResource( 4 )
 
+[node name="RampA" type="StaticBody3D" parent="World"]
+position = Vector3(0, 0.6, 12)
+rotation = Vector3(-0.3, 0, 0)
+scale = Vector3(6, 0.25, 0.3)
+
+[node name="RampACollision" type="CollisionShape3D" parent="World/RampA"]
+shape = ExtResource( 5 )
+
+[node name="RampAMesh" type="MeshInstance3D" parent="World/RampA"]
+mesh = ExtResource( 4 )
+
+[node name="RampB" type="StaticBody3D" parent="World"]
+position = Vector3(0, 0.8, 24)
+rotation = Vector3(0.3, 0, 0)
+scale = Vector3(6, 0.25, 0.3)
+
+[node name="RampBCollision" type="CollisionShape3D" parent="World/RampB"]
+shape = ExtResource( 5 )
+
+[node name="RampBMesh" type="MeshInstance3D" parent="World/RampB"]
+mesh = ExtResource( 4 )
+
+[node name="PlatformLeft" type="StaticBody3D" parent="World"]
+position = Vector3(-10, 0.6, 20)
+scale = Vector3(4, 0.2, 0.4)
+
+[node name="PlatformLeftCollision" type="CollisionShape3D" parent="World/PlatformLeft"]
+shape = ExtResource( 5 )
+
+[node name="PlatformLeftMesh" type="MeshInstance3D" parent="World/PlatformLeft"]
+mesh = ExtResource( 4 )
+
+[node name="PlatformRight" type="StaticBody3D" parent="World"]
+position = Vector3(10, 0.6, 20)
+scale = Vector3(4, 0.2, 0.4)
+
+[node name="PlatformRightCollision" type="CollisionShape3D" parent="World/PlatformRight"]
+shape = ExtResource( 5 )
+
+[node name="PlatformRightMesh" type="MeshInstance3D" parent="World/PlatformRight"]
+mesh = ExtResource( 4 )
+
+[node name="SideRampLeft" type="StaticBody3D" parent="World"]
+position = Vector3(-12, 0.8, 36)
+rotation = Vector3(0, 0, 0.35)
+scale = Vector3(4, 0.25, 0.3)
+
+[node name="SideRampLeftCollision" type="CollisionShape3D" parent="World/SideRampLeft"]
+shape = ExtResource( 5 )
+
+[node name="SideRampLeftMesh" type="MeshInstance3D" parent="World/SideRampLeft"]
+mesh = ExtResource( 4 )
+
+[node name="SideRampRight" type="StaticBody3D" parent="World"]
+position = Vector3(12, 0.8, 36)
+rotation = Vector3(0, 0, -0.35)
+scale = Vector3(4, 0.25, 0.3)
+
+[node name="SideRampRightCollision" type="CollisionShape3D" parent="World/SideRampRight"]
+shape = ExtResource( 5 )
+
+[node name="SideRampRightMesh" type="MeshInstance3D" parent="World/SideRampRight"]
+mesh = ExtResource( 4 )
+
+[node name="HillBlock" type="StaticBody3D" parent="World"]
+position = Vector3(0, 1.1, 52)
+scale = Vector3(6, 0.35, 0.25)
+
+[node name="HillBlockCollision" type="CollisionShape3D" parent="World/HillBlock"]
+shape = ExtResource( 5 )
+
+[node name="HillBlockMesh" type="MeshInstance3D" parent="World/HillBlock"]
+mesh = ExtResource( 4 )
+
 [node name="BlinkMarker" type="Node3D" parent="World"]
 visible = false
 
