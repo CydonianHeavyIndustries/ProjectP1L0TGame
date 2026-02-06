@@ -1,0 +1,88 @@
+[gd_scene load_steps=12 format=3 uid="uid://gameplay"]
+
+[ext_resource type="Script" path="res://scripts/Player.gd" id=1]
+[ext_resource type="Shape3D" path="res://scenes/ground_shape.tres" id=2]
+[ext_resource type="Mesh" path="res://scenes/ground_mesh.tres" id=3]
+[ext_resource type="Mesh" path="res://scenes/wall_mesh.tres" id=4]
+[ext_resource type="Shape3D" path="res://scenes/wall_shape.tres" id=5]
+[ext_resource type="Shape3D" path="res://scenes/dummy_shape.tres" id=6]
+[ext_resource type="Script" path="res://scripts/Dummy.gd" id=7]
+[ext_resource type="Mesh" path="res://scenes/dummy_mesh.tres" id=8]
+[ext_resource type="Script" path="res://scripts/HUD.gd" id=9]
+[ext_resource type="PackedScene" path="res://scenes/SafeZoneArea.tscn" id=10]
+[ext_resource type="PackedScene" path="res://scenes/CoreSystems.tscn" id=11]
+
+[sub_resource type="CapsuleShape3D" id=1]
+radius = 0.35
+height = 1.2
+
+[sub_resource type="CapsuleMesh" id=2]
+radius = 0.35
+height = 1.2
+
+[node name="Gameplay" type="Node3D"]
+
+[node name="World" type="Node3D" parent="."]
+
+[node name="Player" type="CharacterBody3D" parent="World"]
+position = Vector3(0, 1.5, 0)
+script = ExtResource( 1 )
+safezone_system_path = NodePath("../../CoreSystems/SafeZoneSystem")
+
+[node name="Camera" type="Camera3D" parent="World/Player"]
+current = true
+
+[node name="PlayerCollision" type="CollisionShape3D" parent="World/Player"]
+shape = SubResource( 1 )
+
+[node name="PlayerMesh" type="MeshInstance3D" parent="World/Player"]
+mesh = SubResource( 2 )
+
+[node name="Floor" type="StaticBody3D" parent="World"]
+
+[node name="Collision" type="CollisionShape3D" parent="World/Floor"]
+shape = ExtResource( 2 )
+
+[node name="FloorMesh" type="MeshInstance3D" parent="World/Floor"]
+mesh = ExtResource( 3 )
+
+[node name="WallLeft" type="StaticBody3D" parent="World"]
+position = Vector3(-4, 1.5, -10)
+
+[node name="WallLeftCollision" type="CollisionShape3D" parent="World/WallLeft"]
+shape = ExtResource( 5 )
+
+[node name="WallLeftMesh" type="MeshInstance3D" parent="World/WallLeft"]
+mesh = ExtResource( 4 )
+
+[node name="WallRight" type="StaticBody3D" parent="World"]
+position = Vector3(4, 1.5, -10)
+
+[node name="WallRightCollision" type="CollisionShape3D" parent="World/WallRight"]
+shape = ExtResource( 5 )
+
+[node name="WallRightMesh" type="MeshInstance3D" parent="World/WallRight"]
+mesh = ExtResource( 4 )
+
+[node name="Dummy" type="StaticBody3D" parent="World"]
+position = Vector3(0, 1, -24)
+script = ExtResource( 7 )
+
+[node name="DummyCollision" type="CollisionShape3D" parent="World/Dummy"]
+shape = ExtResource( 6 )
+
+[node name="DummyMesh" type="MeshInstance3D" parent="World/Dummy"]
+mesh = ExtResource( 8 )
+
+[node name="SafeZoneArea" parent="World" instance=ExtResource( 10 )]
+position = Vector3(0, 1, 0)
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="HudWidget" type="Control" parent="HUD"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource( 9 )
+
+[node name="CoreSystems" parent="." instance=ExtResource( 11 )]
