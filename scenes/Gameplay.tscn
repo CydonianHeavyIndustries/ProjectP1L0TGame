@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3]
+[gd_scene load_steps=24 format=3]
 
 [ext_resource type="Script" path="res://scripts/Player.gd" id=1]
 [ext_resource type="Shape3D" path="res://scenes/ground_shape.tres" id=2]
@@ -24,7 +24,7 @@ radius = 0.35
 height = 1.2
 
 [sub_resource type="BoxMesh" id=3]
-size = Vector3(0.5, 0.2, 0.9)
+size = Vector3(0.55, 0.18, 1.05)
 material = ExtResource( 10 )
 
 [sub_resource type="CylinderMesh" id=4]
@@ -35,15 +35,19 @@ radial_segments = 16
 material = ExtResource( 10 )
 
 [sub_resource type="BoxMesh" id=5]
-size = Vector3(0.12, 0.25, 0.2)
+size = Vector3(0.14, 0.32, 0.22)
 material = ExtResource( 11 )
 
 [sub_resource type="BoxMesh" id=6]
-size = Vector3(0.14, 0.06, 0.2)
+size = Vector3(0.18, 0.07, 0.24)
 material = ExtResource( 10 )
 
 [sub_resource type="BoxMesh" id=7]
 size = Vector3(0.12, 0.25, 0.2)
+material = ExtResource( 11 )
+
+[sub_resource type="BoxMesh" id=10]
+size = Vector3(0.46, 0.12, 0.35)
 material = ExtResource( 11 )
 
 [sub_resource type="QuadMesh" id=8]
@@ -72,23 +76,29 @@ rotation = Vector3(0, 0.02, 0)
 script = ExtResource( 12 )
 
 [node name="Body" type="MeshInstance3D" parent="World/Player/Camera/Gun"]
+position = Vector3(0, 0.04, -0.08)
 mesh = SubResource( 3 )
 
+[node name="Wedge" type="MeshInstance3D" parent="World/Player/Camera/Gun"]
+position = Vector3(0, 0.06, -0.62)
+rotation = Vector3(-0.55, 0, 0)
+mesh = SubResource( 10 )
+
 [node name="Barrel" type="MeshInstance3D" parent="World/Player/Camera/Gun"]
-position = Vector3(0, 0, -0.7)
+position = Vector3(0, 0.02, -0.88)
 rotation = Vector3(1.5708, 0, 0)
 mesh = SubResource( 4 )
 
 [node name="Grip" type="MeshInstance3D" parent="World/Player/Camera/Gun"]
-position = Vector3(-0.05, -0.22, -0.05)
+position = Vector3(-0.06, -0.3, 0.08)
 mesh = SubResource( 5 )
 
 [node name="Sight" type="MeshInstance3D" parent="World/Player/Camera/Gun"]
-position = Vector3(0, 0.14, -0.1)
+position = Vector3(0, 0.16, -0.2)
 mesh = SubResource( 6 )
 
 [node name="Mag" type="Node3D" parent="World/Player/Camera/Gun"]
-position = Vector3(0.08, -0.25, 0.1)
+position = Vector3(0.1, -0.3, 0.18)
 
 [node name="MagMesh" type="MeshInstance3D" parent="World/Player/Camera/Gun/Mag"]
 mesh = SubResource( 7 )
