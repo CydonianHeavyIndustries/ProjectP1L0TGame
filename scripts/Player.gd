@@ -269,8 +269,14 @@ func _physics_process(delta: float) -> void:
 			_stop_wallrun()
 		else:
 			var wall_dir = wallrun_normal.cross(Vector3.UP).normalized()
-			if wall_dir.dot(-transform.basis.z) < 0:
-				wall_dir = -wall_dir
+			var desired_dir = Vector3(input_dir.x, 0, -input_dir.y)
+			if desired_dir.length() > 0.1:
+				desired_dir = desired_dir.normalized()
+				if wall_dir.dot(desired_dir) < 0:
+					wall_dir = -wall_dir
+			else:
+				if wall_dir.dot(-transform.basis.z) < 0:
+					wall_dir = -wall_dir
 			velocity.x = wall_dir.x * wallrun_speed
 			velocity.z = wall_dir.z * wallrun_speed
 			velocity += -wallrun_normal * wallrun_stick_force * delta
