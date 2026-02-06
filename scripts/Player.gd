@@ -1,4 +1,5 @@
-﻿extends CharacterBody3D
+extends CharacterBody3D
+signal died
 
 @export var walk_speed := 7.0
 @export var sprint_speed := 12.0
@@ -52,6 +53,7 @@
 @export var mag_size := 24
 @export var reserve_ammo := 120
 @export var reload_time := 1.2
+@export var safezone_system_path: NodePath
 @export var aim_fov := 55.0
 @export var aim_speed := 10.0
 @export var aim_gun_offset := Vector3(-0.18, 0.05, 0.25)
@@ -107,6 +109,7 @@ var blink_valid := false
 var melee_timer := 0.0
 var hud: Node = null
 var pause_menu: Node = null
+var safezone_system: Node = null
 var base_collider_pos := Vector3.ZERO
 var base_capsule_height := 1.2
 var base_capsule_radius := 0.35
@@ -139,6 +142,9 @@ func _ready() -> void:
 	base_fov = cam.fov
 	if gun_pivot:
 		base_gun_pos = gun_pivot.position
+	safezone_system = get_node_or_null(safezone_system_path)
+	if safezone_system == null:
+		safezone_system = get_tree().get_first_node_in_group("safezone_system")
 	_cache_collider()
 	if blink_marker:
 		blink_marker.visible = false
@@ -176,6 +182,9 @@ func _process(delta: float) -> void:
 	grenade_cooldown = max(0.0, grenade_cooldown - delta)
 	blink_cooldown = max(0.0, blink_cooldown - delta)
 	melee_timer = max(0.0, melee_timer - delta)
+
+	if Input.is_action_just_pressed("debug_kill"):
+		take_damage(max_health)
 
 	_handle_reload_input(delta)
 	_handle_titan_input(delta)
@@ -552,6 +561,15 @@ func _hud_placeholder(text: String) -> void:
 	else:
 		_hud_hint(text)
 
+func _log(message: String) -> void:
+	if not DebugConfig.LOGGING:
+		return
+	var logger = get_node_or_null("/root/Logger")
+	if logger and logger.has_method("info"):
+		logger.info("[Player] " + message)
+	else:
+		print("[Player] " + message)
+
 func _try_start_wallrun(input_dir: Vector2) -> void:
 	if wallrunning:
 		return
@@ -664,6 +682,10 @@ func _fire_hitscan() -> void:
 	var result = space.intersect_ray(params)
 	if result and result.has("collider"):
 		var target = result["collider"]
+		if target and target.is_in_group("player") and safezone_system and safezone_system.has_method("is_pvp_allowed"):
+			if not safezone_system.is_pvp_allowed(self, target):
+				_log("PvP blocked by safe zone.")
+				return
 		if target and target.has_method("take_damage"):
 			target.take_damage(fire_damage)
 			_on_hit(result)
@@ -831,6 +853,7 @@ func _die() -> void:
 	current_health = 0.0
 	velocity = Vector3.ZERO
 	_hud_hint("You died")
+	emit_signal("died")
 	var timer = get_tree().create_timer(respawn_delay)
 	timer.timeout.connect(_respawn)
 

@@ -1,4 +1,4 @@
-[gd_scene load_steps=41 format=3]
+[gd_scene load_steps=43 format=3]
 
 [ext_resource type="Script" path="res://scripts/Player.gd" id=1]
 [ext_resource type="Shape3D" path="res://scenes/ground_shape_box.tres" id=2]
@@ -136,6 +136,7 @@ position = Vector3(0, 1.5, 0)
 [node name="Player" type="CharacterBody3D" parent="World"]
 position = Vector3(0, 1.5, 0)
 script = ExtResource( 1 )
+safezone_system_path = NodePath(../../CoreSystems/SafeZoneSystem)
 
 [node name="Camera" type="Camera3D" parent="World/Player"]
 current = true
@@ -338,6 +339,8 @@ material_override = SubResource( 23 )
 [node name="Dummy" type="StaticBody3D" parent="World"]
 position = Vector3(0, 1, -24)
 script = ExtResource( 7 )
+[node name=SafeZoneArea parent=World instance=ExtResource( 17 )]
+position = Vector3(0, 1, 0)
 
 [node name="Turret" parent="World" instance=ExtResource( 16 )]
 position = Vector3(3.5, 0, -18)
@@ -450,3 +453,5 @@ text = "Credits"
 [node name="QuitButton" type="Button" parent="HUD/PauseMenu/Panel/VBox"]
 text = "Quit to Desktop"
 
+
+[node name=CoreSystems parent=. instance=ExtResource( 18 )]

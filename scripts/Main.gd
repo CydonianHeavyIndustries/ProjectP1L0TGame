@@ -6,9 +6,12 @@ extends Node
 var current_scene: Node
 
 func _ready() -> void:
-	_show_gameplay()
+	if DebugConfig.BOOT_TO_GAMEPLAY:
+		_show_gameplay()
+	else:
+		_show_title()
 
-func _show_title() -> void:
+func _show_title():
 	_clear_current()
 	current_scene = title_scene.instantiate()
 	add_child(current_scene)
