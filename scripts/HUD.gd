@@ -86,6 +86,10 @@ func _process(_delta: float) -> void:
 
 	var viewport_center = get_viewport_rect().size / 2
 	crosshair.position = viewport_center - Vector2(4, 6)
+	if gun_radial.visible:
+		_position_radial(gun_radial)
+	if titan_radial.visible:
+		_position_radial(titan_radial)
 
 func show_hint(text: String) -> void:
 	hint_label.text = text
@@ -94,9 +98,13 @@ func show_hint(text: String) -> void:
 
 func show_gun_radial(show: bool) -> void:
 	gun_radial.visible = show
+	if show:
+		_position_radial(gun_radial)
 
 func show_titan_radial(show: bool) -> void:
 	titan_radial.visible = show
+	if show:
+		_position_radial(titan_radial)
 
 func _setup_health_bar() -> void:
 	add_child(health_frame)
@@ -285,11 +293,9 @@ func _update_cooldown_bar(fill: ColorRect, label: Label, label_text: String, tim
 
 func _build_radial_menu(title: String, slots: Array) -> Control:
 	var root := Control.new()
-	root.anchors_preset = Control.PRESET_CENTER
-	root.offset_left = -150
-	root.offset_top = -150
-	root.offset_right = 150
-	root.offset_bottom = 150
+	root.anchors_preset = Control.PRESET_TOP_LEFT
+	root.size = Vector2(300, 300)
+	root.position = Vector2.ZERO
 	add_child(root)
 
 	var bg := Panel.new()
@@ -329,6 +335,19 @@ func _build_radial_menu(title: String, slots: Array) -> Control:
 		root.add_child(slot_label)
 
 	return root
+
+func _position_radial(menu: Control) -> void:
+	if menu == null:
+		return
+	var viewport_size = get_viewport_rect().size
+	var menu_size = menu.size
+	if menu_size == Vector2.ZERO:
+		menu_size = Vector2(300, 300)
+	var mouse_pos = get_viewport().get_mouse_position()
+	var target = mouse_pos - (menu_size * 0.5)
+	target.x = clamp(target.x, 0.0, max(0.0, viewport_size.x - menu_size.x))
+	target.y = clamp(target.y, 0.0, max(0.0, viewport_size.y - menu_size.y))
+	menu.position = target
 
 func _make_frame_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
