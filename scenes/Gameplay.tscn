@@ -222,7 +222,7 @@ shape = SubResource( 1 )
 mesh = SubResource( 2 )
 
 [node name="Floor" type="StaticBody3D" parent="World"]
-position = Vector3(0, -0.2, 0)
+position = Vector3(0, 0, 0)
 
 [node name="Collision" type="CollisionShape3D" parent="World/Floor"]
 shape = ExtResource( 2 )

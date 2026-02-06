@@ -208,8 +208,8 @@ func _process(delta: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	var input_dir = _get_move_input()
-	var crouch_pressed = Input.is_action_pressed("crouch") or Input.is_key_pressed(KEY_CTRL)
-	var crouch_just_pressed = Input.is_action_just_pressed("crouch") or (Input.is_key_pressed(KEY_CTRL) and not crouch_key_down)
+	var crouch_pressed = Input.is_action_pressed("crouch") or Input.is_action_pressed("slide") or Input.is_key_pressed(KEY_CTRL)
+	var crouch_just_pressed = Input.is_action_just_pressed("crouch") or Input.is_action_just_pressed("slide") or (Input.is_key_pressed(KEY_CTRL) and not crouch_key_down)
 	var prone_just_pressed = Input.is_action_just_pressed("prone") or (Input.is_key_pressed(KEY_X) and not prone_key_down)
 	var prone_pressed = Input.is_action_pressed("prone") or Input.is_key_pressed(KEY_X)
 
@@ -358,6 +358,7 @@ func _ensure_input_mappings() -> void:
 	_ensure_key_action("jump", 32)
 	_ensure_key_action("sprint", 16777248)
 	_ensure_key_action("crouch", 16777237)
+	_ensure_key_action("slide", 16777237)
 	_ensure_key_action("reload", 82)
 	_ensure_key_action("melee", 70)
 	_ensure_key_action("tactical", 71)
