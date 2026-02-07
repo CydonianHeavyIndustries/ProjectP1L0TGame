@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://bc64gw4jg61r"]
+
+[ext_resource type="Script" uid="uid://b16ete3e6wr4b" path="res://scripts/Grenade.gd" id="1_tnb4b"]
+[ext_resource type="PackedScene" uid="uid://ctqf00764m2er" path="res://Blender/Grenade_Frag.glb" id="2_1u7xw"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_gsmc7"]
+radius = 0.3491211
+height = 0.8502197
+
+[node name="Grenade" type="RigidBody3D" unique_id=849616134]
+mass = 0.4
+linear_damp = 0.05
+angular_damp = 0.1
+script = ExtResource("1_tnb4b")
+
+[node name="Grenade 1" parent="." unique_id=990830658 instance=ExtResource("2_1u7xw")]
+transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, -0.0072843134, 0.061336398, -0.14569259)
+
+[node name="Collision" type="CollisionShape3D" parent="." unique_id=1686861402]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.044128418, -0.037659258)
+shape = SubResource("CapsuleShape3D_gsmc7")

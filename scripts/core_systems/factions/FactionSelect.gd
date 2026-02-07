@@ -35,7 +35,7 @@ func _update_current_label() -> void:
 	current_label.text = "Current: %s" % FactionData.get_display_name(current)
 	_update_description(current)
 
-func _on_faction_changed(faction_id: String) -> void:
+func _on_faction_changed(_faction_id: String) -> void:
 	_update_current_label()
 
 func _on_close() -> void:

@@ -17,6 +17,7 @@ signal died
 @export var max_health := 100.0
 @export var accel_ground := 38.0
 @export var accel_air := 18.0
+@export var air_reverse_accel_multiplier := 2.0
 @export var decel_ground := 36.0
 @export var decel_air := 10.0
 @export var input_smooth := 12.0
@@ -25,16 +26,19 @@ signal died
 @export var crouch_cam_offset := -0.45
 @export var prone_cam_offset := -0.85
 @export var cam_height_lerp := 10.0
+@export var look_pitch_min := -1.3
+@export var look_pitch_max := 1.3
 @export var crouch_capsule_height := 0.7
 @export var prone_capsule_height := 0.35
 @export var jump_buffer_time := 0.12
-@export var wallrun_speed := 16.5
+@export var wallrun_speed := 11.0
 @export var wallrun_accel := 40.0
 @export var wallrun_blend_time := 0.16
 @export var wallrun_duration := 1.4
 @export var wallrun_min_speed := 4.0
 @export var wallrun_push := 6.5
 @export var wallrun_jump_speed := 14.5
+@export var walljump_alignment_min_multiplier := 0.35
 @export var wallrun_jump_up := 6.3
 @export var wallrun_stick_time := 0.28
 @export var wallrun_gravity_start := 1.8
@@ -46,10 +50,10 @@ signal died
 @export var wallrun_ray_length := 0.9
 @export var wallrun_contact_gap := 0.12
 @export var wallrun_ray_height := 0.35
-@export var wallrun_ray_height_top := 1.05
-@export var wallrun_roll := 0.26
-@export var wallrun_roll_speed := 12.0
-@export var wallrun_reentry_delay := 0.75
+@export var wallrun_ray_height_top := 1.02
+@export var wallrun_roll := 0.22
+@export var wallrun_roll_speed := 10.0
+@export var wallrun_reentry_delay := 0.18
 @export var wallrun_intent_time := 0.2
 @export var wallrun_chain_time := 0.45
 @export var climb_check_distance := 1.0
@@ -57,7 +61,6 @@ signal died
 @export var climb_forward_offset := 0.6
 @export var climb_speed := 6.5
 @export var climb_min_clearance := 0.4
-
 @export var fire_rate := 8.0
 @export var fire_damage := 25.0
 @export var fire_range := 60.0
@@ -84,6 +87,11 @@ signal died
 @export var blink_range := 12.0
 @export var blink_cooldown_time := 6.0
 @export var slide_cancel_boost := 3.5
+@export var slide_landing_inherit := 1.4
+@export var slide_downhill_friction_multiplier := 0.03
+@export var slide_uphill_speed_multiplier := 0.75
+@export var slide_downhill_accel_multiplier := 1.1
+@export var crouch_landing_boost_multiplier := 1.15
 @export var slide_min_speed := 3.5
 @export var respawn_delay := 2.0
 @export var hit_vfx_scale := 0.25
@@ -104,6 +112,7 @@ var wallrun_timer := 0.0
 var wallrun_elapsed := 0.0
 var wallrun_normal := Vector3.ZERO
 var wallrun_cooldown := 0.0
+var wallrun_chain_timer := 0.0
 var last_wall_normal := Vector3.ZERO
 var wallrun_intent := 0.0
 var wallrun_entry_speed := 0.0
@@ -139,7 +148,6 @@ var base_collider_pos := Vector3.ZERO
 var base_capsule_height := 1.2
 var base_capsule_radius := 0.35
 var recoil_offset := 0.0
-var recoil_applied := 0.0
 var is_dead := false
 var spawn_transform := Transform3D.IDENTITY
 var hit_audio: AudioStreamPlayer = null
@@ -150,6 +158,8 @@ var hit_vfx_material: StandardMaterial3D = null
 var _jump_down := false
 var _sprint_down := false
 var _crouch_down := false
+var _was_on_floor := true
+var _pitch := 0.0
 var _reload_down := false
 var _titan_down := false
 var _fire_down := false
@@ -162,7 +172,7 @@ var _aim_hold := false
 @onready var gun: Node3D = $Camera/GunPivot/Gun
 @onready var collider: CollisionShape3D = $PlayerCollision
 @onready var blink_marker: Node3D = get_parent().get_node_or_null("BlinkMarker")
-@onready var grenade_scene: PackedScene = preload("res://scenes/Grenade.tscn")
+@onready var grenade_scene: PackedScene = preload("res://scenes/Grenade_Frag.tscn")
 
 func _ready() -> void:
 	current_health = max_health
@@ -177,6 +187,8 @@ func _ready() -> void:
 	add_to_group("player")
 	base_cam_pos = cam.position
 	base_fov = cam.fov
+	_pitch = clamp(cam.rotation.x, look_pitch_min, look_pitch_max)
+	_apply_camera_pitch()
 	if gun_pivot:
 		base_gun_pos = gun_pivot.position
 	safezone_system = get_node_or_null(safezone_system_path)
@@ -218,9 +230,10 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
-		rotate_y(-event.relative.x * 0.002)
-		cam.rotate_x(-event.relative.y * 0.002)
-		cam.rotation.x = clamp(cam.rotation.x, -1.3, 1.3)
+		var look_sensitivity := 0.002
+		rotate_y(-event.relative.x * look_sensitivity)
+		_pitch = clamp(_pitch - event.relative.y * look_sensitivity, look_pitch_min, look_pitch_max)
+		_apply_camera_pitch()
 
 func _process(delta: float) -> void:
 	if is_dead:
@@ -334,6 +347,8 @@ func _physics_process(delta: float) -> void:
 		wallrun_intent = max(0.0, wallrun_intent - delta)
 	if wallrun_cooldown > 0.0:
 		wallrun_cooldown = max(0.0, wallrun_cooldown - delta)
+	if wallrun_chain_timer > 0.0:
+		wallrun_chain_timer = max(0.0, wallrun_chain_timer - delta)
 	var input_raw = _get_move_input()
 	var smooth_t = 1.0 - exp(-input_smooth * delta)
 	input_smoothed = input_smoothed.lerp(input_raw, smooth_t)
@@ -342,7 +357,7 @@ func _physics_process(delta: float) -> void:
 	var input_dir = input_smoothed
 	var horizontal_speed = Vector3(velocity.x, 0, velocity.z).length()
 	var prone_just_pressed = Input.is_action_just_pressed("prone")
-	var prone_pressed = Input.is_action_pressed("prone")
+	var _prone_pressed = Input.is_action_pressed("prone")
 	var direction = (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
 
 	if prone_just_pressed:
@@ -365,13 +380,35 @@ func _physics_process(delta: float) -> void:
 		velocity.z = slide_dir.z * slide_speed
 	elif crouch_just_pressed and not sliding and on_floor:
 		is_crouching = true
-
 	if sliding:
-		slide_timer -= delta
-		var slide_horizontal = Vector3(velocity.x, 0, velocity.z)
-		slide_horizontal = slide_horizontal.move_toward(Vector3.ZERO, slide_friction * delta)
-		velocity.x = slide_horizontal.x
-		velocity.z = slide_horizontal.z
+		var slope_dot := 0.0
+		var downhill := false
+		var slide_speed_now := Vector3(velocity.x, 0, velocity.z).length()
+		if on_floor:
+			var floor_normal = get_floor_normal()
+			if floor_normal != Vector3.ZERO:
+				var aligned = slide_dir.slide(floor_normal)
+				if aligned.length() > 0.001:
+					slide_dir = aligned.normalized()
+				var downhill_dir = Vector3.DOWN.slide(floor_normal)
+				if downhill_dir.length() > 0.001:
+					downhill_dir = downhill_dir.normalized()
+					slope_dot = slide_dir.dot(downhill_dir)
+					downhill = slope_dot > 0.1
+		if not (downhill and crouch_pressed):
+			slide_timer -= delta
+		if on_floor:
+			slide_speed_now = velocity.length()
+			if slope_dot < -0.1:
+				var uphill_cap = slide_speed * slide_uphill_speed_multiplier
+				slide_speed_now = min(slide_speed_now, uphill_cap)
+			var friction_mult := 1.0
+			if crouch_pressed and downhill:
+				friction_mult = slide_downhill_friction_multiplier
+			slide_speed_now = max(0.0, slide_speed_now - slide_friction * friction_mult * delta)
+			if downhill:
+				slide_speed_now += gravity * clamp(slope_dot, 0.0, 1.0) * slide_downhill_accel_multiplier * delta
+			velocity = slide_dir * slide_speed_now
 		if jump_just_pressed:
 			sliding = false
 			slide_timer = 0.0
@@ -379,8 +416,8 @@ func _physics_process(delta: float) -> void:
 			if on_floor:
 				velocity.y = jump_velocity
 				velocity += slide_dir * slide_cancel_boost
-		var slide_speed_now = Vector3(velocity.x, 0, velocity.z).length()
-		if slide_timer <= 0.0 or slide_speed_now < slide_min_speed:
+		var allow_timer_end = not (on_floor and downhill and crouch_pressed)
+		if (slide_timer <= 0.0 and allow_timer_end) or slide_speed_now < slide_min_speed:
 			sliding = false
 			if crouch_pressed and not is_prone:
 				is_crouching = true
@@ -404,8 +441,6 @@ func _physics_process(delta: float) -> void:
 		speed = crouch_speed
 	elif sprint_pressed:
 		speed = sprint_speed
-	if sliding:
-		speed = slide_speed
 	if not sliding:
 		var accel = accel_ground if on_floor else accel_air
 		var decel = decel_ground if on_floor else decel_air
@@ -415,6 +450,8 @@ func _physics_process(delta: float) -> void:
 			var control = 1.0
 			if not on_floor:
 				control = air_control
+				if velocity.y < 0.0 and horizontal.length() > 0.01 and horizontal.normalized().dot(direction) < 0.0:
+					accel *= air_reverse_accel_multiplier
 			horizontal = horizontal.move_toward(target_velocity, accel * control * delta)
 		else:
 			horizontal = horizontal.move_toward(Vector3.ZERO, decel * delta)
@@ -468,7 +505,19 @@ func _physics_process(delta: float) -> void:
 						takeoff_dir = _compute_wallrun_dir(wallrun_normal, input_dir)
 					if takeoff_dir.length() > 0.1:
 						takeoff_dir = takeoff_dir.normalized()
-					velocity = takeoff_dir * wallrun_jump_speed
+					var desired_dir := Vector3.ZERO
+					if input_dir.length() > 0.1:
+						desired_dir = (global_transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
+					if desired_dir.length() < 0.1:
+						desired_dir = takeoff_dir
+					var wall_jump_dir = takeoff_dir
+					if wall_jump_dir.length() < 0.1:
+						wall_jump_dir = wallrun_normal.cross(Vector3.UP).normalized()
+					var alignment := 1.0
+					if wall_jump_dir.length() > 0.1 and desired_dir.length() > 0.1:
+						alignment = clamp(abs(wall_jump_dir.dot(desired_dir)), 0.0, 1.0)
+					var speed_scale = lerp(walljump_alignment_min_multiplier, 1.0, alignment)
+					velocity = takeoff_dir * wallrun_jump_speed * speed_scale
 					velocity.y = wallrun_jump_up
 					velocity += wallrun_normal * wallrun_push
 					jump_buffer = 0.0
@@ -498,6 +547,29 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
+	var now_on_floor = is_on_floor()
+	if now_on_floor and not _was_on_floor and crouch_pressed and not is_prone and not sliding:
+		sliding = true
+		slide_timer = slide_time
+		var landing_dir = direction
+		if landing_dir.length() < 0.1:
+			var horiz = Vector3(velocity.x, 0, velocity.z)
+			if horiz.length() > 0.1:
+				landing_dir = horiz.normalized()
+			else:
+				landing_dir = -transform.basis.z
+		slide_dir = landing_dir
+		var floor_normal = get_floor_normal()
+		if floor_normal != Vector3.ZERO:
+			var aligned = slide_dir.slide(floor_normal)
+			if aligned.length() > 0.001:
+				slide_dir = aligned.normalized()
+		var horiz_speed = Vector3(velocity.x, 0, velocity.z).length()
+		var inherited_speed = horiz_speed * slide_landing_inherit
+		var boost_speed = max(slide_speed * crouch_landing_boost_multiplier, inherited_speed)
+		velocity.x = slide_dir.x * boost_speed
+		velocity.z = slide_dir.z * boost_speed
+
 	var target_offset := base_cam_pos
 	if is_prone:
 		target_offset = base_cam_pos + Vector3(0, prone_cam_offset, 0)
@@ -507,6 +579,7 @@ func _physics_process(delta: float) -> void:
 	_jump_down = jump_key
 	_sprint_down = sprint_key
 	_crouch_down = crouch_key
+	_was_on_floor = now_on_floor
 
 func _get_move_input() -> Vector2:
 	var input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
@@ -515,6 +588,11 @@ func _get_move_input() -> Vector2:
 		var y = int(Input.is_key_pressed(KEY_W)) - int(Input.is_key_pressed(KEY_S))
 		input_dir = Vector2(x, y)
 	return input_dir.normalized()
+
+func _apply_camera_pitch() -> void:
+	if cam == null:
+		return
+	cam.rotation.x = clamp(_pitch + recoil_offset, look_pitch_min, look_pitch_max)
 
 func _capture_mouse() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
@@ -571,7 +649,7 @@ func _ensure_default_input() -> void:
 	_ensure_mouse_action("aim", MOUSE_BUTTON_RIGHT)
 	_ensure_mouse_action("class_ability", MOUSE_BUTTON_MIDDLE)
 
-func _ensure_key_action(action: String, keycode: int) -> void:
+func _ensure_key_action(action: String, keycode: Key) -> void:
 	if not InputMap.has_action(action):
 		InputMap.add_action(action)
 	var events := InputMap.action_get_events(action)
@@ -708,22 +786,22 @@ func _update_blink_target() -> void:
 	if blink_marker:
 		blink_marker.global_position = blink_target + Vector3(0.0, 0.02, 0.0)
 
-func _set_blink_marker_visible(show: bool) -> void:
+func _set_blink_marker_visible(visible: bool) -> void:
 	if blink_marker:
-		blink_marker.visible = show
+		blink_marker.visible = visible
 
-func _show_gun_radial(show: bool) -> void:
+func _show_gun_radial(visible: bool) -> void:
 	if hud and hud.has_method("show_gun_radial"):
-		hud.show_gun_radial(show)
-	_set_radial_mouse(show)
+		hud.show_gun_radial(visible)
+	_set_radial_mouse(visible)
 
-func _show_titan_radial(show: bool) -> void:
+func _show_titan_radial(visible: bool) -> void:
 	if hud and hud.has_method("show_titan_radial"):
-		hud.show_titan_radial(show)
-	_set_radial_mouse(show)
+		hud.show_titan_radial(visible)
+	_set_radial_mouse(visible)
 
-func _set_radial_mouse(show: bool) -> void:
-	if show:
+func _set_radial_mouse(visible: bool) -> void:
+	if visible:
 		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	else:
 		if not get_tree().paused:
@@ -760,10 +838,13 @@ func _try_start_wallrun(input_dir: Vector2) -> void:
 		return
 	var hit = _get_wallrun_hit()
 	if hit and hit.has("normal"):
-		if wallrun_cooldown > 0.0 and wallrun_intent <= 0.0 and last_wall_normal != Vector3.ZERO:
+		if last_wall_normal != Vector3.ZERO:
 			var dot = hit["normal"].dot(last_wall_normal)
 			if dot > 0.8:
-				return
+				if wallrun_chain_timer > 0.0:
+					return
+				if wallrun_cooldown > 0.0 and wallrun_intent <= 0.0:
+					return
 		var desired = Vector3.ZERO
 		if input_dir.length() > 0.1:
 			desired = (global_transform.basis * Vector3(input_dir.x, 0, input_dir.y))
@@ -863,6 +944,7 @@ func _stop_wallrun(jumped: bool = false) -> void:
 	if wallrun_normal != Vector3.ZERO:
 		last_wall_normal = wallrun_normal
 		wallrun_cooldown = wallrun_reentry_delay
+	wallrun_chain_timer = wallrun_chain_time
 	wallrun_normal = Vector3.ZERO
 	if jumped:
 		wallrun_intent = 0.0
@@ -986,11 +1068,7 @@ func _update_recoil(delta: float) -> void:
 	if cam == null:
 		return
 	recoil_offset = lerp(recoil_offset, 0.0, 1.0 - exp(-recoil_return_speed * delta))
-	var delta_offset = recoil_offset - recoil_applied
-	if abs(delta_offset) > 0.000001:
-		cam.rotate_x(delta_offset)
-		cam.rotation.x = clamp(cam.rotation.x, -1.3, 1.3)
-		recoil_applied = recoil_offset
+	_apply_camera_pitch()
 
 func _update_wallrun_roll(delta: float) -> void:
 	if cam == null:
