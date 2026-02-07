@@ -1,103 +1,119 @@
 extends CharacterBody3D
 signal died
 
-@export var walk_speed := 8.5
-@export var sprint_speed := 18.5
-@export var crouch_speed := 6.0
-@export var prone_speed := 2.4
-@export var jump_velocity := 7.2
-@export var double_jump_velocity := 6.6
+@export var walk_speed := 7.2
+@export var sprint_speed := 20.5
+@export var crouch_speed := 5.4
+@export var prone_speed := 3.0
+@export var jump_velocity := 8.4
+@export var double_jump_velocity := 7.4
 @export var max_air_jumps := 1
-@export var slide_speed := 22.0
-@export var slide_time := 0.45
-@export var slide_friction := 2.8
-@export var gravity := 13.5
-@export var gravity_fall_multiplier := 2.1
-@export var gravity_jump_cut_multiplier := 2.6
+@export var slide_speed := 24.0
+@export var slide_time := 0.55
+@export var slide_friction := 1.7
+@export var gravity := 14.5
+@export var gravity_fall_multiplier := 2.25
+@export var gravity_jump_cut_multiplier := 2.4
 @export var max_health := 100.0
-@export var accel_ground := 38.0
-@export var accel_air := 18.0
-@export var air_reverse_accel_multiplier := 2.0
-@export var decel_ground := 36.0
-@export var decel_air := 10.0
-@export var input_smooth := 12.0
+@export var accel_ground := 46.0
+@export var accel_air := 20.0
+@export var air_reverse_accel_multiplier := 1.8
+@export var decel_ground := 52.0
+@export var decel_air := 12.0
+@export var input_smooth := 10.0
 @export var coyote_time := 0.12
-@export var air_control := 0.85
-@export var crouch_cam_offset := -0.45
-@export var prone_cam_offset := -0.85
+@export var air_control := 0.9
+@export var crouch_cam_offset := -0.5
+@export var prone_cam_offset := -0.7
 @export var cam_height_lerp := 10.0
 @export var look_pitch_min := -1.3
 @export var look_pitch_max := 1.3
-@export var crouch_capsule_height := 0.7
-@export var prone_capsule_height := 0.35
+@export var crouch_capsule_height := 0.85
+@export var prone_capsule_height := 0.6
 @export var jump_buffer_time := 0.12
-@export var wallrun_speed := 11.0
-@export var wallrun_accel := 40.0
-@export var wallrun_blend_time := 0.16
-@export var wallrun_duration := 1.4
-@export var wallrun_min_speed := 4.0
-@export var wallrun_push := 6.5
-@export var wallrun_jump_speed := 14.5
-@export var walljump_alignment_min_multiplier := 0.35
-@export var wallrun_jump_up := 6.3
-@export var wallrun_stick_time := 0.28
-@export var wallrun_gravity_start := 1.8
-@export var wallrun_gravity_end := 14.0
-@export var wallrun_gravity_curve := 1.5
-@export var wallrun_stick_gravity := 0.15
-@export var wallrun_stick_force := 28.0
-@export var wallrun_up_cap := 0.3
-@export var wallrun_ray_length := 0.9
-@export var wallrun_contact_gap := 0.12
-@export var wallrun_ray_height := 0.35
-@export var wallrun_ray_height_top := 1.02
-@export var wallrun_roll := 0.22
-@export var wallrun_roll_speed := 10.0
-@export var wallrun_reentry_delay := 0.18
-@export var wallrun_intent_time := 0.2
-@export var wallrun_chain_time := 0.45
-@export var climb_check_distance := 1.0
-@export var climb_height := 1.4
-@export var climb_forward_offset := 0.6
-@export var climb_speed := 6.5
-@export var climb_min_clearance := 0.4
+@export var wallrun_speed := 13.0
+@export var wallrun_accel := 55.0
+@export var wallrun_blend_time := 0.2
+@export var wallrun_duration := 1.35
+@export var wallrun_min_speed := 4.5
+@export var wallrun_push := 5.5
+@export var wallrun_jump_speed := 15.5
+@export var walljump_alignment_min_multiplier := 0.45
+@export var wallrun_jump_up := 7.0
+@export var wallrun_stick_time := 0.2
+@export var wallrun_gravity_start := 2.4
+@export var wallrun_gravity_end := 17.0
+@export var wallrun_gravity_curve := 1.25
+@export var wallrun_stick_gravity := 0.2
+@export var wallrun_stick_force := 32.0
+@export var wallrun_up_cap := 0.12
+@export var wallrun_ray_length := 0.75
+@export var wallrun_contact_gap := 0.05
+@export var wallrun_ray_height := 0.4
+@export var wallrun_ray_height_top := 1.1
+@export var wallrun_roll := 0.26
+@export var wallrun_roll_speed := 12.0
+@export var wallrun_reentry_delay := 0.75
+@export var wallrun_intent_time := 0.25
+@export var wallrun_chain_time := 0.35
+@export var climb_check_distance := 1.2
+@export var climb_height := 1.7
+@export var climb_forward_offset := 0.7
+@export var climb_speed := 7.0
+@export var climb_min_clearance := 0.45
 @export var fire_rate := 8.0
 @export var fire_damage := 25.0
 @export var fire_range := 60.0
-@export var bullet_speed := 55.0
-@export var bullet_lifetime := 0.5
+@export var bullet_speed := 35.0
+@export var bullet_lifetime := 0.8
 @export var bullet_tracer_color := Color(1.0, 0.85, 0.3, 0.9)
-@export var bullet_tracer_radius := 0.02
-@export var recoil_strength := 0.008
-@export var recoil_return_speed := 16.0
-@export var recoil_max := 0.25
+@export var bullet_tracer_radius := 0.035
+@export var recoil_strength := 0.01
+@export var recoil_return_speed := 18.0
+@export var recoil_max := 0.2
 @export var mag_size := 24
 @export var reserve_ammo := 120
 @export var reload_time := 1.2
 @export var safezone_system_path: NodePath
-@export var aim_fov := 55.0
+@export var aim_fov := 58.0
 @export var aim_speed := 10.0
 @export var aim_gun_offset := Vector3(-0.18, 0.05, 0.25)
 @export var aim_gun_lerp := 14.0
 @export var melee_cooldown := 0.45
+@export var quick_melee_cooldown := 0.25
+@export var melee_damage := 35.0
+@export var melee_range := 2.0
 @export var radial_hold_time := 0.35
 @export var grenade_throw_force := 12.0
 @export var grenade_upward_force := 2.5
 @export var grenade_cooldown_time := 3.5
 @export var blink_range := 12.0
 @export var blink_cooldown_time := 6.0
-@export var slide_cancel_boost := 3.5
-@export var slide_landing_inherit := 1.4
-@export var slide_downhill_friction_multiplier := 0.03
-@export var slide_uphill_speed_multiplier := 0.75
-@export var slide_downhill_accel_multiplier := 1.1
-@export var crouch_landing_boost_multiplier := 1.15
-@export var slide_min_speed := 3.5
+@export var slide_cancel_boost := 4.0
+@export var slide_landing_inherit := 1.6
+@export var slide_downhill_friction_multiplier := 0.06
+@export var slide_uphill_speed_multiplier := 0.8
+@export var slide_downhill_accel_multiplier := 1.2
+@export var crouch_landing_boost_multiplier := 1.2
+@export var slide_min_speed := 4.0
 @export var respawn_delay := 2.0
 @export var hit_vfx_scale := 0.25
 @export var hit_vfx_lifetime := 0.12
 
+const WEAPON_RIFLE := 1
+const WEAPON_SNIPER := 2
+const WEAPON_ROCKET := 3
+const WEAPON_PISTOL := 4
+const WEAPON_SWORD := 5
+
 var current_health := 100.0
+var current_weapon := WEAPON_RIFLE
+var weapon_configs := {}
+var weapon_mag_store := {}
+var weapon_reserve_store := {}
+var weapon_mode := "hitscan"
+var weapon_projectile_speed := 0.0
+var weapon_projectile_lifetime := 0.0
 var sliding := false
 var slide_timer := 0.0
 var slide_dir := Vector3.ZERO
@@ -140,7 +156,10 @@ var blink_cooldown := 0.0
 var blink_hold := false
 var blink_target := Vector3.ZERO
 var blink_valid := false
+var aim_point := Vector3.ZERO
+var aim_point_valid := false
 var melee_timer := 0.0
+var quick_melee_timer := 0.0
 var hud: Node = null
 var pause_menu: Node = null
 var safezone_system: Node = null
@@ -155,17 +174,8 @@ var hurt_audio: AudioStreamPlayer = null
 var hit_stream: AudioStreamGenerator = null
 var hurt_stream: AudioStreamGenerator = null
 var hit_vfx_material: StandardMaterial3D = null
-var _jump_down := false
-var _sprint_down := false
-var _crouch_down := false
 var _was_on_floor := true
 var _pitch := 0.0
-var _reload_down := false
-var _titan_down := false
-var _fire_down := false
-var _aim_down := false
-var _esc_down := false
-var _aim_hold := false
 
 @onready var cam: Camera3D = $Camera
 @onready var gun_pivot: Node3D = $Camera/GunPivot
@@ -173,6 +183,7 @@ var _aim_hold := false
 @onready var collider: CollisionShape3D = $PlayerCollision
 @onready var blink_marker: Node3D = get_parent().get_node_or_null("BlinkMarker")
 @onready var grenade_scene: PackedScene = preload("res://scenes/Grenade_Frag.tscn")
+@onready var rocket_scene: PackedScene = preload("res://scenes/RocketProjectile.tscn")
 
 func _ready() -> void:
 	current_health = max_health
@@ -180,7 +191,11 @@ func _ready() -> void:
 	air_jumps_left = max_air_jumps
 	set_process_input(true)
 	set_process_unhandled_input(true)
+	InputMap.load_from_project_settings()
 	_ensure_default_input()
+	_purge_conflicting_keybinds()
+	_init_weapon_configs()
+	_equip_weapon(WEAPON_RIFLE, true)
 	call_deferred("_capture_mouse")
 	call_deferred("_cache_hud")
 	call_deferred("_cache_pause_menu")
@@ -209,7 +224,7 @@ func _notification(what: int) -> void:
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 func _input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE):
+	if event.is_action_pressed("ui_cancel"):
 		_toggle_pause()
 		get_viewport().set_input_as_handled()
 		return
@@ -217,11 +232,7 @@ func _input(event: InputEvent) -> void:
 		_toggle_fullscreen()
 		get_viewport().set_input_as_handled()
 		return
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
-		_aim_hold = event.pressed
 	if event.is_action_pressed("jump"):
-		jump_buffer = jump_buffer_time
-	if event is InputEventKey and event.pressed and event.keycode == KEY_SPACE:
 		jump_buffer = jump_buffer_time
 	if is_dead:
 		return
@@ -238,17 +249,15 @@ func _input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if is_dead:
 		return
-	var esc_pressed = Input.is_action_pressed("ui_cancel") or _key_pressed(KEY_ESCAPE)
-	var esc_just_pressed = (esc_pressed and not _esc_down) or Input.is_action_just_pressed("ui_cancel")
-	if esc_just_pressed:
-		_toggle_pause()
-	_esc_down = esc_pressed
 	if get_tree().paused:
 		return
+	if Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED and not reload_radial_open and not titan_radial_open:
+		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	fire_cooldown = max(0.0, fire_cooldown - delta)
 	grenade_cooldown = max(0.0, grenade_cooldown - delta)
 	blink_cooldown = max(0.0, blink_cooldown - delta)
 	melee_timer = max(0.0, melee_timer - delta)
+	quick_melee_timer = max(0.0, quick_melee_timer - delta)
 
 	if Input.is_action_just_pressed("debug_kill"):
 		take_damage(max_health)
@@ -265,17 +274,17 @@ func _process(delta: float) -> void:
 	else:
 		reload_progress = 0.0
 
-	var fire_pressed = Input.is_action_pressed("fire") or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
-	_fire_down = fire_pressed
+	var fire_pressed = Input.is_action_pressed("fire")
 	if not reload_radial_open and not titan_radial_open and fire_pressed:
 		_try_fire()
 
 	if Input.is_action_just_pressed("melee"):
-		if melee_timer <= 0.0:
-			melee_timer = melee_cooldown
+		if quick_melee_timer <= 0.0:
+			quick_melee_timer = quick_melee_cooldown
 			if gun and gun.has_method("start_melee"):
 				gun.start_melee()
-		_hud_placeholder("Melee (placeholder)")
+			_perform_melee()
+		_hud_placeholder("Quick Melee")
 	if Input.is_action_just_pressed("class_ability"):
 		_hud_placeholder("Blink ability (hold MMB)")
 	if Input.is_action_just_pressed("tactical"):
@@ -293,21 +302,25 @@ func _process(delta: float) -> void:
 	if Input.is_action_just_pressed("inventory"):
 		_hud_placeholder("Inventory (placeholder)")
 	if Input.is_action_just_pressed("weapon_primary"):
-		_hud_placeholder("Main weapon (placeholder)")
+		_equip_weapon(WEAPON_RIFLE)
 	if Input.is_action_just_pressed("weapon_secondary"):
-		_hud_placeholder("Secondary weapon (placeholder)")
+		_equip_weapon(WEAPON_SNIPER)
 	if Input.is_action_just_pressed("weapon_tertiary"):
-		_hud_placeholder("Tertiary weapon (placeholder)")
-	if Input.is_action_just_pressed("weapon_melee"):
-		_hud_placeholder("Melee slot (placeholder)")
-	if Input.is_action_just_pressed("weapon_extras"):
-		_hud_placeholder("Extras slot (placeholder)")
+		_equip_weapon(WEAPON_ROCKET)
+	if Input.is_action_just_pressed("weapon_melee") and not Input.is_action_pressed("melee"):
+		_equip_weapon(WEAPON_PISTOL)
+	if Input.is_action_just_pressed("weapon_extras") and not Input.is_action_pressed("melee"):
+		_equip_weapon(WEAPON_SWORD)
 	if Input.is_action_just_pressed("chat"):
 		_hud_placeholder("Chat (placeholder)")
+	if Input.is_action_just_pressed("mark_location"):
+		var pos = global_transform.origin
+		var msg = "MARK: %.2f, %.2f, %.2f" % [pos.x, pos.y, pos.z]
+		_hud_placeholder(msg)
+		_log(msg)
 
-	var aim_pressed = _aim_hold or Input.is_action_pressed("aim") or Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
-	_aim_down = aim_pressed
-	is_aiming = aim_pressed and not is_reloading and not reload_hold and not reload_radial_open and not titan_radial_open and not sliding
+	var aim_pressed = Input.is_action_pressed("aim")
+	is_aiming = aim_pressed and weapon_mode != "melee" and not is_reloading and not reload_hold and not reload_radial_open and not titan_radial_open and not sliding
 	var target_fov = aim_fov if is_aiming else base_fov
 	cam.fov = lerp(cam.fov, target_fov, 1.0 - exp(-aim_speed * delta))
 	if gun_pivot:
@@ -315,6 +328,7 @@ func _process(delta: float) -> void:
 		gun_pivot.position = gun_pivot.position.lerp(target_pos, 1.0 - exp(-aim_gun_lerp * delta))
 	_update_recoil(delta)
 	_update_wallrun_roll(delta)
+	_update_aim_point()
 
 func _physics_process(delta: float) -> void:
 	if is_dead:
@@ -330,14 +344,10 @@ func _physics_process(delta: float) -> void:
 		return
 	if on_floor or wallrunning:
 		air_jumps_left = max_air_jumps
-	var sprint_key = _key_pressed(KEY_SHIFT)
-	var sprint_pressed = Input.is_action_pressed("sprint") or sprint_key
-	var sprint_just_pressed = Input.is_action_just_pressed("sprint") or (sprint_key and not _sprint_down)
-	var crouch_key = _key_pressed(KEY_C)
-	var crouch_pressed = Input.is_action_pressed("crouch") or Input.is_action_pressed("slide") or crouch_key
-	var crouch_just_pressed = Input.is_action_just_pressed("crouch") or Input.is_action_just_pressed("slide") or (crouch_key and not _crouch_down)
-	var jump_key = _key_pressed(KEY_SPACE)
-	var jump_just_pressed = Input.is_action_just_pressed("jump") or (jump_key and not _jump_down)
+	var sprint_pressed = Input.is_action_pressed("sprint")
+	var crouch_pressed = Input.is_action_pressed("crouch") or Input.is_action_pressed("slide")
+	var crouch_just_pressed = Input.is_action_just_pressed("crouch") or Input.is_action_just_pressed("slide")
+	var jump_just_pressed = Input.is_action_just_pressed("jump")
 	if jump_just_pressed:
 		jump_buffer = jump_buffer_time
 	var jump_request = jump_just_pressed or jump_buffer > 0.0
@@ -357,18 +367,21 @@ func _physics_process(delta: float) -> void:
 	var input_dir = input_smoothed
 	var horizontal_speed = Vector3(velocity.x, 0, velocity.z).length()
 	var prone_just_pressed = Input.is_action_just_pressed("prone")
-	var _prone_pressed = Input.is_action_pressed("prone")
 	var direction = (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
 
-	if prone_just_pressed:
+	if prone_just_pressed and on_floor and not sliding:
 		is_prone = not is_prone
 		if is_prone:
 			is_crouching = false
 
+	if is_prone and (not on_floor or sliding):
+		is_prone = false
+
 	if is_prone and crouch_just_pressed:
 		is_prone = false
 		is_crouching = true
-	var wants_slide = sprint_pressed and crouch_pressed and (crouch_just_pressed or sprint_just_pressed) and not sliding and on_floor and not is_prone and input_dir.length() > 0.1
+	var can_slide = on_floor and not sliding and not is_prone and (horizontal_speed >= slide_min_speed or input_dir.length() > 0.1)
+	var wants_slide = sprint_pressed and crouch_just_pressed and can_slide
 	if wants_slide:
 		sliding = true
 		slide_timer = slide_time
@@ -489,16 +502,18 @@ func _physics_process(delta: float) -> void:
 				velocity.z = wall_horiz.z
 				if velocity.y > wallrun_up_cap:
 					velocity.y = wallrun_up_cap
-				velocity += -wallrun_normal * wallrun_stick_force * delta
+				var stick_strength = wallrun_stick_force * clamp(blend, 0.2, 1.0)
+				velocity += -wallrun_normal * stick_strength * delta
 				if wallrun_elapsed < wallrun_stick_time:
 					var stick_grav = wallrun_gravity_start * wallrun_stick_gravity
-					velocity.y = max(velocity.y - (stick_grav * delta), 0.05)
+					velocity.y = min(velocity.y, wallrun_up_cap)
+					velocity.y -= stick_grav * delta
 				else:
 					var t = clamp((wallrun_elapsed - wallrun_stick_time) / max(0.01, wallrun_duration - wallrun_stick_time), 0.0, 1.0)
 					var curve = pow(t, wallrun_gravity_curve)
 					var grav = lerp(wallrun_gravity_start, wallrun_gravity_end, curve)
 					velocity.y -= grav * delta
-				if jump_request:
+				if jump_just_pressed:
 					var horiz = Vector3(velocity.x, 0, velocity.z)
 					var takeoff_dir = horiz
 					if takeoff_dir.length() < 0.1:
@@ -530,7 +545,7 @@ func _physics_process(delta: float) -> void:
 			elif velocity.y > 0.0 and not Input.is_action_pressed("jump"):
 				grav = gravity * gravity_jump_cut_multiplier
 			velocity.y -= grav * delta
-			if not is_prone and (input_dir.length() > 0.1 or horizontal_speed > (wallrun_min_speed * 0.6)):
+			if not is_prone and (horizontal_speed >= wallrun_min_speed or wallrun_intent > 0.0):
 				_try_start_wallrun(input_dir)
 			if jump_request and air_jumps_left > 0 and not is_prone:
 				air_jumps_left -= 1
@@ -576,23 +591,16 @@ func _physics_process(delta: float) -> void:
 	elif is_crouching or sliding:
 		target_offset = base_cam_pos + Vector3(0, crouch_cam_offset, 0)
 	cam.position = cam.position.lerp(target_offset, 1.0 - exp(-cam_height_lerp * delta))
-	_jump_down = jump_key
-	_sprint_down = sprint_key
-	_crouch_down = crouch_key
 	_was_on_floor = now_on_floor
 
 func _get_move_input() -> Vector2:
 	var input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
-	if input_dir == Vector2.ZERO:
-		var x = int(Input.is_key_pressed(KEY_D)) - int(Input.is_key_pressed(KEY_A))
-		var y = int(Input.is_key_pressed(KEY_W)) - int(Input.is_key_pressed(KEY_S))
-		input_dir = Vector2(x, y)
 	return input_dir.normalized()
 
 func _apply_camera_pitch() -> void:
 	if cam == null:
 		return
-	cam.rotation.x = clamp(_pitch + recoil_offset, look_pitch_min, look_pitch_max)
+	cam.rotation.x = clamp(_pitch - recoil_offset, look_pitch_min, look_pitch_max)
 
 func _capture_mouse() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
@@ -643,25 +651,56 @@ func _ensure_default_input() -> void:
 	_ensure_key_action("crouch", KEY_C)
 	_ensure_key_action("slide", KEY_C)
 	_ensure_key_action("reload", KEY_R)
+	_ensure_key_action("melee", KEY_F)
+	_ensure_key_action("tactical", KEY_G)
+	_ensure_key_action("special1", KEY_Q)
+	_ensure_key_action("prone", KEY_X)
+	_ensure_key_action("titan_drop", KEY_V)
+	_ensure_key_action("interact", KEY_E)
+	_ensure_key_action("map", KEY_M)
+	_ensure_key_action("quests", KEY_L)
+	_ensure_key_action("socials", KEY_P)
+	_ensure_key_action("chat", KEY_ENTER)
+	_ensure_key_action("inventory", KEY_I)
+	_ensure_key_action("weapon_primary", KEY_1)
+	_ensure_key_action("weapon_secondary", KEY_2)
+	_ensure_key_action("weapon_tertiary", KEY_3)
+	_ensure_key_action("weapon_melee", KEY_4)
+	_ensure_key_action("weapon_extras", KEY_5)
 	_ensure_key_action("ui_cancel", KEY_ESCAPE)
 	_ensure_key_action("fullscreen", KEY_F11)
+	_ensure_key_action("mark_location", KEY_F6)
+	_ensure_key_action("debug_kill", KEY_K)
 	_ensure_mouse_action("fire", MOUSE_BUTTON_LEFT)
 	_ensure_mouse_action("aim", MOUSE_BUTTON_RIGHT)
 	_ensure_mouse_action("class_ability", MOUSE_BUTTON_MIDDLE)
+
+func _purge_conflicting_keybinds() -> void:
+	# Ensure F is only used for fast melee.
+	_remove_key_from_action("weapon_primary", KEY_F)
+	_remove_key_from_action("weapon_secondary", KEY_F)
+	_remove_key_from_action("weapon_tertiary", KEY_F)
+	_remove_key_from_action("weapon_melee", KEY_F)
+	_remove_key_from_action("weapon_extras", KEY_F)
+
+func _remove_key_from_action(action: String, keycode: Key) -> void:
+	if not InputMap.has_action(action):
+		return
+	var events := InputMap.action_get_events(action)
+	for ev in events:
+		if ev is InputEventKey and (ev.keycode == keycode or ev.physical_keycode == keycode):
+			InputMap.action_erase_event(action, ev)
 
 func _ensure_key_action(action: String, keycode: Key) -> void:
 	if not InputMap.has_action(action):
 		InputMap.add_action(action)
 	var events := InputMap.action_get_events(action)
 	for ev in events:
-		if ev is InputEventKey and ev.keycode == keycode:
+		if ev is InputEventKey and (ev.keycode == keycode or ev.physical_keycode == keycode):
 			return
 	var add := InputEventKey.new()
 	add.keycode = keycode
 	InputMap.action_add_event(action, add)
-
-func _key_pressed(keycode: int) -> bool:
-	return Input.is_key_pressed(keycode) or Input.is_physical_key_pressed(keycode)
 
 func _ensure_mouse_action(action: String, button_index: int) -> void:
 	if not InputMap.has_action(action):
@@ -675,10 +714,9 @@ func _ensure_mouse_action(action: String, button_index: int) -> void:
 	InputMap.action_add_event(action, add)
 
 func _handle_reload_input(delta: float) -> void:
-	var reload_key = _key_pressed(KEY_R)
-	var reload_pressed = Input.is_action_pressed("reload") or reload_key
-	var reload_just_pressed = Input.is_action_just_pressed("reload") or (reload_key and not _reload_down)
-	var reload_just_released = Input.is_action_just_released("reload") or (not reload_key and _reload_down)
+	var reload_pressed = Input.is_action_pressed("reload")
+	var reload_just_pressed = Input.is_action_just_pressed("reload")
+	var reload_just_released = Input.is_action_just_released("reload")
 	if reload_just_pressed:
 		reload_hold = true
 		reload_hold_time = 0.0
@@ -705,13 +743,11 @@ func _handle_reload_input(delta: float) -> void:
 		if reload_radial_open:
 			_show_gun_radial(false)
 			reload_radial_open = false
-	_reload_down = reload_pressed
 
 func _handle_titan_input(delta: float) -> void:
-	var titan_key = _key_pressed(KEY_V)
-	var titan_pressed = Input.is_action_pressed("titan_drop") or titan_key
-	var titan_just_pressed = Input.is_action_just_pressed("titan_drop") or (titan_key and not _titan_down)
-	var titan_just_released = Input.is_action_just_released("titan_drop") or (not titan_key and _titan_down)
+	var titan_pressed = Input.is_action_pressed("titan_drop")
+	var titan_just_pressed = Input.is_action_just_pressed("titan_drop")
+	var titan_just_released = Input.is_action_just_released("titan_drop")
 	if titan_just_pressed:
 		titan_hold = true
 		titan_hold_time = 0.0
@@ -737,7 +773,6 @@ func _handle_titan_input(delta: float) -> void:
 		if titan_radial_open:
 			_show_titan_radial(false)
 			titan_radial_open = false
-	_titan_down = titan_pressed
 
 func _handle_grenade_input() -> void:
 	if Input.is_action_just_pressed("tactical"):
@@ -790,6 +825,149 @@ func _set_blink_marker_visible(visible: bool) -> void:
 	if blink_marker:
 		blink_marker.visible = visible
 
+func _update_aim_point() -> void:
+	if cam == null:
+		aim_point_valid = false
+		return
+	var space = get_world_3d().direct_space_state
+	var from = cam.global_transform.origin
+	var to = from + (-cam.global_transform.basis.z * 140.0)
+	var params = PhysicsRayQueryParameters3D.create(from, to)
+	params.exclude = [self]
+	var hit = space.intersect_ray(params)
+	if hit and hit.has("position"):
+		aim_point = hit["position"]
+		aim_point_valid = true
+	else:
+		aim_point = to
+		aim_point_valid = false
+
+func _init_weapon_configs() -> void:
+	weapon_configs = {
+		WEAPON_RIFLE: {
+			"name": "Rifle",
+			"visual": "rifle",
+			"mode": "hitscan",
+			"fire_rate": 8.0,
+			"damage": 25.0,
+			"mag": 24,
+			"reserve": 120,
+			"reload": 1.2,
+			"aim_fov": 58.0,
+			"recoil": 0.01,
+			"recoil_max": 0.2,
+			"bullet_speed": 35.0,
+			"bullet_life": 0.8,
+			"tracer_radius": 0.035
+		},
+		WEAPON_SNIPER: {
+			"name": "Sniper",
+			"visual": "sniper",
+			"mode": "hitscan",
+			"fire_rate": 1.1,
+			"damage": 90.0,
+			"mag": 5,
+			"reserve": 20,
+			"reload": 2.2,
+			"aim_fov": 38.0,
+			"recoil": 0.035,
+			"recoil_max": 0.35,
+			"bullet_speed": 60.0,
+			"bullet_life": 1.1,
+			"tracer_radius": 0.05
+		},
+		WEAPON_ROCKET: {
+			"name": "Rocket",
+			"visual": "rocket",
+			"mode": "projectile",
+			"fire_rate": 0.8,
+			"damage": 120.0,
+			"mag": 2,
+			"reserve": 8,
+			"reload": 2.6,
+			"aim_fov": 60.0,
+			"recoil": 0.02,
+			"recoil_max": 0.25,
+			"projectile_speed": 18.0,
+			"projectile_life": 3.0
+		},
+		WEAPON_PISTOL: {
+			"name": "Pistol",
+			"visual": "pistol",
+			"mode": "hitscan",
+			"fire_rate": 6.0,
+			"damage": 16.0,
+			"mag": 12,
+			"reserve": 60,
+			"reload": 1.1,
+			"aim_fov": 62.0,
+			"recoil": 0.008,
+			"recoil_max": 0.12,
+			"bullet_speed": 30.0,
+			"bullet_life": 0.7,
+			"tracer_radius": 0.03
+		},
+		WEAPON_SWORD: {
+			"name": "Sword",
+			"visual": "sword",
+			"mode": "melee",
+			"fire_rate": 2.0,
+			"damage": 55.0,
+			"mag": 0,
+			"reserve": 0,
+			"reload": 0.0,
+			"aim_fov": base_fov,
+			"recoil": 0.0,
+			"recoil_max": 0.0
+		}
+	}
+
+func _store_current_ammo() -> void:
+	weapon_mag_store[current_weapon] = ammo_in_mag
+	weapon_reserve_store[current_weapon] = reserve_ammo
+
+func _equip_weapon(weapon_id: int, initial: bool = false) -> void:
+	if not weapon_configs.has(weapon_id):
+		return
+	if not initial and current_weapon == weapon_id:
+		return
+	if not initial:
+		_store_current_ammo()
+	current_weapon = weapon_id
+	var cfg = weapon_configs[weapon_id]
+	_apply_weapon_config(cfg)
+	if gun and gun.has_method("set_weapon"):
+		gun.set_weapon(cfg["visual"])
+	_hud_placeholder("Weapon: %s" % cfg["name"])
+
+func _apply_weapon_config(cfg: Dictionary) -> void:
+	weapon_mode = cfg.get("mode", "hitscan")
+	fire_rate = cfg.get("fire_rate", fire_rate)
+	fire_damage = cfg.get("damage", fire_damage)
+	mag_size = cfg.get("mag", mag_size)
+	reload_time = cfg.get("reload", reload_time)
+	aim_fov = cfg.get("aim_fov", aim_fov)
+	recoil_strength = cfg.get("recoil", recoil_strength)
+	recoil_max = cfg.get("recoil_max", recoil_max)
+	if cfg.has("bullet_speed"):
+		bullet_speed = cfg["bullet_speed"]
+	if cfg.has("bullet_life"):
+		bullet_lifetime = cfg["bullet_life"]
+	if cfg.has("tracer_radius"):
+		bullet_tracer_radius = cfg["tracer_radius"]
+	weapon_projectile_speed = cfg.get("projectile_speed", 0.0)
+	weapon_projectile_lifetime = cfg.get("projectile_life", 0.0)
+	ammo_in_mag = weapon_mag_store.get(current_weapon, mag_size)
+	reserve_ammo = weapon_reserve_store.get(current_weapon, cfg.get("reserve", reserve_ammo))
+	if weapon_mode == "melee":
+		melee_damage = cfg.get("damage", melee_damage)
+		ammo_in_mag = 0
+		reserve_ammo = 0
+		is_aiming = false
+	is_reloading = false
+	reload_timer_remaining = 0.0
+	reload_progress = 0.0
+
 func _show_gun_radial(visible: bool) -> void:
 	if hud and hud.has_method("show_gun_radial"):
 		hud.show_gun_radial(visible)
@@ -831,9 +1009,9 @@ func _log(message: String) -> void:
 func _try_start_wallrun(input_dir: Vector2) -> void:
 	if wallrunning:
 		return
-	var horiz_speed = Vector3(velocity.x, 0, velocity.z).length()
-	if input_dir.length() < 0.1 and horiz_speed < wallrun_min_speed:
+	if wallrun_cooldown > 0.0:
 		return
+	var horiz_speed = Vector3(velocity.x, 0, velocity.z).length()
 	if horiz_speed < wallrun_min_speed:
 		return
 	var hit = _get_wallrun_hit()
@@ -850,6 +1028,8 @@ func _try_start_wallrun(input_dir: Vector2) -> void:
 			desired = (global_transform.basis * Vector3(input_dir.x, 0, input_dir.y))
 		else:
 			desired = Vector3(velocity.x, 0, velocity.z)
+		if desired.length() < 0.1:
+			return
 		var wall_dir = _compute_wallrun_dir(hit["normal"], desired)
 		if wall_dir == Vector3.ZERO:
 			return
@@ -996,6 +1176,14 @@ func _toggle_pause() -> void:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 func _try_fire() -> void:
+	if weapon_mode == "melee":
+		if melee_timer > 0.0:
+			return
+		melee_timer = melee_cooldown
+		if gun and gun.has_method("start_melee"):
+			gun.start_melee()
+		_perform_melee()
+		return
 	if is_reloading:
 		return
 	if fire_cooldown > 0.0:
@@ -1007,7 +1195,10 @@ func _try_fire() -> void:
 	ammo_in_mag -= 1
 	fire_cooldown = 1.0 / fire_rate
 	_apply_recoil()
-	_fire_hitscan()
+	if weapon_mode == "projectile":
+		_fire_projectile()
+	else:
+		_fire_hitscan()
 
 func _fire_hitscan() -> void:
 	var from = cam.global_transform.origin
@@ -1027,6 +1218,20 @@ func _fire_hitscan() -> void:
 			target.take_damage(fire_damage)
 			_on_hit(result)
 
+func _fire_projectile() -> void:
+	if rocket_scene == null:
+		return
+	var projectile = rocket_scene.instantiate()
+	if projectile == null:
+		return
+	var from = cam.global_transform.origin + (-cam.global_transform.basis.z * 0.8)
+	var direction = -cam.global_transform.basis.z
+	if projectile is Node3D:
+		projectile.global_position = from
+	get_parent().add_child(projectile)
+	if projectile.has_method("configure"):
+		projectile.configure(direction, weapon_projectile_speed, fire_damage, weapon_projectile_lifetime)
+
 func _spawn_tracer(from: Vector3, to: Vector3) -> void:
 	var dir = (to - from).normalized()
 	var tracer = MeshInstance3D.new()
@@ -1043,13 +1248,26 @@ func _spawn_tracer(from: Vector3, to: Vector3) -> void:
 	tracer.material_override = mat
 	tracer.global_position = from + (dir * 0.4)
 	get_parent().add_child(tracer)
-	var travel_time = max(0.02, fire_range / bullet_speed)
+	var travel_time = max(0.02, min(bullet_lifetime, fire_range / bullet_speed))
 	var tween := tracer.create_tween()
 	tween.tween_property(tracer, "global_position", to, travel_time)
 	tween.tween_callback(tracer.queue_free)
 
+func _perform_melee() -> void:
+	var from = cam.global_transform.origin
+	var to = from + (-cam.global_transform.basis.z * melee_range)
+	var space = get_world_3d().direct_space_state
+	var params = PhysicsRayQueryParameters3D.create(from, to)
+	params.exclude = [self]
+	var result = space.intersect_ray(params)
+	if result and result.has("collider"):
+		var target = result["collider"]
+		if target and target.has_method("take_damage"):
+			target.take_damage(melee_damage)
+			_on_hit(result)
+
 func _apply_recoil() -> void:
-	recoil_offset = clamp(recoil_offset - recoil_strength, -recoil_max, recoil_max)
+	recoil_offset = clamp(recoil_offset + recoil_strength, 0.0, recoil_max)
 	if gun and gun.has_method("kick"):
 		gun.kick(recoil_strength)
 
@@ -1142,6 +1360,8 @@ func _spawn_hit_vfx(pos: Vector3, normal: Vector3) -> void:
 
 func _start_reload() -> void:
 	if is_reloading:
+		return
+	if weapon_mode == "melee" or mag_size <= 0:
 		return
 	if ammo_in_mag >= mag_size:
 		return

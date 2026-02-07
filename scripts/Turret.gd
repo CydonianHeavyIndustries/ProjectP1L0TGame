@@ -1,13 +1,13 @@
 extends StaticBody3D
 
 @export var max_health := 80.0
-@export var fire_interval := 0.9
+@export var fire_interval := 1.1
 @export var damage := 10.0
 @export var attack_range := 25.0
 @export var respawn_delay := 3.0
 @export var turn_speed := 6.0
 @export var muzzle_height := 0.8
-@export var projectile_speed := 9.0
+@export var projectile_speed := 6.0
 @export var projectile_lifetime := 3.5
 @export var projectile_offset := 0.5
 @export var projectile_scene: PackedScene = preload("res://scenes/TurretProjectile.tscn")

@@ -3,6 +3,8 @@ extends Control
 @onready var hp_label: Label = Label.new()
 @onready var ammo_label: Label = Label.new()
 @onready var speed_label: Label = Label.new()
+@onready var pos_label: Label = Label.new()
+@onready var aim_label: Label = Label.new()
 @onready var crosshair: Label = Label.new()
 @onready var hitmarker: Label = Label.new()
 @onready var hint_label: Label = Label.new()
@@ -69,6 +71,16 @@ func _ready() -> void:
 	ammo_label.position = Vector2(22, 40)
 	_style_label(ammo_label, 14, HUD_TEXT)
 
+	add_child(pos_label)
+	pos_label.text = "POS: 0.0, 0.0, 0.0 m"
+	pos_label.position = Vector2(22, 62)
+	_style_label(pos_label, 12, HUD_DIM)
+
+	add_child(aim_label)
+	aim_label.text = "AIM: --"
+	aim_label.position = Vector2(22, 82)
+	_style_label(aim_label, 12, HUD_DIM)
+
 	add_child(speed_label)
 	speed_label.text = "SPD: 0.0"
 	speed_label.anchor_left = 1.0
@@ -94,7 +106,7 @@ func _ready() -> void:
 
 	add_child(hint_label)
 	hint_label.visible = false
-	hint_label.position = Vector2(22, 66)
+	hint_label.position = Vector2(22, 102)
 	_style_label(hint_label, 12, HUD_DIM)
 
 	_setup_health_bar()
@@ -113,6 +125,13 @@ func _process(_delta: float) -> void:
 		ammo_label.text = "Ammo: %d / %d" % [int(player.ammo_in_mag), int(player.reserve_ammo)]
 		var horiz_speed = Vector3(player.velocity.x, 0, player.velocity.z).length()
 		speed_label.text = "SPD: %.1f" % horiz_speed
+		var pos = player.global_transform.origin
+		pos_label.text = "POS: %.2f, %.2f, %.2f m" % [pos.x, pos.y, pos.z]
+		if player.aim_point_valid:
+			var aim_pos = player.aim_point
+			aim_label.text = "AIM: %.2f, %.2f, %.2f m" % [aim_pos.x, aim_pos.y, aim_pos.z]
+		else:
+			aim_label.text = "AIM: --"
 		var ratio := 1.0
 		if player.max_health > 0.0:
 			ratio = float(player.current_health) / float(player.max_health)
