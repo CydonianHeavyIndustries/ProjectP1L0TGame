@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://c5hc8iamt1jl8"]
+
+[ext_resource type="PackedScene" uid="uid://ctqf00764m2er" path="res://Blender/Grenade_Frag.glb" id="1_gdqqk"]
+
+[node name="Grenade 1" unique_id=1224639138 instance=ExtResource("1_gdqqk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.47253656)
