@@ -368,6 +368,217 @@ shape = ExtResource( 5 )
 [node name="GauntletRampCMesh" type="MeshInstance3D" parent="World/GauntletRampC"]
 mesh = ExtResource( 4 )
 
+[node name="GauntletWallLeft_4" type="StaticBody3D" parent="World"]
+position = Vector3(-6.5, 3, -54)
+scale = Vector3(1, 1, 0.25)
+
+[node name="GauntletWallLeft_4Collision" type="CollisionShape3D" parent="World/GauntletWallLeft_4"]
+shape = ExtResource( 5 )
+
+[node name="GauntletWallLeft_4Mesh" type="MeshInstance3D" parent="World/GauntletWallLeft_4"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletWallRight_4" type="StaticBody3D" parent="World"]
+position = Vector3(6.5, 3, -62)
+scale = Vector3(1, 1, 0.25)
+
+[node name="GauntletWallRight_4Collision" type="CollisionShape3D" parent="World/GauntletWallRight_4"]
+shape = ExtResource( 5 )
+
+[node name="GauntletWallRight_4Mesh" type="MeshInstance3D" parent="World/GauntletWallRight_4"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletWallLeft_5" type="StaticBody3D" parent="World"]
+position = Vector3(-6.5, 3, -70)
+scale = Vector3(1, 1, 0.25)
+
+[node name="GauntletWallLeft_5Collision" type="CollisionShape3D" parent="World/GauntletWallLeft_5"]
+shape = ExtResource( 5 )
+
+[node name="GauntletWallLeft_5Mesh" type="MeshInstance3D" parent="World/GauntletWallLeft_5"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletWallRight_5" type="StaticBody3D" parent="World"]
+position = Vector3(6.5, 3, -78)
+scale = Vector3(1, 1, 0.25)
+
+[node name="GauntletWallRight_5Collision" type="CollisionShape3D" parent="World/GauntletWallRight_5"]
+shape = ExtResource( 5 )
+
+[node name="GauntletWallRight_5Mesh" type="MeshInstance3D" parent="World/GauntletWallRight_5"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletWallLeft_6" type="StaticBody3D" parent="World"]
+position = Vector3(-6.5, 3, -86)
+scale = Vector3(1, 1, 0.25)
+
+[node name="GauntletWallLeft_6Collision" type="CollisionShape3D" parent="World/GauntletWallLeft_6"]
+shape = ExtResource( 5 )
+
+[node name="GauntletWallLeft_6Mesh" type="MeshInstance3D" parent="World/GauntletWallLeft_6"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletWallRight_6" type="StaticBody3D" parent="World"]
+position = Vector3(6.5, 3, -94)
+scale = Vector3(1, 1, 0.25)
+
+[node name="GauntletWallRight_6Collision" type="CollisionShape3D" parent="World/GauntletWallRight_6"]
+shape = ExtResource( 5 )
+
+[node name="GauntletWallRight_6Mesh" type="MeshInstance3D" parent="World/GauntletWallRight_6"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletWallLeft_7" type="StaticBody3D" parent="World"]
+position = Vector3(-6.5, 3, -102)
+scale = Vector3(1, 1, 0.25)
+
+[node name="GauntletWallLeft_7Collision" type="CollisionShape3D" parent="World/GauntletWallLeft_7"]
+shape = ExtResource( 5 )
+
+[node name="GauntletWallLeft_7Mesh" type="MeshInstance3D" parent="World/GauntletWallLeft_7"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletWallRight_7" type="StaticBody3D" parent="World"]
+position = Vector3(6.5, 3, -110)
+scale = Vector3(1, 1, 0.25)
+
+[node name="GauntletWallRight_7Collision" type="CollisionShape3D" parent="World/GauntletWallRight_7"]
+shape = ExtResource( 5 )
+
+[node name="GauntletWallRight_7Mesh" type="MeshInstance3D" parent="World/GauntletWallRight_7"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletPlatformE" type="StaticBody3D" parent="World"]
+position = Vector3(0, 1.2, -58)
+scale = Vector3(3.0, 0.08, 0.16)
+
+[node name="GauntletPlatformECollision" type="CollisionShape3D" parent="World/GauntletPlatformE"]
+shape = ExtResource( 5 )
+
+[node name="GauntletPlatformEMesh" type="MeshInstance3D" parent="World/GauntletPlatformE"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletPlatformF" type="StaticBody3D" parent="World"]
+position = Vector3(2.2, 1.9, -66)
+scale = Vector3(2.2, 0.08, 0.12)
+
+[node name="GauntletPlatformFCollision" type="CollisionShape3D" parent="World/GauntletPlatformF"]
+shape = ExtResource( 5 )
+
+[node name="GauntletPlatformFMesh" type="MeshInstance3D" parent="World/GauntletPlatformF"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletPlatformG" type="StaticBody3D" parent="World"]
+position = Vector3(-2.0, 2.6, -74)
+scale = Vector3(2.2, 0.08, 0.12)
+
+[node name="GauntletPlatformGCollision" type="CollisionShape3D" parent="World/GauntletPlatformG"]
+shape = ExtResource( 5 )
+
+[node name="GauntletPlatformGMesh" type="MeshInstance3D" parent="World/GauntletPlatformG"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletPlatformH" type="StaticBody3D" parent="World"]
+position = Vector3(0, 3.2, -82)
+scale = Vector3(2.6, 0.08, 0.12)
+
+[node name="GauntletPlatformHCollision" type="CollisionShape3D" parent="World/GauntletPlatformH"]
+shape = ExtResource( 5 )
+
+[node name="GauntletPlatformHMesh" type="MeshInstance3D" parent="World/GauntletPlatformH"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletPlatformI" type="StaticBody3D" parent="World"]
+position = Vector3(-3.0, 3.8, -90)
+scale = Vector3(2.0, 0.08, 0.12)
+
+[node name="GauntletPlatformICollision" type="CollisionShape3D" parent="World/GauntletPlatformI"]
+shape = ExtResource( 5 )
+
+[node name="GauntletPlatformIMesh" type="MeshInstance3D" parent="World/GauntletPlatformI"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletPlatformJ" type="StaticBody3D" parent="World"]
+position = Vector3(3.0, 4.4, -98)
+scale = Vector3(2.0, 0.08, 0.12)
+
+[node name="GauntletPlatformJCollision" type="CollisionShape3D" parent="World/GauntletPlatformJ"]
+shape = ExtResource( 5 )
+
+[node name="GauntletPlatformJMesh" type="MeshInstance3D" parent="World/GauntletPlatformJ"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletLowCeilingA" type="StaticBody3D" parent="World"]
+position = Vector3(0, 2.2, -72)
+scale = Vector3(4.5, 0.12, 0.18)
+
+[node name="GauntletLowCeilingACollision" type="CollisionShape3D" parent="World/GauntletLowCeilingA"]
+shape = ExtResource( 5 )
+
+[node name="GauntletLowCeilingAMesh" type="MeshInstance3D" parent="World/GauntletLowCeilingA"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletLowCeilingB" type="StaticBody3D" parent="World"]
+position = Vector3(0, 2.2, -88)
+scale = Vector3(4.5, 0.12, 0.18)
+
+[node name="GauntletLowCeilingBCollision" type="CollisionShape3D" parent="World/GauntletLowCeilingB"]
+shape = ExtResource( 5 )
+
+[node name="GauntletLowCeilingBMesh" type="MeshInstance3D" parent="World/GauntletLowCeilingB"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletPillarA" type="StaticBody3D" parent="World"]
+position = Vector3(-4.0, 1.2, -60)
+scale = Vector3(0.6, 0.45, 0.6)
+
+[node name="GauntletPillarACollision" type="CollisionShape3D" parent="World/GauntletPillarA"]
+shape = ExtResource( 5 )
+
+[node name="GauntletPillarAMesh" type="MeshInstance3D" parent="World/GauntletPillarA"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletPillarB" type="StaticBody3D" parent="World"]
+position = Vector3(4.0, 1.8, -68)
+scale = Vector3(0.6, 0.55, 0.6)
+
+[node name="GauntletPillarBCollision" type="CollisionShape3D" parent="World/GauntletPillarB"]
+shape = ExtResource( 5 )
+
+[node name="GauntletPillarBMesh" type="MeshInstance3D" parent="World/GauntletPillarB"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletClimbBlockA" type="StaticBody3D" parent="World"]
+position = Vector3(0, 1.6, -104)
+scale = Vector3(3.5, 0.3, 0.18)
+
+[node name="GauntletClimbBlockACollision" type="CollisionShape3D" parent="World/GauntletClimbBlockA"]
+shape = ExtResource( 5 )
+
+[node name="GauntletClimbBlockAMesh" type="MeshInstance3D" parent="World/GauntletClimbBlockA"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletClimbBlockB" type="StaticBody3D" parent="World"]
+position = Vector3(0, 2.4, -112)
+scale = Vector3(3.5, 0.3, 0.18)
+
+[node name="GauntletClimbBlockBCollision" type="CollisionShape3D" parent="World/GauntletClimbBlockB"]
+shape = ExtResource( 5 )
+
+[node name="GauntletClimbBlockBMesh" type="MeshInstance3D" parent="World/GauntletClimbBlockB"]
+mesh = ExtResource( 4 )
+
+[node name="GauntletRampD" type="StaticBody3D" parent="World"]
+position = Vector3(0, 1.0, -118)
+rotation = Vector3(-0.4, 0, 0)
+scale = Vector3(5.0, 0.2, 0.2)
+
+[node name="GauntletRampDCollision" type="CollisionShape3D" parent="World/GauntletRampD"]
+shape = ExtResource( 5 )
+
+[node name="GauntletRampDMesh" type="MeshInstance3D" parent="World/GauntletRampD"]
+mesh = ExtResource( 4 )
+
 [node name="RampA" type="StaticBody3D" parent="World"]
 position = Vector3(0, 0.6, 12)
 rotation = Vector3(-0.3, 0, 0)
@@ -454,6 +665,7 @@ position = Vector3(0, 1, -24)
 script = ExtResource( 7 )
 [node name="SafeZoneArea" parent="World" instance=ExtResource( 17 )]
 position = Vector3(0, 1, 0)
+visible = false
 
 [node name="Turret" parent="World" instance=ExtResource( 16 )]
 position = Vector3(0, 0, -18)

@@ -10,14 +10,18 @@ signal died
 @export var max_air_jumps := 1
 @export var slide_speed := 22.0
 @export var slide_time := 0.45
-@export var slide_friction := 4.2
+@export var slide_friction := 2.8
 @export var gravity := 13.5
 @export var gravity_fall_multiplier := 2.1
 @export var gravity_jump_cut_multiplier := 2.6
 @export var max_health := 100.0
 @export var accel_ground := 38.0
 @export var accel_air := 18.0
-@export var decel_ground := 28.0
+@export var decel_ground := 36.0
+@export var decel_air := 10.0
+@export var input_smooth := 12.0
+@export var coyote_time := 0.12
+@export var air_control := 0.85
 @export var crouch_cam_offset := -0.45
 @export var prone_cam_offset := -0.85
 @export var cam_height_lerp := 10.0
@@ -33,11 +37,12 @@ signal died
 @export var wallrun_jump_speed := 14.5
 @export var wallrun_jump_up := 6.3
 @export var wallrun_stick_time := 0.28
-@export var wallrun_gravity_start := 1.2
+@export var wallrun_gravity_start := 1.8
 @export var wallrun_gravity_end := 14.0
 @export var wallrun_gravity_curve := 1.5
 @export var wallrun_stick_gravity := 0.15
 @export var wallrun_stick_force := 28.0
+@export var wallrun_up_cap := 0.3
 @export var wallrun_ray_length := 0.9
 @export var wallrun_contact_gap := 0.12
 @export var wallrun_ray_height := 0.35
@@ -56,6 +61,10 @@ signal died
 @export var fire_rate := 8.0
 @export var fire_damage := 25.0
 @export var fire_range := 60.0
+@export var bullet_speed := 55.0
+@export var bullet_lifetime := 0.5
+@export var bullet_tracer_color := Color(1.0, 0.85, 0.3, 0.9)
+@export var bullet_tracer_radius := 0.02
 @export var recoil_strength := 0.008
 @export var recoil_return_speed := 16.0
 @export var recoil_max := 0.25
@@ -75,7 +84,7 @@ signal died
 @export var blink_range := 12.0
 @export var blink_cooldown_time := 6.0
 @export var slide_cancel_boost := 3.5
-@export var slide_min_speed := 5.0
+@export var slide_min_speed := 3.5
 @export var respawn_delay := 2.0
 @export var hit_vfx_scale := 0.25
 @export var hit_vfx_lifetime := 0.12
@@ -102,6 +111,8 @@ var wallrun_entry_dir := Vector3.ZERO
 var jump_buffer := 0.0
 var climbing := false
 var climb_target := Vector3.ZERO
+var input_smoothed := Vector2.ZERO
+var coyote_timer := 0.0
 var air_jumps_left := 0
 var is_crouching := false
 var is_prone := false
@@ -144,6 +155,7 @@ var _titan_down := false
 var _fire_down := false
 var _aim_down := false
 var _esc_down := false
+var _aim_hold := false
 
 @onready var cam: Camera3D = $Camera
 @onready var gun_pivot: Node3D = $Camera/GunPivot
@@ -193,6 +205,8 @@ func _input(event: InputEvent) -> void:
 		_toggle_fullscreen()
 		get_viewport().set_input_as_handled()
 		return
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
+		_aim_hold = event.pressed
 	if event.is_action_pressed("jump"):
 		jump_buffer = jump_buffer_time
 	if event is InputEventKey and event.pressed and event.keycode == KEY_SPACE:
@@ -278,7 +292,7 @@ func _process(delta: float) -> void:
 	if Input.is_action_just_pressed("chat"):
 		_hud_placeholder("Chat (placeholder)")
 
-	var aim_pressed = Input.is_action_pressed("aim") or Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
+	var aim_pressed = _aim_hold or Input.is_action_pressed("aim") or Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
 	_aim_down = aim_pressed
 	is_aiming = aim_pressed and not is_reloading and not reload_hold and not reload_radial_open and not titan_radial_open and not sliding
 	var target_fov = aim_fov if is_aiming else base_fov
@@ -294,6 +308,10 @@ func _physics_process(delta: float) -> void:
 		return
 	jump_buffer = max(0.0, jump_buffer - delta)
 	var on_floor = is_on_floor()
+	if on_floor:
+		coyote_timer = coyote_time
+	else:
+		coyote_timer = max(0.0, coyote_timer - delta)
 	if climbing:
 		_update_climb(delta)
 		return
@@ -316,7 +334,12 @@ func _physics_process(delta: float) -> void:
 		wallrun_intent = max(0.0, wallrun_intent - delta)
 	if wallrun_cooldown > 0.0:
 		wallrun_cooldown = max(0.0, wallrun_cooldown - delta)
-	var input_dir = _get_move_input()
+	var input_raw = _get_move_input()
+	var smooth_t = 1.0 - exp(-input_smooth * delta)
+	input_smoothed = input_smoothed.lerp(input_raw, smooth_t)
+	if input_raw == Vector2.ZERO and input_smoothed.length() < 0.02:
+		input_smoothed = Vector2.ZERO
+	var input_dir = input_smoothed
 	var horizontal_speed = Vector3(velocity.x, 0, velocity.z).length()
 	var prone_just_pressed = Input.is_action_just_pressed("prone")
 	var prone_pressed = Input.is_action_pressed("prone")
@@ -384,12 +407,15 @@ func _physics_process(delta: float) -> void:
 	if sliding:
 		speed = slide_speed
 	if not sliding:
-		var accel = accel_ground if is_on_floor() else accel_air
-		var decel = decel_ground
+		var accel = accel_ground if on_floor else accel_air
+		var decel = decel_ground if on_floor else decel_air
 		var target_velocity = direction * speed
 		var horizontal = Vector3(velocity.x, 0, velocity.z)
 		if direction != Vector3.ZERO:
-			horizontal = horizontal.move_toward(target_velocity, accel * delta)
+			var control = 1.0
+			if not on_floor:
+				control = air_control
+			horizontal = horizontal.move_toward(target_velocity, accel * control * delta)
 		else:
 			horizontal = horizontal.move_toward(Vector3.ZERO, decel * delta)
 		velocity.x = horizontal.x
@@ -424,6 +450,8 @@ func _physics_process(delta: float) -> void:
 				wall_horiz = wall_horiz.move_toward(target, wallrun_accel * delta)
 				velocity.x = wall_horiz.x
 				velocity.z = wall_horiz.z
+				if velocity.y > wallrun_up_cap:
+					velocity.y = wallrun_up_cap
 				velocity += -wallrun_normal * wallrun_stick_force * delta
 				if wallrun_elapsed < wallrun_stick_time:
 					var stick_grav = wallrun_gravity_start * wallrun_stick_gravity
@@ -459,7 +487,7 @@ func _physics_process(delta: float) -> void:
 				air_jumps_left -= 1
 				velocity.y = double_jump_velocity
 				jump_buffer = 0.0
-		elif jump_request:
+		elif jump_request and (on_floor or coyote_timer > 0.0):
 			if is_prone:
 				is_prone = false
 				is_crouching = false
@@ -906,6 +934,7 @@ func _fire_hitscan() -> void:
 	var params = PhysicsRayQueryParameters3D.create(from, to)
 	params.exclude = [self]
 	var result = space.intersect_ray(params)
+	_spawn_tracer(from, to)
 	if result and result.has("collider"):
 		var target = result["collider"]
 		if target and target.is_in_group("player") and safezone_system and safezone_system.has_method("is_pvp_allowed"):
@@ -915,6 +944,27 @@ func _fire_hitscan() -> void:
 		if target and target.has_method("take_damage"):
 			target.take_damage(fire_damage)
 			_on_hit(result)
+
+func _spawn_tracer(from: Vector3, to: Vector3) -> void:
+	var dir = (to - from).normalized()
+	var tracer = MeshInstance3D.new()
+	var mesh := SphereMesh.new()
+	mesh.radius = bullet_tracer_radius
+	mesh.height = bullet_tracer_radius * 2.0
+	tracer.mesh = mesh
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = bullet_tracer_color
+	mat.emission = bullet_tracer_color
+	mat.emission_energy_multiplier = 1.6
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	tracer.material_override = mat
+	tracer.global_position = from + (dir * 0.4)
+	get_parent().add_child(tracer)
+	var travel_time = max(0.02, fire_range / bullet_speed)
+	var tween := tracer.create_tween()
+	tween.tween_property(tracer, "global_position", to, travel_time)
+	tween.tween_callback(tracer.queue_free)
 
 func _apply_recoil() -> void:
 	recoil_offset = clamp(recoil_offset - recoil_strength, -recoil_max, recoil_max)

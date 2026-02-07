@@ -31,6 +31,8 @@ var damage_flash_timer := 0.0
 var _health_fill_max := 0.0
 var _reload_fill_max := 0.0
 var _cooldown_fill_max := 0.0
+var _gun_radial_center := Vector2.ZERO
+var _titan_radial_center := Vector2.ZERO
 
 const HUD_BG := Color(0.02, 0.05, 0.08, 0.85)
 const HUD_EDGE := Color(0.15, 0.8, 1.0, 0.9)
@@ -125,10 +127,7 @@ func _process(_delta: float) -> void:
 		damage_flash.color = Color(1.0, 0.1, 0.1, 0.35 * clamp(t_flash, 0.0, 1.0))
 	else:
 		damage_flash.color = Color(1.0, 0.1, 0.1, 0.0)
-	if gun_radial.visible:
-		_position_radial(gun_radial)
-	if titan_radial.visible:
-		_position_radial(titan_radial)
+	# Radials are positioned once when opened to avoid dragging with the cursor.
 
 func show_hint(text: String) -> void:
 	hint_label.text = text
@@ -138,12 +137,14 @@ func show_hint(text: String) -> void:
 func show_gun_radial(show: bool) -> void:
 	gun_radial.visible = show
 	if show:
-		_position_radial(gun_radial)
+		_gun_radial_center = get_viewport().get_mouse_position()
+		_position_radial_at(gun_radial, _gun_radial_center)
 
 func show_titan_radial(show: bool) -> void:
 	titan_radial.visible = show
 	if show:
-		_position_radial(titan_radial)
+		_titan_radial_center = get_viewport().get_mouse_position()
+		_position_radial_at(titan_radial, _titan_radial_center)
 
 func show_hitmarker() -> void:
 	hitmarker.visible = true
@@ -398,15 +399,14 @@ func _build_radial_menu(title: String, slots: Array) -> Control:
 
 	return root
 
-func _position_radial(menu: Control) -> void:
+func _position_radial_at(menu: Control, center: Vector2) -> void:
 	if menu == null:
 		return
 	var viewport_size = get_viewport_rect().size
 	var menu_size = menu.size
 	if menu_size == Vector2.ZERO:
 		menu_size = Vector2(300, 300)
-	var mouse_pos = get_viewport().get_mouse_position()
-	var target = mouse_pos - (menu_size * 0.5)
+	var target = center - (menu_size * 0.5)
 	target.x = clamp(target.x, 0.0, max(0.0, viewport_size.x - menu_size.x))
 	target.y = clamp(target.y, 0.0, max(0.0, viewport_size.y - menu_size.y))
 	menu.position = target
