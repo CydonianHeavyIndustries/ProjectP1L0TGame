@@ -1,50 +1,57 @@
 extends CharacterBody3D
 signal died
 
-@export var walk_speed := 7.0
-@export var sprint_speed := 12.0
-@export var crouch_speed := 4.5
+@export var walk_speed := 8.5
+@export var sprint_speed := 18.5
+@export var crouch_speed := 6.0
 @export var prone_speed := 2.4
-@export var jump_velocity := 5.4
-@export var double_jump_velocity := 5.0
+@export var jump_velocity := 7.2
+@export var double_jump_velocity := 6.6
 @export var max_air_jumps := 1
-@export var slide_speed := 16.0
-@export var slide_time := 0.35
-@export var slide_friction := 6.0
-@export var gravity := 9.8
-@export var gravity_fall_multiplier := 1.85
-@export var gravity_jump_cut_multiplier := 2.4
+@export var slide_speed := 22.0
+@export var slide_time := 0.45
+@export var slide_friction := 4.2
+@export var gravity := 13.5
+@export var gravity_fall_multiplier := 2.1
+@export var gravity_jump_cut_multiplier := 2.6
 @export var max_health := 100.0
-@export var accel_ground := 24.0
-@export var accel_air := 10.0
-@export var decel_ground := 18.0
+@export var accel_ground := 38.0
+@export var accel_air := 18.0
+@export var decel_ground := 28.0
 @export var crouch_cam_offset := -0.45
 @export var prone_cam_offset := -0.85
 @export var cam_height_lerp := 10.0
 @export var crouch_capsule_height := 0.7
 @export var prone_capsule_height := 0.35
-@export var wallrun_speed := 11.0
-@export var wallrun_accel := 26.0
-@export var wallrun_duration := 1.2
-@export var wallrun_min_speed := 3.5
-@export var wallrun_push := 5.5
-@export var wallrun_jump_speed := 12.0
-@export var wallrun_jump_up := 5.2
-@export var wallrun_stick_time := 0.32
-@export var wallrun_gravity_start := 1.8
-@export var wallrun_gravity_end := 18.0
-@export var wallrun_gravity_curve := 1.7
-@export var wallrun_stick_gravity := 0.2
-@export var wallrun_stick_force := 20.0
+@export var jump_buffer_time := 0.12
+@export var wallrun_speed := 16.5
+@export var wallrun_accel := 40.0
+@export var wallrun_blend_time := 0.16
+@export var wallrun_duration := 1.4
+@export var wallrun_min_speed := 4.0
+@export var wallrun_push := 6.5
+@export var wallrun_jump_speed := 14.5
+@export var wallrun_jump_up := 6.3
+@export var wallrun_stick_time := 0.28
+@export var wallrun_gravity_start := 1.2
+@export var wallrun_gravity_end := 14.0
+@export var wallrun_gravity_curve := 1.5
+@export var wallrun_stick_gravity := 0.15
+@export var wallrun_stick_force := 28.0
 @export var wallrun_ray_length := 0.9
 @export var wallrun_contact_gap := 0.12
 @export var wallrun_ray_height := 0.35
 @export var wallrun_ray_height_top := 1.05
-@export var wallrun_roll := 0.22
-@export var wallrun_roll_speed := 10.0
-@export var wallrun_reentry_delay := 0.18
+@export var wallrun_roll := 0.26
+@export var wallrun_roll_speed := 12.0
+@export var wallrun_reentry_delay := 0.75
 @export var wallrun_intent_time := 0.2
 @export var wallrun_chain_time := 0.45
+@export var climb_check_distance := 1.0
+@export var climb_height := 1.4
+@export var climb_forward_offset := 0.6
+@export var climb_speed := 6.5
+@export var climb_min_clearance := 0.4
 
 @export var fire_rate := 8.0
 @export var fire_damage := 25.0
@@ -67,8 +74,8 @@ signal died
 @export var grenade_cooldown_time := 3.5
 @export var blink_range := 12.0
 @export var blink_cooldown_time := 6.0
-@export var slide_cancel_boost := 2.0
-@export var slide_min_speed := 4.0
+@export var slide_cancel_boost := 3.5
+@export var slide_min_speed := 5.0
 @export var respawn_delay := 2.0
 @export var hit_vfx_scale := 0.25
 @export var hit_vfx_lifetime := 0.12
@@ -90,6 +97,11 @@ var wallrun_normal := Vector3.ZERO
 var wallrun_cooldown := 0.0
 var last_wall_normal := Vector3.ZERO
 var wallrun_intent := 0.0
+var wallrun_entry_speed := 0.0
+var wallrun_entry_dir := Vector3.ZERO
+var jump_buffer := 0.0
+var climbing := false
+var climb_target := Vector3.ZERO
 var air_jumps_left := 0
 var is_crouching := false
 var is_prone := false
@@ -181,6 +193,10 @@ func _input(event: InputEvent) -> void:
 		_toggle_fullscreen()
 		get_viewport().set_input_as_handled()
 		return
+	if event.is_action_pressed("jump"):
+		jump_buffer = jump_buffer_time
+	if event is InputEventKey and event.pressed and event.keycode == KEY_SPACE:
+		jump_buffer = jump_buffer_time
 	if is_dead:
 		return
 	if get_tree().paused:
@@ -276,7 +292,11 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if is_dead:
 		return
+	jump_buffer = max(0.0, jump_buffer - delta)
 	var on_floor = is_on_floor()
+	if climbing:
+		_update_climb(delta)
+		return
 	if on_floor or wallrunning:
 		air_jumps_left = max_air_jumps
 	var sprint_key = _key_pressed(KEY_SHIFT)
@@ -287,6 +307,9 @@ func _physics_process(delta: float) -> void:
 	var crouch_just_pressed = Input.is_action_just_pressed("crouch") or Input.is_action_just_pressed("slide") or (crouch_key and not _crouch_down)
 	var jump_key = _key_pressed(KEY_SPACE)
 	var jump_just_pressed = Input.is_action_just_pressed("jump") or (jump_key and not _jump_down)
+	if jump_just_pressed:
+		jump_buffer = jump_buffer_time
+	var jump_request = jump_just_pressed or jump_buffer > 0.0
 	if jump_just_pressed:
 		wallrun_intent = wallrun_intent_time
 	if wallrun_intent > 0.0:
@@ -372,11 +395,15 @@ func _physics_process(delta: float) -> void:
 		velocity.x = horizontal.x
 		velocity.z = horizontal.z
 
+	if not wallrunning and jump_request and not on_floor and _try_start_climb():
+		jump_buffer = 0.0
+		return
 	if wallrunning:
 		wallrun_timer -= delta
 		wallrun_elapsed += delta
 		var hit = _get_wallrun_hit()
-		if wallrun_timer <= 0.0 or on_floor or not hit or input_dir.length() < 0.1:
+		var wall_speed = Vector3(velocity.x, 0, velocity.z).length()
+		if wallrun_timer <= 0.0 or on_floor or not hit or wall_speed < (wallrun_min_speed * 0.45):
 			_stop_wallrun()
 		else:
 			wallrun_normal = hit["normal"]
@@ -388,7 +415,12 @@ func _physics_process(delta: float) -> void:
 				_stop_wallrun()
 			else:
 				var wall_horiz = Vector3(velocity.x, 0, velocity.z)
-				var target = wall_dir * wallrun_speed
+				var blend = 1.0
+				if wallrun_blend_time > 0.0:
+					blend = clamp(wallrun_elapsed / wallrun_blend_time, 0.0, 1.0)
+				var entry_speed = max(wallrun_entry_speed, wallrun_min_speed)
+				var target_speed = lerp(entry_speed, wallrun_speed, blend)
+				var target = wall_dir * target_speed
 				wall_horiz = wall_horiz.move_toward(target, wallrun_accel * delta)
 				velocity.x = wall_horiz.x
 				velocity.z = wall_horiz.z
@@ -401,7 +433,7 @@ func _physics_process(delta: float) -> void:
 					var curve = pow(t, wallrun_gravity_curve)
 					var grav = lerp(wallrun_gravity_start, wallrun_gravity_end, curve)
 					velocity.y -= grav * delta
-				if jump_just_pressed:
+				if jump_request:
 					var horiz = Vector3(velocity.x, 0, velocity.z)
 					var takeoff_dir = horiz
 					if takeoff_dir.length() < 0.1:
@@ -411,6 +443,7 @@ func _physics_process(delta: float) -> void:
 					velocity = takeoff_dir * wallrun_jump_speed
 					velocity.y = wallrun_jump_up
 					velocity += wallrun_normal * wallrun_push
+					jump_buffer = 0.0
 					_stop_wallrun(true)
 	else:
 		if not on_floor:
@@ -422,14 +455,16 @@ func _physics_process(delta: float) -> void:
 			velocity.y -= grav * delta
 			if not is_prone and (input_dir.length() > 0.1 or horizontal_speed > (wallrun_min_speed * 0.6)):
 				_try_start_wallrun(input_dir)
-			if jump_just_pressed and air_jumps_left > 0 and not is_prone:
+			if jump_request and air_jumps_left > 0 and not is_prone:
 				air_jumps_left -= 1
 				velocity.y = double_jump_velocity
-		elif jump_just_pressed:
+				jump_buffer = 0.0
+		elif jump_request:
 			if is_prone:
 				is_prone = false
 				is_crouching = false
 			velocity.y = jump_velocity
+			jump_buffer = 0.0
 
 	_apply_stance()
 
@@ -690,10 +725,10 @@ func _log(message: String) -> void:
 func _try_start_wallrun(input_dir: Vector2) -> void:
 	if wallrunning:
 		return
-	if input_dir.length() < 0.1:
-		if Vector3(velocity.x, 0, velocity.z).length() < wallrun_min_speed:
-			return
-	if Vector3(velocity.x, 0, velocity.z).length() < wallrun_min_speed:
+	var horiz_speed = Vector3(velocity.x, 0, velocity.z).length()
+	if input_dir.length() < 0.1 and horiz_speed < wallrun_min_speed:
+		return
+	if horiz_speed < wallrun_min_speed:
 		return
 	var hit = _get_wallrun_hit()
 	if hit and hit.has("normal"):
@@ -719,10 +754,12 @@ func _try_start_wallrun(input_dir: Vector2) -> void:
 		wallrunning = true
 		wallrun_timer = wallrun_duration
 		wallrun_elapsed = 0.0
+		wallrun_entry_speed = max(Vector3(velocity.x, 0, velocity.z).length(), wallrun_min_speed)
+		wallrun_entry_dir = Vector3(velocity.x, 0, velocity.z).normalized()
 		wallrun_intent = 0.0
 		velocity.y = max(velocity.y, 0.8)
 		var horiz = Vector3(velocity.x, 0, velocity.z)
-		var target = wall_dir * wallrun_speed
+		var target = wall_dir * wallrun_entry_speed
 		horiz = horiz.move_toward(target, wallrun_accel * get_physics_process_delta_time())
 		velocity.x = horiz.x
 		velocity.z = horiz.z
@@ -736,16 +773,71 @@ func _compute_wallrun_dir(normal: Vector3, desired: Vector3) -> Vector3:
 		wall_dir = -wall_dir
 	return wall_dir
 
+func _try_start_climb() -> bool:
+	if climbing or wallrunning or sliding or is_prone:
+		return false
+	var space = get_world_3d().direct_space_state
+	var forward = -global_transform.basis.z
+	var chest = global_transform.origin + Vector3(0, max(0.6, base_capsule_height * 0.5), 0)
+	var wall_to = chest + forward * climb_check_distance
+	var wall_params = PhysicsRayQueryParameters3D.create(chest, wall_to)
+	wall_params.exclude = [self]
+	var wall_hit = space.intersect_ray(wall_params)
+	if not wall_hit or not wall_hit.has("normal"):
+		return false
+	var wall_normal: Vector3 = wall_hit["normal"]
+	if abs(wall_normal.dot(Vector3.UP)) > 0.2:
+		return false
+
+	var top_from = wall_hit.get("position", wall_to) + Vector3.UP * climb_height
+	var top_to = top_from + Vector3.DOWN * (climb_height + 0.6)
+	var top_params = PhysicsRayQueryParameters3D.create(top_from, top_to)
+	top_params.exclude = [self]
+	var top_hit = space.intersect_ray(top_params)
+	if not top_hit or not top_hit.has("position") or not top_hit.has("normal"):
+		return false
+	var top_normal: Vector3 = top_hit["normal"]
+	if top_normal.dot(Vector3.UP) < 0.7:
+		return false
+
+	var target = top_hit["position"]
+	target += Vector3.UP * (base_capsule_height * 0.5 + base_capsule_radius + 0.02)
+	target += forward * climb_forward_offset
+
+	# Ensure head clearance
+	var head_from = target + Vector3.UP * climb_min_clearance
+	var head_to = head_from + Vector3.UP * climb_min_clearance
+	var head_params = PhysicsRayQueryParameters3D.create(head_from, head_to)
+	head_params.exclude = [self]
+	var head_hit = space.intersect_ray(head_params)
+	if head_hit:
+		return false
+
+	climbing = true
+	climb_target = target
+	velocity = Vector3.ZERO
+	return true
+
+func _update_climb(delta: float) -> void:
+	var to_target = climb_target - global_transform.origin
+	if to_target.length() < 0.05:
+		climbing = false
+		return
+	var step = climb_speed * delta
+	global_position = global_position.move_toward(climb_target, step)
+
 func _stop_wallrun(jumped: bool = false) -> void:
 	wallrunning = false
 	wallrun_timer = 0.0
 	wallrun_elapsed = 0.0
+	wallrun_entry_speed = 0.0
+	wallrun_entry_dir = Vector3.ZERO
 	if wallrun_normal != Vector3.ZERO:
 		last_wall_normal = wallrun_normal
-		wallrun_cooldown = 0.0 if jumped else wallrun_reentry_delay
+		wallrun_cooldown = wallrun_reentry_delay
 	wallrun_normal = Vector3.ZERO
 	if jumped:
-		wallrun_intent = wallrun_chain_time
+		wallrun_intent = 0.0
 
 func _get_wallrun_hit() -> Dictionary:
 	var space = get_world_3d().direct_space_state

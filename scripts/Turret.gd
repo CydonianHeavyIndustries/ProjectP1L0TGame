@@ -7,10 +7,15 @@ extends StaticBody3D
 @export var respawn_delay := 3.0
 @export var turn_speed := 6.0
 @export var muzzle_height := 0.8
+@export var projectile_speed := 9.0
+@export var projectile_lifetime := 3.5
+@export var projectile_offset := 0.5
+@export var projectile_scene: PackedScene = preload("res://scenes/TurretProjectile.tscn")
 
 var current_health := 0.0
 var fire_timer := 0.0
 var is_dead := false
+var is_aggro := false
 
 @onready var collision: CollisionShape3D = $Collision
 @onready var mesh_root: Node3D = $TurretMesh
@@ -22,6 +27,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if is_dead:
+		return
+	if not is_aggro:
 		return
 	var player = get_tree().get_first_node_in_group("player")
 	if player == null:
@@ -49,14 +56,27 @@ func _process(delta: float) -> void:
 		fire_timer -= delta
 		if fire_timer <= 0.0:
 			fire_timer = fire_interval
-			if player.has_method("take_damage"):
-				player.take_damage(damage)
+			_fire_projectile(origin, to_player.normalized())
 	else:
 		fire_timer = min(fire_timer, fire_interval)
+
+func _fire_projectile(origin: Vector3, direction: Vector3) -> void:
+	if projectile_scene == null:
+		return
+	var projectile = projectile_scene.instantiate()
+	if projectile == null:
+		return
+	var spawn_pos = origin + (direction * projectile_offset)
+	if projectile is Node3D:
+		projectile.global_position = spawn_pos
+	get_parent().add_child(projectile)
+	if projectile.has_method("configure"):
+		projectile.configure(direction, projectile_speed, damage, projectile_lifetime)
 
 func take_damage(amount: float) -> void:
 	if is_dead:
 		return
+	is_aggro = true
 	current_health = max(0.0, current_health - amount)
 	if current_health <= 0.0:
 		_die()
@@ -73,6 +93,7 @@ func _die() -> void:
 
 func _respawn() -> void:
 	is_dead = false
+	is_aggro = false
 	current_health = max_health
 	if collision:
 		collision.disabled = false
