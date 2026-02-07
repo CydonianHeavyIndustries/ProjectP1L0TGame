@@ -103,6 +103,7 @@ var wallrun_timer := 0.0
 var wallrun_elapsed := 0.0
 var wallrun_normal := Vector3.ZERO
 var wallrun_cooldown := 0.0
+var wallrun_chain_timer := 0.0
 var last_wall_normal := Vector3.ZERO
 var wallrun_intent := 0.0
 var wallrun_entry_speed := 0.0
@@ -328,6 +329,8 @@ func _physics_process(delta: float) -> void:
 		wallrun_intent = max(0.0, wallrun_intent - delta)
 	if wallrun_cooldown > 0.0:
 		wallrun_cooldown = max(0.0, wallrun_cooldown - delta)
+	if wallrun_chain_timer > 0.0:
+		wallrun_chain_timer = max(0.0, wallrun_chain_timer - delta)
 	var input_dir = _get_move_input()
 	var horizontal_speed = Vector3(velocity.x, 0, velocity.z).length()
 	var prone_just_pressed = Input.is_action_just_pressed("prone")
@@ -807,10 +810,13 @@ func _try_start_wallrun(input_dir: Vector2) -> void:
 		return
 	var hit = _get_wallrun_hit()
 	if hit and hit.has("normal"):
-		if wallrun_cooldown > 0.0 and wallrun_intent <= 0.0 and last_wall_normal != Vector3.ZERO:
+		if last_wall_normal != Vector3.ZERO:
 			var dot = hit["normal"].dot(last_wall_normal)
 			if dot > 0.8:
-				return
+				if wallrun_chain_timer > 0.0:
+					return
+				if wallrun_cooldown > 0.0 and wallrun_intent <= 0.0:
+					return
 		var desired = Vector3.ZERO
 		if input_dir.length() > 0.1:
 			desired = (global_transform.basis * Vector3(input_dir.x, 0, input_dir.y))
@@ -910,6 +916,7 @@ func _stop_wallrun(jumped: bool = false) -> void:
 	if wallrun_normal != Vector3.ZERO:
 		last_wall_normal = wallrun_normal
 		wallrun_cooldown = wallrun_reentry_delay
+	wallrun_chain_timer = wallrun_chain_time
 	wallrun_normal = Vector3.ZERO
 	if jumped:
 		wallrun_intent = 0.0
