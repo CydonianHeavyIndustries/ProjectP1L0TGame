@@ -3,7 +3,7 @@ extends StaticBody3D
 @export var max_health := 80.0
 @export var fire_interval := 0.9
 @export var damage := 10.0
-@export var range := 25.0
+@export var attack_range := 25.0
 @export var respawn_delay := 3.0
 @export var turn_speed := 6.0
 @export var muzzle_height := 0.8
@@ -31,7 +31,7 @@ func _process(delta: float) -> void:
 	var player_pos = (player as Node3D).global_transform.origin
 	var origin = global_transform.origin + Vector3(0, muzzle_height, 0)
 	var to_player = player_pos - origin
-	if to_player.length() > range:
+	if to_player.length() > attack_range:
 		return
 
 	var target = Vector3(player_pos.x, global_transform.origin.y, player_pos.z)

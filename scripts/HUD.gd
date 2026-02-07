@@ -2,6 +2,7 @@ extends Control
 
 @onready var hp_label: Label = Label.new()
 @onready var ammo_label: Label = Label.new()
+@onready var speed_label: Label = Label.new()
 @onready var crosshair: Label = Label.new()
 @onready var hitmarker: Label = Label.new()
 @onready var hint_label: Label = Label.new()
@@ -66,6 +67,19 @@ func _ready() -> void:
 	ammo_label.position = Vector2(22, 40)
 	_style_label(ammo_label, 14, HUD_TEXT)
 
+	add_child(speed_label)
+	speed_label.text = "SPD: 0.0"
+	speed_label.anchor_left = 1.0
+	speed_label.anchor_right = 1.0
+	speed_label.anchor_top = 0.0
+	speed_label.anchor_bottom = 0.0
+	speed_label.offset_left = -160
+	speed_label.offset_right = -22
+	speed_label.offset_top = 18
+	speed_label.offset_bottom = 38
+	speed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_style_label(speed_label, 14, HUD_TEXT)
+
 	add_child(crosshair)
 	crosshair.text = "+"
 	crosshair.position = (get_viewport_rect().size / 2) - Vector2(4, 6)
@@ -95,6 +109,8 @@ func _process(_delta: float) -> void:
 	if player:
 		hp_label.text = "HP: %d" % int(player.current_health)
 		ammo_label.text = "Ammo: %d / %d" % [int(player.ammo_in_mag), int(player.reserve_ammo)]
+		var horiz_speed = Vector3(player.velocity.x, 0, player.velocity.z).length()
+		speed_label.text = "SPD: %.1f" % horiz_speed
 		var ratio := 1.0
 		if player.max_health > 0.0:
 			ratio = float(player.current_health) / float(player.max_health)
@@ -135,14 +151,14 @@ func show_hint(text: String) -> void:
 	hint_label.visible = true
 	hint_timer = 1.4
 
-func show_gun_radial(show: bool) -> void:
-	gun_radial.visible = show
-	if show:
+func show_gun_radial(visible: bool) -> void:
+	gun_radial.visible = visible
+	if visible:
 		_position_radial(gun_radial)
 
-func show_titan_radial(show: bool) -> void:
-	titan_radial.visible = show
-	if show:
+func show_titan_radial(visible: bool) -> void:
+	titan_radial.visible = visible
+	if visible:
 		_position_radial(titan_radial)
 
 func show_hitmarker() -> void:
@@ -365,8 +381,14 @@ func _build_radial_menu(title: String, slots: Array) -> Control:
 	var style := StyleBoxFlat.new()
 	style.bg_color = HUD_BG
 	style.border_color = HUD_EDGE
-	style.border_width_all = 2
-	style.corner_radius_all = 150
+	style.border_width_left = 2
+	style.border_width_right = 2
+	style.border_width_top = 2
+	style.border_width_bottom = 2
+	style.corner_radius_top_left = 150
+	style.corner_radius_top_right = 150
+	style.corner_radius_bottom_right = 150
+	style.corner_radius_bottom_left = 150
 	style.shadow_color = Color(0.0, 0.5, 0.8, 0.18)
 	style.shadow_size = 6
 	bg.add_theme_stylebox_override("panel", style)
@@ -466,8 +488,14 @@ func _make_frame_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = HUD_BG
 	style.border_color = HUD_EDGE
-	style.border_width_all = 1
-	style.corner_radius_all = 4
+	style.border_width_left = 1
+	style.border_width_right = 1
+	style.border_width_top = 1
+	style.border_width_bottom = 1
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_right = 4
+	style.corner_radius_bottom_left = 4
 	style.shadow_color = Color(0.0, 0.5, 0.8, 0.15)
 	style.shadow_size = 4
 	return style
