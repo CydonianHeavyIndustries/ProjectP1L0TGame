@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://coresystems"]
+[gd_scene load_steps=8 format=3 uid="uid://coresystems"]
 
 [ext_resource type="Script" path="res://scripts/core_systems/factions/FactionSystem.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/core_systems/parties/PartySystem.gd" id="2"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://scripts/core_systems/economy/EconomySystem.gd" id="4"]
 [ext_resource type="Script" path="res://scripts/core_systems/safezones/SafeZoneSystem.gd" id="5"]
 [ext_resource type="Script" path="res://scripts/core_systems/spaceship_home/SpaceshipHomeSystem.gd" id="6"]
+[ext_resource type="Script" path="res://scripts/core_systems/level/LevelSystem.gd" id="7"]
 
 [node name="CoreSystems" type="Node"]
 
@@ -28,3 +29,7 @@ script = ExtResource("5")
 script = ExtResource("6")
 world_path = NodePath("../World")
 player_path = NodePath("../World/Player")
+
+[node name="LevelSystem" type="Node" parent="."]
+script = ExtResource("7")
+level_scene_path = "res://levels/Level_Main.tscn"

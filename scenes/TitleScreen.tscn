@@ -37,22 +37,15 @@ horizontal_alignment = 1
 [node name="Spacer" type="Control" parent="VBox"]
 custom_minimum_size = Vector2(0, 12)
 
-[node name="Play" type="Button" parent="VBox"]
-text = "Play"
+[node name="Sandbox" type="Button" parent="VBox"]
+text = "Sandbox"
 
-[node name="Faction" type="Button" parent="VBox"]
-text = "Select Faction"
-
-[node name="FactionStatus" type="Label" parent="VBox"]
-text = "Faction: Unassigned"
-horizontal_alignment = 1
-
-[node name="Options" type="Button" parent="VBox"]
-text = "Options"
+[node name="Tutorial" type="Button" parent="VBox"]
+text = "Tutorial"
 
 [node name="Exit" type="Button" parent="VBox"]
 text = "Exit"
 
 [node name="Hint" type="Label" parent="VBox"]
-text = "WASD Move | Mouse Look | Shift Sprint | C Slide"
+text = "Sandbox = Movement test | Tutorial = Empty plane"
 horizontal_alignment = 1

@@ -5,24 +5,24 @@ signal died
 @export var sprint_speed := 20.5
 @export var crouch_speed := 5.4
 @export var prone_speed := 3.0
-@export var jump_velocity := 8.4
-@export var double_jump_velocity := 7.4
+@export var jump_velocity := 8.8
+@export var double_jump_velocity := 7.8
 @export var max_air_jumps := 1
 @export var slide_speed := 24.0
 @export var slide_time := 0.55
 @export var slide_friction := 1.7
-@export var gravity := 14.5
-@export var gravity_fall_multiplier := 2.25
-@export var gravity_jump_cut_multiplier := 2.4
+@export var gravity := 14.0
+@export var gravity_fall_multiplier := 2.2
+@export var gravity_jump_cut_multiplier := 1.8
 @export var max_health := 100.0
-@export var accel_ground := 46.0
+@export var accel_ground := 65.0
 @export var accel_air := 20.0
 @export var air_reverse_accel_multiplier := 1.8
-@export var decel_ground := 52.0
+@export var decel_ground := 110.0
 @export var decel_air := 12.0
 @export var input_smooth := 10.0
 @export var coyote_time := 0.12
-@export var air_control := 0.9
+@export var air_control := 0.8
 @export var crouch_cam_offset := -0.5
 @export var prone_cam_offset := -0.7
 @export var cam_height_lerp := 10.0
@@ -36,10 +36,10 @@ signal died
 @export var wallrun_blend_time := 0.2
 @export var wallrun_duration := 1.35
 @export var wallrun_min_speed := 4.5
-@export var wallrun_push := 5.5
-@export var wallrun_jump_speed := 15.5
+@export var wallrun_push := 6.5
+@export var wallrun_jump_speed := 18.5
 @export var walljump_alignment_min_multiplier := 0.45
-@export var wallrun_jump_up := 7.0
+@export var wallrun_jump_up := 7.5
 @export var wallrun_stick_time := 0.2
 @export var wallrun_gravity_start := 2.4
 @export var wallrun_gravity_end := 17.0
@@ -47,6 +47,9 @@ signal died
 @export var wallrun_stick_gravity := 0.2
 @export var wallrun_stick_force := 32.0
 @export var wallrun_up_cap := 0.12
+@export var wallrun_vertical_smooth := 22.0
+@export var wallrun_entry_vertical_boost := 0.8
+@export var wallrun_entry_vertical_smooth := 18.0
 @export var wallrun_ray_length := 0.75
 @export var wallrun_contact_gap := 0.05
 @export var wallrun_ray_height := 0.4
@@ -56,11 +59,22 @@ signal died
 @export var wallrun_reentry_delay := 0.75
 @export var wallrun_intent_time := 0.25
 @export var wallrun_chain_time := 0.35
+@export var wallrun_steer_speed := 10.0
 @export var climb_check_distance := 1.2
 @export var climb_height := 1.7
 @export var climb_forward_offset := 0.7
 @export var climb_speed := 7.0
 @export var climb_min_clearance := 0.45
+@export var climb_vertical_height := 1.1
+@export var climb_vertical_forward := 0.25
+@export var grapple_range := 26.0
+@export var grapple_speed := 28.0
+@export var grapple_cooldown_time := 2.5
+@export var grapple_min_distance := 1.2
+@export var zipline_speed := 14.0
+@export var zipline_cooldown_time := 1.0
+@export var xp_base := 100
+@export var xp_growth := 1.25
 @export var fire_rate := 8.0
 @export var fire_damage := 25.0
 @export var fire_range := 60.0
@@ -129,6 +143,7 @@ var wallrun_elapsed := 0.0
 var wallrun_normal := Vector3.ZERO
 var wallrun_cooldown := 0.0
 var wallrun_chain_timer := 0.0
+var wallrun_dir := Vector3.ZERO
 var last_wall_normal := Vector3.ZERO
 var wallrun_intent := 0.0
 var wallrun_entry_speed := 0.0
@@ -142,6 +157,16 @@ var air_jumps_left := 0
 var is_crouching := false
 var is_prone := false
 var is_aiming := false
+var grapple_active := false
+var grapple_point := Vector3.ZERO
+var grapple_cooldown := 0.0
+var zipline_active := false
+var zipline_dir := Vector3.ZERO
+var zipline_cooldown := 0.0
+var current_xp := 0
+var current_level := 1
+var xp_to_next := 100
+var skill_menu_open := false
 var base_cam_pos := Vector3.ZERO
 var base_fov := 70.0
 var base_gun_pos := Vector3.ZERO
@@ -213,11 +238,14 @@ func _ready() -> void:
 	if blink_marker:
 		blink_marker.visible = false
 	_setup_feedback()
+	xp_to_next = _xp_required_for(current_level)
 	var spawn = get_tree().get_first_node_in_group("player_spawn")
 	if spawn and spawn is Node3D:
 		spawn_transform = (spawn as Node3D).global_transform
 	else:
 		spawn_transform = global_transform
+	_autoplay_first_animation(get_node_or_null("PlayerMesh"))
+	_autoplay_first_animation(get_node_or_null("Camera/FirstPersonBody"))
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_IN and not get_tree().paused:
@@ -251,16 +279,26 @@ func _process(delta: float) -> void:
 		return
 	if get_tree().paused:
 		return
-	if Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED and not reload_radial_open and not titan_radial_open:
+	if Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED and not reload_radial_open and not titan_radial_open and not skill_menu_open:
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	fire_cooldown = max(0.0, fire_cooldown - delta)
 	grenade_cooldown = max(0.0, grenade_cooldown - delta)
 	blink_cooldown = max(0.0, blink_cooldown - delta)
+	grapple_cooldown = max(0.0, grapple_cooldown - delta)
+	zipline_cooldown = max(0.0, zipline_cooldown - delta)
 	melee_timer = max(0.0, melee_timer - delta)
 	quick_melee_timer = max(0.0, quick_melee_timer - delta)
 
 	if Input.is_action_just_pressed("debug_kill"):
 		take_damage(max_health)
+	if Input.is_action_just_pressed("skill_tree"):
+		_toggle_skill_tree()
+	if Input.is_action_just_pressed("grapple"):
+		_try_start_grapple()
+	if Input.is_action_just_pressed("interact"):
+		var used = _try_start_zipline()
+		if not used:
+			pass
 
 	_handle_reload_input(delta)
 	_handle_titan_input(delta)
@@ -291,8 +329,7 @@ func _process(delta: float) -> void:
 		_hud_placeholder("Grenade (placeholder)")
 	if Input.is_action_just_pressed("special1"):
 		_hud_placeholder("Special skill 1 (placeholder)")
-	if Input.is_action_just_pressed("interact"):
-		_hud_placeholder("Interact (placeholder)")
+	# Interact handled above (zipline/ammo box/etc).
 	if Input.is_action_just_pressed("map"):
 		_hud_placeholder("Map (placeholder)")
 	if Input.is_action_just_pressed("quests"):
@@ -333,6 +370,10 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if is_dead:
 		return
+	if skill_menu_open:
+		velocity = Vector3.ZERO
+		move_and_slide()
+		return
 	jump_buffer = max(0.0, jump_buffer - delta)
 	var on_floor = is_on_floor()
 	if on_floor:
@@ -341,6 +382,14 @@ func _physics_process(delta: float) -> void:
 		coyote_timer = max(0.0, coyote_timer - delta)
 	if climbing:
 		_update_climb(delta)
+		return
+	if grapple_active:
+		_update_grapple(delta)
+		move_and_slide()
+		return
+	if zipline_active:
+		_update_zipline(delta)
+		move_and_slide()
 		return
 	if on_floor or wallrunning:
 		air_jumps_left = max_air_jumps
@@ -486,35 +535,39 @@ func _physics_process(delta: float) -> void:
 			var desired = (global_transform.basis * Vector3(input_dir.x, 0, input_dir.y))
 			if desired.length() < 0.1:
 				desired = Vector3(velocity.x, 0, velocity.z)
-			var wall_dir = _compute_wallrun_dir(wallrun_normal, desired)
-			if wall_dir == Vector3.ZERO:
+			var desired_wall_dir = _compute_wallrun_dir(wallrun_normal, desired)
+			if desired_wall_dir == Vector3.ZERO:
 				_stop_wallrun()
 			else:
+				if wallrun_dir == Vector3.ZERO:
+					wallrun_dir = desired_wall_dir
+				var steer = 1.0 - exp(-wallrun_steer_speed * delta)
+				wallrun_dir = wallrun_dir.slerp(desired_wall_dir, steer).normalized()
 				var wall_horiz = Vector3(velocity.x, 0, velocity.z)
 				var blend = 1.0
 				if wallrun_blend_time > 0.0:
 					blend = clamp(wallrun_elapsed / wallrun_blend_time, 0.0, 1.0)
 				var entry_speed = max(wallrun_entry_speed, wallrun_min_speed)
 				var target_speed = lerp(entry_speed, wallrun_speed, blend)
-				var target = wall_dir * target_speed
+				var target = wallrun_dir * target_speed
 				wall_horiz = wall_horiz.move_toward(target, wallrun_accel * delta)
 				velocity.x = wall_horiz.x
 				velocity.z = wall_horiz.z
-				if velocity.y > wallrun_up_cap:
-					velocity.y = wallrun_up_cap
 				var stick_strength = wallrun_stick_force * clamp(blend, 0.2, 1.0)
 				velocity += -wallrun_normal * stick_strength * delta
 				if wallrun_elapsed < wallrun_stick_time:
 					var stick_grav = wallrun_gravity_start * wallrun_stick_gravity
-					velocity.y = min(velocity.y, wallrun_up_cap)
-					velocity.y -= stick_grav * delta
+					var target_y = min(velocity.y, wallrun_up_cap) - stick_grav * delta
+					velocity.y = move_toward(velocity.y, target_y, wallrun_vertical_smooth * delta)
 				else:
 					var t = clamp((wallrun_elapsed - wallrun_stick_time) / max(0.01, wallrun_duration - wallrun_stick_time), 0.0, 1.0)
 					var curve = pow(t, wallrun_gravity_curve)
 					var grav = lerp(wallrun_gravity_start, wallrun_gravity_end, curve)
-					velocity.y -= grav * delta
+					var target_y = min(velocity.y - grav * delta, wallrun_up_cap)
+					velocity.y = move_toward(velocity.y, target_y, wallrun_vertical_smooth * delta)
 				if jump_just_pressed:
 					var horiz = Vector3(velocity.x, 0, velocity.z)
+					var current_speed = horiz.length()
 					var takeoff_dir = horiz
 					if takeoff_dir.length() < 0.1:
 						takeoff_dir = _compute_wallrun_dir(wallrun_normal, input_dir)
@@ -532,7 +585,11 @@ func _physics_process(delta: float) -> void:
 					if wall_jump_dir.length() > 0.1 and desired_dir.length() > 0.1:
 						alignment = clamp(abs(wall_jump_dir.dot(desired_dir)), 0.0, 1.0)
 					var speed_scale = lerp(walljump_alignment_min_multiplier, 1.0, alignment)
-					velocity = takeoff_dir * wallrun_jump_speed * speed_scale
+					var base_speed = max(current_speed, wallrun_jump_speed)
+					var final_speed = base_speed
+					if speed_scale > 1.0:
+						final_speed = base_speed * speed_scale
+					velocity = takeoff_dir * final_speed
 					velocity.y = wallrun_jump_up
 					velocity += wallrun_normal * wallrun_push
 					jump_buffer = 0.0
@@ -602,6 +659,21 @@ func _apply_camera_pitch() -> void:
 		return
 	cam.rotation.x = clamp(_pitch - recoil_offset, look_pitch_min, look_pitch_max)
 
+func _autoplay_first_animation(root: Node) -> void:
+	if root == null:
+		return
+	var players: Array = root.find_children("*", "AnimationPlayer", true, false)
+	if players.is_empty():
+		return
+	var anim_player: AnimationPlayer = players[0] as AnimationPlayer
+	if anim_player == null:
+		return
+	var anims: PackedStringArray = anim_player.get_animation_list()
+	if anims.is_empty():
+		return
+	if not anim_player.is_playing():
+		anim_player.play(anims[0])
+
 func _capture_mouse() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
@@ -670,7 +742,9 @@ func _ensure_default_input() -> void:
 	_ensure_key_action("ui_cancel", KEY_ESCAPE)
 	_ensure_key_action("fullscreen", KEY_F11)
 	_ensure_key_action("mark_location", KEY_F6)
-	_ensure_key_action("debug_kill", KEY_K)
+	_ensure_key_action("debug_kill", KEY_F9)
+	_ensure_key_action("skill_tree", KEY_K)
+	_ensure_key_action("grapple", KEY_H)
 	_ensure_mouse_action("fire", MOUSE_BUTTON_LEFT)
 	_ensure_mouse_action("aim", MOUSE_BUTTON_RIGHT)
 	_ensure_mouse_action("class_ability", MOUSE_BUTTON_MIDDLE)
@@ -682,6 +756,8 @@ func _purge_conflicting_keybinds() -> void:
 	_remove_key_from_action("weapon_tertiary", KEY_F)
 	_remove_key_from_action("weapon_melee", KEY_F)
 	_remove_key_from_action("weapon_extras", KEY_F)
+	# Zipline should not be bound to Z anymore (use interact).
+	_remove_key_from_action("zipline", KEY_Z)
 
 func _remove_key_from_action(action: String, keycode: Key) -> void:
 	if not InputMap.has_action(action):
@@ -1015,52 +1091,59 @@ func _try_start_wallrun(input_dir: Vector2) -> void:
 	if horiz_speed < wallrun_min_speed:
 		return
 	var hit = _get_wallrun_hit()
-	if hit and hit.has("normal"):
-		if last_wall_normal != Vector3.ZERO:
-			var dot = hit["normal"].dot(last_wall_normal)
-			if dot > 0.8:
-				if wallrun_chain_timer > 0.0:
-					return
-				if wallrun_cooldown > 0.0 and wallrun_intent <= 0.0:
-					return
-		var desired = Vector3.ZERO
-		if input_dir.length() > 0.1:
-			desired = (global_transform.basis * Vector3(input_dir.x, 0, input_dir.y))
-		else:
-			desired = Vector3(velocity.x, 0, velocity.z)
-		if desired.length() < 0.1:
-			return
-		var wall_dir = _compute_wallrun_dir(hit["normal"], desired)
-		if wall_dir == Vector3.ZERO:
-			return
-		if hit.has("position"):
-			var origin = global_transform.origin + Vector3(0, wallrun_ray_height, 0)
-			var dist = origin.distance_to(hit["position"])
-			var max_dist = min(wallrun_ray_length * 0.95, base_capsule_radius + wallrun_contact_gap)
-			if dist > max_dist:
+	if not (hit and hit.has("normal")):
+		return
+	if last_wall_normal != Vector3.ZERO:
+		var dot = hit["normal"].dot(last_wall_normal)
+		if dot > 0.8:
+			if wallrun_chain_timer > 0.0:
 				return
-		wallrun_normal = hit["normal"]
-		wallrunning = true
-		wallrun_timer = wallrun_duration
-		wallrun_elapsed = 0.0
-		wallrun_entry_speed = max(Vector3(velocity.x, 0, velocity.z).length(), wallrun_min_speed)
-		wallrun_entry_dir = Vector3(velocity.x, 0, velocity.z).normalized()
-		wallrun_intent = 0.0
-		velocity.y = max(velocity.y, 0.8)
-		var horiz = Vector3(velocity.x, 0, velocity.z)
-		var target = wall_dir * wallrun_entry_speed
-		horiz = horiz.move_toward(target, wallrun_accel * get_physics_process_delta_time())
-		velocity.x = horiz.x
-		velocity.z = horiz.z
+			if wallrun_cooldown > 0.0 and wallrun_intent <= 0.0:
+				return
+	var desired = Vector3.ZERO
+	if input_dir.length() > 0.1:
+		desired = (global_transform.basis * Vector3(input_dir.x, 0, input_dir.y))
+	else:
+		desired = Vector3(velocity.x, 0, velocity.z)
+	if desired.length() < 0.1:
+		return
+	var wall_dir = _compute_wallrun_dir(hit["normal"], desired)
+	if wall_dir == Vector3.ZERO:
+		return
+	if hit.has("position"):
+		var origin = global_transform.origin + Vector3(0, wallrun_ray_height, 0)
+		var dist = origin.distance_to(hit["position"])
+		var max_dist = min(wallrun_ray_length * 0.95, base_capsule_radius + wallrun_contact_gap)
+		if dist > max_dist:
+			return
+	wallrun_normal = hit["normal"]
+	wallrunning = true
+	wallrun_timer = wallrun_duration
+	wallrun_elapsed = 0.0
+	wallrun_entry_speed = max(Vector3(velocity.x, 0, velocity.z).length(), wallrun_min_speed)
+	wallrun_entry_dir = Vector3(velocity.x, 0, velocity.z).normalized()
+	wallrun_dir = wall_dir
+	wallrun_intent = 0.0
+	var entry_target_y = max(velocity.y, wallrun_entry_vertical_boost)
+	velocity.y = move_toward(velocity.y, entry_target_y, wallrun_entry_vertical_smooth * get_physics_process_delta_time())
+	var horiz = Vector3(velocity.x, 0, velocity.z)
+	var target = wall_dir * wallrun_entry_speed
+	horiz = horiz.move_toward(target, wallrun_accel * get_physics_process_delta_time())
+	velocity.x = horiz.x
+	velocity.z = horiz.z
 
 func _compute_wallrun_dir(normal: Vector3, desired: Vector3) -> Vector3:
 	if desired.length() < 0.1:
 		return Vector3.ZERO
-	var desired_dir = desired.normalized()
-	var wall_dir = normal.cross(Vector3.UP).normalized()
-	if wall_dir.dot(desired_dir) < 0.0:
-		wall_dir = -wall_dir
-	return wall_dir
+	var desired_flat = desired - normal * desired.dot(normal)
+	if desired_flat.length() < 0.05:
+		if wallrun_entry_dir.length() > 0.1:
+			var entry_flat = wallrun_entry_dir - normal * wallrun_entry_dir.dot(normal)
+			if entry_flat.length() > 0.05:
+				return entry_flat.normalized()
+		var fallback = normal.cross(Vector3.UP).normalized()
+		return fallback
+	return desired_flat.normalized()
 
 func _try_start_climb() -> bool:
 	if climbing or wallrunning or sliding or is_prone:
@@ -1083,27 +1166,37 @@ func _try_start_climb() -> bool:
 	var top_params = PhysicsRayQueryParameters3D.create(top_from, top_to)
 	top_params.exclude = [self]
 	var top_hit = space.intersect_ray(top_params)
-	if not top_hit or not top_hit.has("position") or not top_hit.has("normal"):
-		return false
-	var top_normal: Vector3 = top_hit["normal"]
-	if top_normal.dot(Vector3.UP) < 0.7:
-		return false
+	if top_hit and top_hit.has("position") and top_hit.has("normal"):
+		var top_normal: Vector3 = top_hit["normal"]
+		if top_normal.dot(Vector3.UP) >= 0.7:
+			var target = top_hit["position"]
+			target += Vector3.UP * (base_capsule_height * 0.5 + base_capsule_radius + 0.02)
+			target += forward * climb_forward_offset
 
-	var target = top_hit["position"]
-	target += Vector3.UP * (base_capsule_height * 0.5 + base_capsule_radius + 0.02)
-	target += forward * climb_forward_offset
+			# Ensure head clearance
+			var head_from = target + Vector3.UP * climb_min_clearance
+			var head_to = head_from + Vector3.UP * climb_min_clearance
+			var head_params = PhysicsRayQueryParameters3D.create(head_from, head_to)
+			head_params.exclude = [self]
+			var head_hit = space.intersect_ray(head_params)
+			if head_hit:
+				return false
 
-	# Ensure head clearance
-	var head_from = target + Vector3.UP * climb_min_clearance
-	var head_to = head_from + Vector3.UP * climb_min_clearance
-	var head_params = PhysicsRayQueryParameters3D.create(head_from, head_to)
-	head_params.exclude = [self]
-	var head_hit = space.intersect_ray(head_params)
-	if head_hit:
+			climbing = true
+			climb_target = target
+			velocity = Vector3.ZERO
+			return true
+
+	# Vertical climb fallback (no ledge)
+	var vertical_target = global_transform.origin + Vector3.UP * climb_vertical_height + forward * climb_vertical_forward
+	var clear_from = chest + forward * 0.1
+	var clear_to = clear_from + Vector3.UP * (climb_vertical_height + 0.2)
+	var clear_params = PhysicsRayQueryParameters3D.create(clear_from, clear_to)
+	clear_params.exclude = [self]
+	if space.intersect_ray(clear_params):
 		return false
-
 	climbing = true
-	climb_target = target
+	climb_target = vertical_target
 	velocity = Vector3.ZERO
 	return true
 
@@ -1121,6 +1214,7 @@ func _stop_wallrun(jumped: bool = false) -> void:
 	wallrun_elapsed = 0.0
 	wallrun_entry_speed = 0.0
 	wallrun_entry_dir = Vector3.ZERO
+	wallrun_dir = Vector3.ZERO
 	if wallrun_normal != Vector3.ZERO:
 		last_wall_normal = wallrun_normal
 		wallrun_cooldown = wallrun_reentry_delay
@@ -1174,6 +1268,96 @@ func _toggle_pause() -> void:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 		else:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+func _toggle_skill_tree() -> void:
+	skill_menu_open = not skill_menu_open
+	if hud and hud.has_method("show_skill_tree"):
+		hud.show_skill_tree(skill_menu_open)
+	if skill_menu_open:
+		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	else:
+		if not get_tree().paused:
+			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+func _xp_required_for(level: int) -> int:
+	var base = max(10, xp_base)
+	if level <= 1:
+		return base
+	return int(round(float(base) * pow(xp_growth, float(level - 1))))
+
+func add_xp(amount: int) -> void:
+	if amount <= 0:
+		return
+	current_xp += amount
+	var leveled := false
+	while current_xp >= xp_to_next:
+		current_xp -= xp_to_next
+		current_level += 1
+		xp_to_next = _xp_required_for(current_level)
+		leveled = true
+	if leveled:
+		_hud_hint("Level Up! Lv %d" % current_level)
+
+func _try_start_grapple() -> void:
+	if grapple_cooldown > 0.0 or grapple_active:
+		return
+	var from = cam.global_transform.origin
+	var to = from + (-cam.global_transform.basis.z * grapple_range)
+	var space = get_world_3d().direct_space_state
+	var params = PhysicsRayQueryParameters3D.create(from, to)
+	params.exclude = [self]
+	var hit = space.intersect_ray(params)
+	if hit and hit.has("position"):
+		grapple_point = hit["position"]
+		grapple_active = true
+		grapple_cooldown = grapple_cooldown_time
+		_hud_hint("Grapple engaged")
+	else:
+		_hud_placeholder("Grapple (no target)")
+
+func _update_grapple(delta: float) -> void:
+	var to_point = grapple_point - global_transform.origin
+	var distance = to_point.length()
+	if distance <= grapple_min_distance:
+		grapple_active = false
+		return
+	var dir = to_point / max(0.001, distance)
+	velocity = dir * grapple_speed
+	# soften vertical snap
+	velocity.y = lerp(velocity.y, dir.y * grapple_speed, 1.0 - exp(-10.0 * delta))
+
+func _try_start_zipline() -> bool:
+	if zipline_cooldown > 0.0 or zipline_active:
+		return false
+	var zip = _find_nearest_zipline()
+	if zip == null:
+		return false
+	var dir = zip.get_zipline_dir()
+	if dir.length() < 0.1:
+		return false
+	zipline_dir = dir.normalized()
+	zipline_active = true
+	zipline_cooldown = zipline_cooldown_time
+	_hud_hint("Zipline engaged")
+	return true
+
+func _update_zipline(delta: float) -> void:
+	velocity = zipline_dir * zipline_speed
+	velocity.y = lerp(velocity.y, 0.0, 1.0 - exp(-8.0 * delta))
+	if Input.is_action_just_pressed("jump"):
+		zipline_active = false
+
+func _find_nearest_zipline() -> Node:
+	var zips = get_tree().get_nodes_in_group("zipline")
+	var best: Node = null
+	var best_dist := 3.0
+	for z in zips:
+		if z is Node3D:
+			var dist = (z as Node3D).global_transform.origin.distance_to(global_transform.origin)
+			if dist < best_dist:
+				best_dist = dist
+				best = z
+	return best
 
 func _try_fire() -> void:
 	if weapon_mode == "melee":
@@ -1383,6 +1567,18 @@ func _finish_reload() -> void:
 	var take = min(needed, reserve_ammo)
 	ammo_in_mag += take
 	reserve_ammo -= take
+
+func refill_ammo() -> void:
+	for weapon_id in weapon_configs.keys():
+		var cfg = weapon_configs[weapon_id]
+		weapon_mag_store[weapon_id] = cfg.get("mag", mag_size)
+		weapon_reserve_store[weapon_id] = cfg.get("reserve", reserve_ammo)
+	ammo_in_mag = weapon_mag_store.get(current_weapon, mag_size)
+	reserve_ammo = weapon_reserve_store.get(current_weapon, reserve_ammo)
+	_hud_hint("Ammo refilled")
+
+func open_loadout() -> void:
+	_hud_placeholder("Loadout (placeholder)")
 
 func _try_throw_grenade() -> void:
 	if grenade_cooldown > 0.0:
