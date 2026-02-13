@@ -109,6 +109,36 @@ export const useLauncherState = (): LauncherState => {
   }, []);
 
   useEffect(() => {
+    let active = true;
+
+    const syncLocalVersion = async () => {
+      if (!settings.useLocalBuild || !window.launcher?.getBuildInfo) return;
+      const result = await window.launcher.getBuildInfo();
+      if (!active || result.status !== 'ok') return;
+      const localVersion = result.gameVersion?.trim();
+      if (!localVersion || localVersion === installedVersion) return;
+
+      setInstalledVersion(localVersion);
+      setInstall((prev) => ({ ...prev, state: 'Installed' }));
+      writeInstalled({
+        version: localVersion,
+        channel,
+        installedAt: new Date().toISOString(),
+        path: settings.installDir
+      });
+      pushLog(`Local version synced (${localVersion})`);
+    };
+
+    syncLocalVersion().catch((error) => {
+      pushLog(`Version sync failed (${error instanceof Error ? error.message : String(error)})`);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [settings.useLocalBuild, settings.installDir, channel, installedVersion]);
+
+  useEffect(() => {
     if (!window.launcher?.onUpdateProgress) return undefined;
     const unsubscribe = window.launcher.onUpdateProgress((payload) => {
       setInstall((prev) => ({

@@ -435,6 +435,16 @@ const resolveRepoRoot = () => {
   return path.resolve(appPath, '..');
 };
 
+const readGameVersion = () => {
+  try {
+    const versionPath = path.join(resolveRepoRoot(), 'VERSION');
+    const value = fs.readFileSync(versionPath, 'utf-8').trim();
+    return value.length > 0 ? value : null;
+  } catch {
+    return null;
+  }
+};
+
 const runPackagingScript = (payload) => {
   const repoRoot = resolveRepoRoot();
   const godotPs1Path = path.join(repoRoot, 'tools', 'package_godot_build.ps1');
@@ -676,6 +686,14 @@ ipcMain.handle('launcher:openPath', async (_event, targetPath) => {
 ipcMain.handle('launcher:openLogs', async () => {
   await ensureDir(logDir);
   await shell.openPath(logDir);
+});
+
+ipcMain.handle('launcher:getBuildInfo', async () => {
+  return {
+    status: 'ok',
+    launcherVersion: app.getVersion(),
+    gameVersion: readGameVersion()
+  };
 });
 
 app.whenReady().then(() => {

@@ -32,7 +32,7 @@ const Home = ({ state }: { state: LauncherState }) => {
   const isBusy = install.state === 'Updating' || install.state === 'Repairing';
   const isServerBusy = server.status === 'Starting' || server.status === 'Stopping';
   const isServerRunning = server.status === 'Running';
-  const remoteVersion = release?.version ?? '—';
+  const remoteVersion = settings.useLocalBuild ? installedVersion : release?.version ?? '—';
   const payloadSize = release?.asset?.size ? formatBytes(release.asset.size) : '—';
   const releaseDate = release?.publishedAt ? formatDate(release.publishedAt) : '—';
   const primaryLabel = settings.useLocalBuild && !isBusy ? 'Play (Local)' : primaryActionLabel(install.state);

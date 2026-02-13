@@ -16,6 +16,10 @@ declare global {
       isDev: boolean;
       platform: string;
       version: string;
+      getBuildInfo: () => Promise<
+        | { status: 'ok'; launcherVersion: string; gameVersion?: string | null }
+        | { status: 'error'; reason: string }
+      >;
       checkForUpdate: (payload: { channel: string; installedVersion: string; installedAt?: string }) => Promise<
         | {
             status: 'ok';

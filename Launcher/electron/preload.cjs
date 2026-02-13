@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('launcher', {
   isDev: process.env.NODE_ENV === 'development',
   platform: process.platform,
   version: process.versions.electron,
+  getBuildInfo: () => ipcRenderer.invoke('launcher:getBuildInfo'),
   checkForUpdate: (payload) => ipcRenderer.invoke('launcher:checkUpdate', payload),
   performUpdate: (payload) => ipcRenderer.invoke('launcher:performUpdate', payload),
   launchGame: (payload) => ipcRenderer.invoke('launcher:launchGame', payload),
