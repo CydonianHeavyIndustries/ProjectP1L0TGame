@@ -1,330 +1,60 @@
 [gd_scene format=3 uid="uid://nvamt2h2x6w8"]
 
-[ext_resource type="Script" uid="uid://btdumex1x71ie" path="res://scripts/Player.gd" id="1"]
-[ext_resource type="Shape3D" path="res://scenes/ground_shape_box.tres" id="2"]
-[ext_resource type="PlaneMesh" path="res://scenes/ground_mesh.tres" id="3"]
-[ext_resource type="BoxMesh" path="res://scenes/wall_mesh.tres" id="4"]
-[ext_resource type="Shape3D" uid="uid://dof45011p2rf0" path="res://scenes/wall_shape.tres" id="5"]
-[ext_resource type="Shape3D" path="res://scenes/dummy_shape.tres" id="6"]
-[ext_resource type="Script" uid="uid://syvafllf7nfw" path="res://scripts/Dummy.gd" id="7"]
-[ext_resource type="Script" uid="uid://d20lv6lepkke3" path="res://scripts/HUD.gd" id="9"]
-[ext_resource type="Material" path="res://materials/placeholder_gun.tres" id="10"]
-[ext_resource type="Material" path="res://materials/placeholder_gun_accent.tres" id="11"]
-[ext_resource type="Script" uid="uid://ddvegfo2gk3go" path="res://scripts/Gun.gd" id="12"]
-[ext_resource type="Environment" path="res://scenes/sky_environment.tres" id="13"]
-[ext_resource type="Script" uid="uid://dmcmhv17w4otv" path="res://scripts/PauseMenu.gd" id="14"]
-[ext_resource type="Material" path="res://materials/placeholder_dummy.tres" id="15"]
-[ext_resource type="PackedScene" path="res://scenes/Turret.tscn" id="16"]
-[ext_resource type="PackedScene" uid="uid://safe0one" path="res://scenes/SafeZoneArea.tscn" id="17"]
-[ext_resource type="PackedScene" uid="uid://coresystems" path="res://scenes/CoreSystems.tscn" id="18"]
-[ext_resource type="PackedScene" path="res://scenes/AmmoBox.tscn" id="19"]
-[ext_resource type="PackedScene" path="res://scenes/Zipline.tscn" id="20"]
-[ext_resource type="PackedScene" path="res://scenes/characters/PlayerAvatar.tscn" id="21"]
-[ext_resource type="PackedScene" path="res://scenes/characters/DummyAvatar.tscn" id="22"]
-[ext_resource type="PackedScene" path="res://scenes/arms/FpsArms.tscn" id="23"]
-[ext_resource type="PackedScene" path="res://scenes/weapons/Rifle.tscn" id="24"]
-[ext_resource type="PackedScene" path="res://scenes/weapons/Sniper.tscn" id="25"]
-[ext_resource type="PackedScene" path="res://scenes/weapons/RocketLauncher.tscn" id="26"]
-[ext_resource type="PackedScene" path="res://scenes/weapons/Pistol.tscn" id="27"]
-[ext_resource type="PackedScene" path="res://scenes/weapons/Sword.tscn" id="28"]
+[ext_resource type="Script" path="res://scripts/Gameplay.gd" id=1]
+[ext_resource type="PackedScene" path="res://scenes/Player.tscn" id=2]
+[ext_resource type="Shape3D" path="res://scenes/ground_shape.tres" id=3]
+[ext_resource type="Mesh" path="res://scenes/ground_mesh.tres" id=4]
+[ext_resource type="Mesh" path="res://scenes/wall_mesh.tres" id=5]
+[ext_resource type="Shape3D" path="res://scenes/wall_shape.tres" id=6]
+[ext_resource type="Shape3D" path="res://scenes/dummy_shape.tres" id=7]
+[ext_resource type="Script" path="res://scripts/Dummy.gd" id=8]
+[ext_resource type="Mesh" path="res://scenes/dummy_mesh.tres" id=9]
+[ext_resource type="Script" path="res://scripts/HUD.gd" id=10]
+
+[node name="Gameplay" type="Node3D"]
+script = ExtResource(1)
+player_scene = ExtResource(2)
 
 [sub_resource type="BoxMesh" id="3"]
 material = ExtResource("10")
 size = Vector3(0.42, 0.12, 1.35)
 
-[sub_resource type="BoxMesh" id="10"]
-material = ExtResource("11")
-size = Vector3(0.38, 0.08, 0.42)
+[node name="Floor" type="StaticBody3D" parent="World"]
 
-[sub_resource type="CylinderMesh" id="4"]
-material = ExtResource("10")
-top_radius = 0.022
-bottom_radius = 0.026
-height = 0.85
-radial_segments = 16
+[node name="Collision" type="CollisionShape3D" parent="World/Floor"]
+shape = ExtResource(3)
 
-[sub_resource type="BoxMesh" id="13"]
-material = ExtResource("10")
-size = Vector3(0.36, 0.12, 0.38)
-
-[sub_resource type="BoxMesh" id="5"]
-material = ExtResource("11")
-size = Vector3(0.12, 0.32, 0.18)
-
-[sub_resource type="BoxMesh" id="16"]
-material = ExtResource("11")
-size = Vector3(0.05, 0.12, 0.08)
-
-[sub_resource type="BoxMesh" id="17"]
-material = ExtResource("11")
-size = Vector3(0.06, 0.08, 0.04)
-
-[sub_resource type="BoxMesh" id="12"]
-material = ExtResource("11")
-size = Vector3(0.12, 0.3, 0.18)
-
-[sub_resource type="BoxMesh" id="6"]
-material = ExtResource("11")
-size = Vector3(0.18, 0.035, 0.9)
-
-[sub_resource type="BoxMesh" id="15"]
-material = ExtResource("11")
-size = Vector3(0.06, 0.14, 0.06)
-
-[sub_resource type="BoxMesh" id="14"]
-material = ExtResource("11")
-size = Vector3(0.08, 0.12, 0.06)
-
-[sub_resource type="BoxMesh" id="11"]
-material = ExtResource("11")
-size = Vector3(0.18, 0.1, 0.28)
-
-[sub_resource type="BoxMesh" id="7"]
-material = ExtResource("11")
-size = Vector3(0.12, 0.28, 0.22)
-
-[sub_resource type="BoxMesh" id="24"]
-material = ExtResource("11")
-size = Vector3(0.5, 0.6, 0.35)
-
-[sub_resource type="BoxMesh" id="25"]
-material = ExtResource("11")
-size = Vector3(0.18, 0.5, 0.18)
-
-[sub_resource type="BoxMesh" id="26"]
-material = ExtResource("10")
-size = Vector3(0.36, 0.1, 1.6)
-
-[sub_resource type="CylinderMesh" id="27"]
-material = ExtResource("10")
-top_radius = 0.02
-bottom_radius = 0.02
-height = 1.2
-radial_segments = 16
-
-[sub_resource type="CylinderMesh" id="28"]
-material = ExtResource("11")
-top_radius = 0.05
-bottom_radius = 0.05
-height = 0.4
-radial_segments = 16
-
-[sub_resource type="BoxMesh" id="29"]
-material = ExtResource("10")
-size = Vector3(0.28, 0.08, 0.35)
-
-[sub_resource type="BoxMesh" id="30"]
-material = ExtResource("11")
-size = Vector3(0.08, 0.18, 0.12)
-
-[sub_resource type="BoxMesh" id="31"]
-material = ExtResource("10")
-size = Vector3(0.48, 0.16, 1.2)
-
-[sub_resource type="CylinderMesh" id="32"]
-material = ExtResource("11")
-top_radius = 0.12
-bottom_radius = 0.12
-height = 1.0
-radial_segments = 16
-
-[sub_resource type="BoxMesh" id="33"]
-material = ExtResource("10")
-size = Vector3(0.24, 0.08, 0.4)
-
-[sub_resource type="CylinderMesh" id="34"]
-material = ExtResource("11")
-top_radius = 0.02
-bottom_radius = 0.02
-height = 0.35
-radial_segments = 12
-
-[sub_resource type="BoxMesh" id="35"]
-material = ExtResource("10")
-size = Vector3(0.1, 0.24, 0.12)
-
-[sub_resource type="BoxMesh" id="36"]
-material = ExtResource("11")
-size = Vector3(0.08, 0.2, 0.1)
-
-[sub_resource type="BoxMesh" id="37"]
-material = ExtResource("11")
-size = Vector3(0.08, 0.6, 0.06)
-
-[sub_resource type="CylinderMesh" id="38"]
-material = ExtResource("10")
-top_radius = 0.03
-bottom_radius = 0.03
-height = 0.2
-radial_segments = 12
-
-[sub_resource type="BoxMesh" id="39"]
-material = ExtResource("11")
-size = Vector3(0.18, 0.04, 0.06)
-
-[sub_resource type="CapsuleShape3D" id="1"]
-radius = 0.35
-height = 1.7
-
-[sub_resource type="CapsuleMesh" id="2"]
-radius = 0.35
-height = 1.7
-
-[sub_resource type="StandardMaterial3D" id="23"]
-transparency = 1
-shading_mode = 2
-albedo_color = Color(0.2, 0.85, 1, 0.6)
-emission = Color(0.2, 0.85, 1, 1)
-emission_energy_multiplier = 1.2
-
-[sub_resource type="CylinderMesh" id="22"]
-top_radius = 0.7
-bottom_radius = 0.7
-height = 0.05
-radial_segments = 24
-
-[sub_resource type="BoxMesh" id="18"]
-material = ExtResource("15")
-size = Vector3(0.8, 1, 0.4)
-
-[sub_resource type="BoxMesh" id="19"]
-material = ExtResource("15")
-size = Vector3(0.4, 0.4, 0.4)
-
-[sub_resource type="BoxMesh" id="20"]
-material = ExtResource("15")
-size = Vector3(0.25, 0.8, 0.25)
-
-[sub_resource type="BoxMesh" id="21"]
-material = ExtResource("15")
-size = Vector3(0.3, 0.9, 0.3)
-
-[sub_resource type="QuadMesh" id="8"]
-size = Vector2(1.2, 0.16)
-
-[sub_resource type="QuadMesh" id="9"]
-size = Vector2(1.1, 0.1)
-
-[node name="Gameplay" type="Node3D" unique_id=1927962314]
-
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1769459295]
-environment = ExtResource("13")
-
-[node name="World" type="Node3D" parent="." unique_id=914263811]
-
-[node name="LevelRoot" type="Node3D" parent="World"]
-
-[node name="PlayerSpawn" type="Node3D" parent="World" unique_id=275476265 groups=["player_spawn"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
-
-[node name="Player" type="CharacterBody3D" parent="World" unique_id=1149394692]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
-script = ExtResource("1")
-safezone_system_path = NodePath("../../CoreSystems/SafeZoneSystem")
-
-[node name="Camera" type="Camera3D" parent="World/Player" unique_id=311334521]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
-current = true
-
-[node name="GunPivot" type="Node3D" parent="World/Player/Camera" unique_id=1828150083]
-transform = Transform3D(0.9998, 0, 0.019998666, 0, 1, 0, -0.019998666, 0, 0.9998, 0.25, -0.22, -0.55)
-
-[node name="Gun" type="Node3D" parent="World/Player/Camera/GunPivot" unique_id=1271652923]
-transform = Transform3D(1.2, 0, 0, 0, 1.2, 0, 0, 0, 1.2, 0, 0, 0)
-script = ExtResource("12")
-
-[node name="Rifle" parent="World/Player/Camera/GunPivot/Gun" unique_id=1779000011 instance=ExtResource("24")]
-
-[node name="Sniper" parent="World/Player/Camera/GunPivot/Gun" instance=ExtResource("25")]
-visible = false
-
-[node name="RocketLauncher" parent="World/Player/Camera/GunPivot/Gun" instance=ExtResource("26")]
-visible = false
+[node name="FloorMesh" type="MeshInstance3D" parent="World/Floor"]
+mesh = ExtResource(4)
 
 [node name="Pistol" parent="World/Player/Camera/GunPivot/Gun" instance=ExtResource("27")]
 visible = false
 
-[node name="Sword" parent="World/Player/Camera/GunPivot/Gun" instance=ExtResource("28")]
-visible = false
+[node name="WallLeftCollision" type="CollisionShape3D" parent="World/WallLeft"]
+shape = ExtResource(6)
 
-
-[node name="FirstPersonBody" type="Node3D" parent="World/Player/Camera" unique_id=1555803367]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.3, 0.05)
-
-[node name="Arms" parent="World/Player/Camera/FirstPersonBody" instance=ExtResource("23")]
-
-[node name="PlayerCollision" type="CollisionShape3D" parent="World/Player" unique_id=1904474253]
-shape = SubResource("1")
-
-[node name="PlayerMesh" parent="World/Player" unique_id=1518802882 instance=ExtResource("21")]
-
-[node name="Floor" type="StaticBody3D" parent="World" unique_id=582234342]
-
-[node name="Collision" type="CollisionShape3D" parent="World/Floor" unique_id=1210794127]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.05, 0)
-shape = ExtResource("2")
-
-[node name="FloorMesh" type="MeshInstance3D" parent="World/Floor" unique_id=678931732]
-mesh = ExtResource("3")
-
-[node name="AmmoBox" parent="World" instance=ExtResource("19")]
-position = Vector3(2, 0.4, 2)
-
-[node name="Zipline" parent="World" instance=ExtResource("20")]
-position = Vector3(-2, 2.5, 6)
-
-[node name="WallLeft" type="StaticBody3D" parent="World/Floor/FloorMesh" unique_id=403689772]
-transform = Transform3D(-4.371139e-08, -1, 0, 0.8660254, -3.7855173e-08, 0.5, -0.5, 2.1855694e-08, 0.8660254, -24.457474, 3, -10)
-
-[node name="WallLeftCollision" type="CollisionShape3D" parent="World/Floor/FloorMesh/WallLeft" unique_id=1067822686]
-transform = Transform3D(1, 1.7763568e-15, 0, 1.7763568e-15, 1, 0, 0, 0, 1, 3.678362, 0, 6.331289)
-shape = ExtResource("5")
-
-[node name="WallLeftMesh" type="MeshInstance3D" parent="World/Floor/FloorMesh/WallLeft" unique_id=1946649670]
-transform = Transform3D(1, 1.7763568e-15, 0, 1.7763568e-15, 1, 0, 0, 0, 1, 3.6299791, 0, 7.388698)
-mesh = ExtResource("4")
-
-[node name="WallLeft" type="StaticBody3D" parent="World" unique_id=1008099970]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 3, -10)
-
-[node name="WallLeftCollision" type="CollisionShape3D" parent="World/WallLeft" unique_id=1533842977]
-shape = ExtResource("5")
-
-[node name="WallLeftMesh" type="MeshInstance3D" parent="World/WallLeft" unique_id=1489548630]
-mesh = ExtResource("4")
-
-[node name="WallRight2" type="StaticBody3D" parent="World" unique_id=1107499782]
-transform = Transform3D(-0.63481134, 0, -0.77266717, 0, 1, 0, 0.77266717, 0, -0.63481134, 23.68013, 3.2356672, -7.5776577)
-
-[node name="GauntletWallLeft_1" type="StaticBody3D" parent="World"]
-position = Vector3(-6.5, 3, -6)
-scale = Vector3(1, 1, 0.25)
-
-[node name="GauntletWallLeft_1Collision" type="CollisionShape3D" parent="World/GauntletWallLeft_1"]
-shape = ExtResource( 5 )
-
-[node name="GauntletWallLeft_1Mesh" type="MeshInstance3D" parent="World/GauntletWallLeft_1"]
-mesh = ExtResource( 4 )
+[node name="WallLeftMesh" type="MeshInstance3D" parent="World/WallLeft"]
+mesh = ExtResource(5)
 
 [node name="GauntletWallRight_1" type="StaticBody3D" parent="World"]
 position = Vector3(6.5, 3, -14)
 scale = Vector3(1, 1, 0.25)
 
-[node name="GauntletWallRight_1Collision" type="CollisionShape3D" parent="World/GauntletWallRight_1"]
-shape = ExtResource( 5 )
+[node name="WallRightCollision" type="CollisionShape3D" parent="World/WallRight"]
+shape = ExtResource(6)
 
-[node name="GauntletWallRight_1Mesh" type="MeshInstance3D" parent="World/GauntletWallRight_1"]
-mesh = ExtResource( 4 )
+[node name="WallRightMesh" type="MeshInstance3D" parent="World/WallRight"]
+mesh = ExtResource(5)
 
-[node name="GauntletWallLeft_2" type="StaticBody3D" parent="World"]
-position = Vector3(-6.5, 3, -22)
-scale = Vector3(1, 1, 0.25)
+[node name="Dummy" type="StaticBody3D" parent="World"]
+position = Vector3(0, 1, -24)
+script = ExtResource(8)
 
-[node name="GauntletWallLeft_2Collision" type="CollisionShape3D" parent="World/GauntletWallLeft_2"]
-shape = ExtResource( 5 )
+[node name="DummyCollision" type="CollisionShape3D" parent="World/Dummy"]
+shape = ExtResource(7)
 
-[node name="GauntletWallLeft_2Mesh" type="MeshInstance3D" parent="World/GauntletWallLeft_2"]
-mesh = ExtResource( 4 )
+[node name="DummyMesh" type="MeshInstance3D" parent="World/Dummy"]
+mesh = ExtResource(9)
 
 [node name="GauntletWallRight_2" type="StaticBody3D" parent="World"]
 position = Vector3(6.5, 3, -30)
@@ -773,79 +503,4 @@ layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("9")
-
-[node name="PauseMenu" type="Control" parent="HUD" unique_id=261225987]
-visible = false
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("14")
-
-[node name="Dim" type="ColorRect" parent="HUD/PauseMenu" unique_id=922507345]
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-color = Color(0, 0, 0, 0.55)
-
-[node name="Panel" type="Panel" parent="HUD/PauseMenu" unique_id=935822126]
-layout_mode = 0
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -180.0
-offset_top = -120.0
-offset_right = 180.0
-offset_bottom = 120.0
-
-[node name="VBox" type="VBoxContainer" parent="HUD/PauseMenu/Panel" unique_id=1888569166]
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 16.0
-offset_top = 16.0
-offset_right = -16.0
-offset_bottom = -16.0
-alignment = 1
-
-[node name="Title" type="Label" parent="HUD/PauseMenu/Panel/VBox" unique_id=1014026261]
-layout_mode = 2
-text = "PAUSED"
-horizontal_alignment = 1
-
-[node name="ResumeButton" type="Button" parent="HUD/PauseMenu/Panel/VBox" unique_id=727066240]
-layout_mode = 2
-text = "Resume"
-
-[node name="SettingsButton" type="Button" parent="HUD/PauseMenu/Panel/VBox" unique_id=1943438993]
-layout_mode = 2
-text = "Settings"
-
-[node name="ControlsButton" type="Button" parent="HUD/PauseMenu/Panel/VBox" unique_id=1566159265]
-layout_mode = 2
-text = "Controls"
-
-[node name="AudioButton" type="Button" parent="HUD/PauseMenu/Panel/VBox" unique_id=16331348]
-layout_mode = 2
-text = "Audio"
-
-[node name="GraphicsButton" type="Button" parent="HUD/PauseMenu/Panel/VBox" unique_id=1832224116]
-layout_mode = 2
-text = "Graphics"
-
-[node name="CreditsButton" type="Button" parent="HUD/PauseMenu/Panel/VBox" unique_id=609465924]
-layout_mode = 2
-text = "Credits"
-
-[node name="QuitButton" type="Button" parent="HUD/PauseMenu/Panel/VBox" unique_id=2055441440]
-layout_mode = 2
-text = "Quit to Desktop"
-
-[node name="CoreSystems" parent="." unique_id=656082958 instance=ExtResource("18")]
+script = ExtResource(10)

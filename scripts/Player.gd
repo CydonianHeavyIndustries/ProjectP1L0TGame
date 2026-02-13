@@ -88,37 +88,7 @@ signal died
 @export var mag_size := 24
 @export var reserve_ammo := 120
 @export var reload_time := 1.2
-@export var safezone_system_path: NodePath
-@export var aim_fov := 58.0
-@export var aim_speed := 10.0
-@export var aim_gun_offset := Vector3(-0.18, 0.05, 0.25)
-@export var aim_gun_lerp := 14.0
-@export var melee_cooldown := 0.45
-@export var quick_melee_cooldown := 0.25
-@export var melee_damage := 35.0
-@export var melee_range := 2.0
-@export var radial_hold_time := 0.35
-@export var grenade_throw_force := 12.0
-@export var grenade_upward_force := 2.5
-@export var grenade_cooldown_time := 3.5
-@export var blink_range := 12.0
-@export var blink_cooldown_time := 6.0
-@export var slide_cancel_boost := 4.0
-@export var slide_landing_inherit := 1.6
-@export var slide_downhill_friction_multiplier := 0.06
-@export var slide_uphill_speed_multiplier := 0.8
-@export var slide_downhill_accel_multiplier := 1.2
-@export var crouch_landing_boost_multiplier := 1.2
-@export var slide_min_speed := 4.0
-@export var respawn_delay := 2.0
-@export var hit_vfx_scale := 0.25
-@export var hit_vfx_lifetime := 0.12
-
-const WEAPON_RIFLE := 1
-const WEAPON_SNIPER := 2
-const WEAPON_ROCKET := 3
-const WEAPON_PISTOL := 4
-const WEAPON_SWORD := 5
+@export var network_smoothing := 14.0
 
 var current_health := 100.0
 var current_weapon := WEAPON_RIFLE
@@ -202,72 +172,50 @@ var hit_vfx_material: StandardMaterial3D = null
 var _was_on_floor := true
 var _pitch := 0.0
 
+var local_control := false
+var remote_target_position := Vector3.ZERO
+var remote_target_yaw := 0.0
+var remote_target_velocity := Vector3.ZERO
+
 @onready var cam: Camera3D = $Camera
-@onready var gun_pivot: Node3D = $Camera/GunPivot
-@onready var gun: Node3D = $Camera/GunPivot/Gun
-@onready var collider: CollisionShape3D = $PlayerCollision
-@onready var blink_marker: Node3D = get_parent().get_node_or_null("BlinkMarker")
-@onready var grenade_scene: PackedScene = preload("res://scenes/Grenade_Frag.tscn")
-@onready var rocket_scene: PackedScene = preload("res://scenes/RocketProjectile.tscn")
+@onready var player_mesh: MeshInstance3D = $PlayerMesh
 
 func _ready() -> void:
 	current_health = max_health
 	ammo_in_mag = mag_size
-	air_jumps_left = max_air_jumps
-	set_process_input(true)
-	set_process_unhandled_input(true)
-	InputMap.load_from_project_settings()
-	_ensure_default_input()
-	_purge_conflicting_keybinds()
-	_init_weapon_configs()
-	_equip_weapon(WEAPON_RIFLE, true)
-	call_deferred("_capture_mouse")
-	call_deferred("_cache_hud")
-	call_deferred("_cache_pause_menu")
-	add_to_group("player")
-	base_cam_pos = cam.position
-	base_fov = cam.fov
-	_pitch = clamp(cam.rotation.x, look_pitch_min, look_pitch_max)
-	_apply_camera_pitch()
-	if gun_pivot:
-		base_gun_pos = gun_pivot.position
-	safezone_system = get_node_or_null(safezone_system_path)
-	if safezone_system == null:
-		safezone_system = get_tree().get_first_node_in_group("safezone_system")
-	_cache_collider()
-	if blink_marker:
-		blink_marker.visible = false
-	_setup_feedback()
-	xp_to_next = _xp_required_for(current_level)
-	var spawn = get_tree().get_first_node_in_group("player_spawn")
-	if spawn and spawn is Node3D:
-		spawn_transform = (spawn as Node3D).global_transform
+	remote_target_position = global_position
+	remote_target_yaw = rotation.y
+
+func configure_player(peer_id: int, is_local: bool, dedicated: bool = false) -> void:
+	if peer_id > 0:
+		set_multiplayer_authority(peer_id)
+
+	local_control = is_local and not dedicated
+
+	if local_control:
+		if not is_in_group("local_player"):
+			add_to_group("local_player")
+		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+		cam.current = true
+		player_mesh.visible = false
+		visible = true
 	else:
-		spawn_transform = global_transform
-	_autoplay_first_animation(get_node_or_null("PlayerMesh"))
-	_autoplay_first_animation(get_node_or_null("Camera/FirstPersonBody"))
+		if is_in_group("local_player"):
+			remove_from_group("local_player")
+		cam.current = false
+		player_mesh.visible = true
+		visible = not dedicated
 
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_APPLICATION_FOCUS_IN and not get_tree().paused:
-		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	set_process(local_control)
+	set_process_unhandled_input(local_control)
 
-func _input(event: InputEvent) -> void:
+func _unhandled_input(event: InputEvent) -> void:
+	if not local_control:
+		return
+
 	if event.is_action_pressed("ui_cancel"):
-		_toggle_pause()
-		get_viewport().set_input_as_handled()
-		return
-	if event.is_action_pressed("fullscreen"):
-		_toggle_fullscreen()
-		get_viewport().set_input_as_handled()
-		return
-	if event.is_action_pressed("jump"):
-		jump_buffer = jump_buffer_time
-	if is_dead:
-		return
-	if get_tree().paused:
-		return
-	if event is InputEventMouseButton and event.pressed and Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
-		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED)
+
 	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 		var look_sensitivity := 0.002
 		rotate_y(-event.relative.x * look_sensitivity)
@@ -275,12 +223,9 @@ func _input(event: InputEvent) -> void:
 		_apply_camera_pitch()
 
 func _process(delta: float) -> void:
-	if is_dead:
+	if not local_control:
 		return
-	if get_tree().paused:
-		return
-	if Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED and not reload_radial_open and not titan_radial_open and not skill_menu_open:
-		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
 	fire_cooldown = max(0.0, fire_cooldown - delta)
 	grenade_cooldown = max(0.0, grenade_cooldown - delta)
 	blink_cooldown = max(0.0, blink_cooldown - delta)
@@ -368,60 +313,16 @@ func _process(delta: float) -> void:
 	_update_aim_point()
 
 func _physics_process(delta: float) -> void:
-	if is_dead:
+	if not local_control:
+		_tick_remote(delta)
 		return
-	if skill_menu_open:
-		velocity = Vector3.ZERO
-		move_and_slide()
-		return
-	jump_buffer = max(0.0, jump_buffer - delta)
-	var on_floor = is_on_floor()
-	if on_floor:
-		coyote_timer = coyote_time
-	else:
-		coyote_timer = max(0.0, coyote_timer - delta)
-	if climbing:
-		_update_climb(delta)
-		return
-	if grapple_active:
-		_update_grapple(delta)
-		move_and_slide()
-		return
-	if zipline_active:
-		_update_zipline(delta)
-		move_and_slide()
-		return
-	if on_floor or wallrunning:
-		air_jumps_left = max_air_jumps
-	var sprint_pressed = Input.is_action_pressed("sprint")
-	var crouch_pressed = Input.is_action_pressed("crouch") or Input.is_action_pressed("slide")
-	var crouch_just_pressed = Input.is_action_just_pressed("crouch") or Input.is_action_just_pressed("slide")
-	var jump_just_pressed = Input.is_action_just_pressed("jump")
-	if jump_just_pressed:
-		jump_buffer = jump_buffer_time
-	var jump_request = jump_just_pressed or jump_buffer > 0.0
-	if jump_just_pressed:
-		wallrun_intent = wallrun_intent_time
-	if wallrun_intent > 0.0:
-		wallrun_intent = max(0.0, wallrun_intent - delta)
-	if wallrun_cooldown > 0.0:
-		wallrun_cooldown = max(0.0, wallrun_cooldown - delta)
-	if wallrun_chain_timer > 0.0:
-		wallrun_chain_timer = max(0.0, wallrun_chain_timer - delta)
-	var input_raw = _get_move_input()
-	var smooth_t = 1.0 - exp(-input_smooth * delta)
-	input_smoothed = input_smoothed.lerp(input_raw, smooth_t)
-	if input_raw == Vector2.ZERO and input_smoothed.length() < 0.02:
-		input_smoothed = Vector2.ZERO
-	var input_dir = input_smoothed
-	var horizontal_speed = Vector3(velocity.x, 0, velocity.z).length()
-	var prone_just_pressed = Input.is_action_just_pressed("prone")
-	var direction = (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
 
-	if prone_just_pressed and on_floor and not sliding:
-		is_prone = not is_prone
-		if is_prone:
-			is_crouching = false
+	var input_dir := Vector2.ZERO
+	input_dir.x = Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
+	input_dir.y = Input.get_action_strength("move_forward") - Input.get_action_strength("move_back")
+	input_dir = input_dir.normalized()
+
+	var speed := sprint_speed if Input.is_action_pressed("sprint") else walk_speed
 
 	if is_prone and (not on_floor or sliding):
 		is_prone = false
@@ -484,17 +385,13 @@ func _physics_process(delta: float) -> void:
 			if crouch_pressed and not is_prone:
 				is_crouching = true
 
-	if not sliding:
-		if is_prone:
-			is_crouching = false
-		elif on_floor:
-			is_crouching = crouch_pressed
-	# Prevent mid-air crouch/prone from changing momentum/stance
-	if not on_floor and not sliding:
-		is_crouching = false
-		is_prone = false
-	elif not crouch_pressed and not is_prone:
-		is_crouching = false
+	var direction := (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
+	if direction:
+		velocity.x = direction.x * speed
+		velocity.z = direction.z * speed
+	else:
+		velocity.x = move_toward(velocity.x, 0, speed)
+		velocity.z = move_toward(velocity.z, 0, speed)
 
 	var speed = walk_speed
 	if is_prone:
@@ -531,12 +428,15 @@ func _physics_process(delta: float) -> void:
 		if wallrun_timer <= 0.0 or on_floor or not hit or wall_speed < (wallrun_min_speed * 0.45):
 			_stop_wallrun()
 		else:
-			wallrun_normal = hit["normal"]
-			var desired = (global_transform.basis * Vector3(input_dir.x, 0, input_dir.y))
-			if desired.length() < 0.1:
-				desired = Vector3(velocity.x, 0, velocity.z)
-			var desired_wall_dir = _compute_wallrun_dir(wallrun_normal, desired)
-			if desired_wall_dir == Vector3.ZERO:
+			var wall_dir := wallrun_normal.cross(Vector3.UP).normalized()
+			if wall_dir.dot(-transform.basis.z) < 0:
+				wall_dir = -wall_dir
+			velocity.y = -wallrun_gravity
+			velocity.x = wall_dir.x * wallrun_speed
+			velocity.z = wall_dir.z * wallrun_speed
+			if Input.is_action_just_pressed("jump"):
+				velocity.y = jump_velocity
+				velocity += wallrun_normal * wallrun_push
 				_stop_wallrun()
 			else:
 				if wallrun_dir == Vector3.ZERO:
@@ -619,43 +519,28 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
-	var now_on_floor = is_on_floor()
-	if now_on_floor and not _was_on_floor and crouch_pressed and not is_prone and not sliding:
-		sliding = true
-		slide_timer = slide_time
-		var landing_dir = direction
-		if landing_dir.length() < 0.1:
-			var horiz = Vector3(velocity.x, 0, velocity.z)
-			if horiz.length() > 0.1:
-				landing_dir = horiz.normalized()
-			else:
-				landing_dir = -transform.basis.z
-		slide_dir = landing_dir
-		var floor_normal = get_floor_normal()
-		if floor_normal != Vector3.ZERO:
-			var aligned = slide_dir.slide(floor_normal)
-			if aligned.length() > 0.001:
-				slide_dir = aligned.normalized()
-		var horiz_speed = Vector3(velocity.x, 0, velocity.z).length()
-		var inherited_speed = horiz_speed * slide_landing_inherit
-		var boost_speed = max(slide_speed * crouch_landing_boost_multiplier, inherited_speed)
-		velocity.x = slide_dir.x * boost_speed
-		velocity.z = slide_dir.z * boost_speed
+	if multiplayer.has_multiplayer_peer():
+		receive_network_state.rpc(global_position, rotation.y, velocity, current_health, ammo_in_mag, reserve_ammo)
 
-	var target_offset := base_cam_pos
-	if is_prone:
-		target_offset = base_cam_pos + Vector3(0, prone_cam_offset, 0)
-	elif is_crouching or sliding:
-		target_offset = base_cam_pos + Vector3(0, crouch_cam_offset, 0)
-	cam.position = cam.position.lerp(target_offset, 1.0 - exp(-cam_height_lerp * delta))
-	_was_on_floor = now_on_floor
+func _tick_remote(delta: float) -> void:
+	global_position = global_position.lerp(remote_target_position, min(1.0, network_smoothing * delta))
+	rotation.y = lerp_angle(rotation.y, remote_target_yaw, min(1.0, network_smoothing * delta))
+	velocity = remote_target_velocity
 
-func _get_move_input() -> Vector2:
-	var input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
-	return input_dir.normalized()
+@rpc("any_peer", "call_remote", "unreliable")
+func receive_network_state(position_value: Vector3, yaw_value: float, velocity_value: Vector3, health_value: float, mag_value: int, reserve_value: int) -> void:
+	if local_control:
+		return
 
-func _apply_camera_pitch() -> void:
-	if cam == null:
+	remote_target_position = position_value
+	remote_target_yaw = yaw_value
+	remote_target_velocity = velocity_value
+	current_health = health_value
+	ammo_in_mag = mag_value
+	reserve_ammo = reserve_value
+
+func _try_start_wallrun(direction: Vector3) -> void:
+	if wallrunning:
 		return
 	cam.rotation.x = clamp(_pitch - recoil_offset, look_pitch_min, look_pitch_max)
 
@@ -905,18 +790,25 @@ func _update_aim_point() -> void:
 	if cam == null:
 		aim_point_valid = false
 		return
-	var space = get_world_3d().direct_space_state
-	var from = cam.global_transform.origin
-	var to = from + (-cam.global_transform.basis.z * 140.0)
-	var params = PhysicsRayQueryParameters3D.create(from, to)
-	params.exclude = [self]
-	var hit = space.intersect_ray(params)
-	if hit and hit.has("position"):
-		aim_point = hit["position"]
-		aim_point_valid = true
-	else:
-		aim_point = to
-		aim_point_valid = false
+
+	var space := get_world_3d().direct_space_state
+	var origin := global_transform.origin
+	var left := -global_transform.basis.x
+	var right := global_transform.basis.x
+
+	var params_left := PhysicsRayQueryParameters3D.create(origin, origin + left * 1.1)
+	params_left.exclude = [self]
+	var hit_left := space.intersect_ray(params_left)
+
+	var params_right := PhysicsRayQueryParameters3D.create(origin, origin + right * 1.1)
+	params_right.exclude = [self]
+	var hit_right := space.intersect_ray(params_right)
+
+	var hit = hit_left if hit_left else hit_right
+	if hit and hit.has("normal"):
+		wallrun_normal = hit["normal"]
+		wallrunning = true
+		wallrun_timer = wallrun_duration
 
 func _init_weapon_configs() -> void:
 	weapon_configs = {
@@ -1385,67 +1277,14 @@ func _try_fire() -> void:
 		_fire_hitscan()
 
 func _fire_hitscan() -> void:
-	var from = cam.global_transform.origin
-	var to = from + (-cam.global_transform.basis.z * fire_range)
-	var space = get_world_3d().direct_space_state
-	var params = PhysicsRayQueryParameters3D.create(from, to)
+	var from := cam.global_transform.origin
+	var to := from + (-cam.global_transform.basis.z * fire_range)
+	var space := get_world_3d().direct_space_state
+	var params := PhysicsRayQueryParameters3D.create(from, to)
 	params.exclude = [self]
-	var result = space.intersect_ray(params)
-	_spawn_tracer(from, to)
+	var result := space.intersect_ray(params)
 	if result and result.has("collider"):
-		var target = result["collider"]
-		if target and target.is_in_group("player") and safezone_system and safezone_system.has_method("is_pvp_allowed"):
-			if not safezone_system.is_pvp_allowed(self, target):
-				_log("PvP blocked by safe zone.")
-				return
-		if target and target.has_method("take_damage"):
-			target.take_damage(fire_damage)
-			_on_hit(result)
-
-func _fire_projectile() -> void:
-	if rocket_scene == null:
-		return
-	var projectile = rocket_scene.instantiate()
-	if projectile == null:
-		return
-	var from = cam.global_transform.origin + (-cam.global_transform.basis.z * 0.8)
-	var direction = -cam.global_transform.basis.z
-	if projectile is Node3D:
-		projectile.global_position = from
-	get_parent().add_child(projectile)
-	if projectile.has_method("configure"):
-		projectile.configure(direction, weapon_projectile_speed, fire_damage, weapon_projectile_lifetime)
-
-func _spawn_tracer(from: Vector3, to: Vector3) -> void:
-	var dir = (to - from).normalized()
-	var tracer = MeshInstance3D.new()
-	var mesh := SphereMesh.new()
-	mesh.radius = bullet_tracer_radius
-	mesh.height = bullet_tracer_radius * 2.0
-	tracer.mesh = mesh
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = bullet_tracer_color
-	mat.emission = bullet_tracer_color
-	mat.emission_energy_multiplier = 1.6
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	tracer.material_override = mat
-	tracer.global_position = from + (dir * 0.4)
-	get_parent().add_child(tracer)
-	var travel_time = max(0.02, min(bullet_lifetime, fire_range / bullet_speed))
-	var tween := tracer.create_tween()
-	tween.tween_property(tracer, "global_position", to, travel_time)
-	tween.tween_callback(tracer.queue_free)
-
-func _perform_melee() -> void:
-	var from = cam.global_transform.origin
-	var to = from + (-cam.global_transform.basis.z * melee_range)
-	var space = get_world_3d().direct_space_state
-	var params = PhysicsRayQueryParameters3D.create(from, to)
-	params.exclude = [self]
-	var result = space.intersect_ray(params)
-	if result and result.has("collider"):
-		var target = result["collider"]
+		var target: Object = result["collider"]
 		if target and target.has_method("take_damage"):
 			target.take_damage(melee_damage)
 			_on_hit(result)
@@ -1551,20 +1390,15 @@ func _start_reload() -> void:
 		return
 	if reserve_ammo <= 0:
 		return
+
 	is_reloading = true
-	reload_timer_total = reload_time
-	reload_timer_remaining = reload_time
-	reload_progress = 0.0
-	if gun and gun.has_method("start_reload"):
-		gun.start_reload(reload_time)
-	var timer = get_tree().create_timer(reload_time)
+	var timer := get_tree().create_timer(reload_time)
 	timer.timeout.connect(_finish_reload)
 
 func _finish_reload() -> void:
 	is_reloading = false
-	reload_progress = 0.0
-	var needed = mag_size - ammo_in_mag
-	var take = min(needed, reserve_ammo)
+	var needed := mag_size - ammo_in_mag
+	var take: int = min(needed, reserve_ammo)
 	ammo_in_mag += take
 	reserve_ammo -= take
 

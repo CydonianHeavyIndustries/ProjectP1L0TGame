@@ -1,6 +1,16 @@
 export {};
 
 declare global {
+  type LauncherServerState = {
+    status: 'Stopped' | 'Starting' | 'Running' | 'Stopping' | 'Error';
+    pid?: number;
+    port?: number;
+    startedAt?: string;
+    message?: string;
+  };
+
+  type LauncherServerResult = { status: 'ok'; server: LauncherServerState } | { status: 'error'; reason: string };
+
   interface Window {
     launcher?: {
       isDev: boolean;
@@ -34,11 +44,23 @@ declare global {
         configuration?: string;
         zip?: boolean;
       }) => Promise<{ status: 'ok' } | { status: 'error'; reason: string }>;
+      getServerStatus: () => Promise<LauncherServerResult>;
+      startServer: (payload: {
+        channel: string;
+        installDir: string;
+        gameExeRelative: string;
+        useLocalBuild: boolean;
+        localBuildRelative: string;
+        serverPort: number;
+        serverArgs: string;
+      }) => Promise<LauncherServerResult>;
+      stopServer: () => Promise<LauncherServerResult>;
       openPath: (targetPath: string) => Promise<void>;
       openLogs: () => Promise<void>;
       onUpdateProgress: (
         callback: (payload: { step: string; progress: number; message?: string; state?: string }) => void
       ) => () => void;
+      onServerStatus: (callback: (payload: LauncherServerState) => void) => () => void;
     };
   }
 }

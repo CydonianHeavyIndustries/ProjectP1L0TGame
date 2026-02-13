@@ -87,6 +87,34 @@ const Settings = ({ state }: { state: LauncherState }) => {
               />
               Safe mode
             </label>
+            <label className="stack">
+              Server Port
+              <input
+                type="number"
+                min={1}
+                max={65535}
+                value={settings.serverPort}
+                onChange={(event) => actions.updateSettings({ serverPort: Number(event.target.value) || 7777 })}
+              />
+            </label>
+            <label className="stack">
+              Server Address
+              <input
+                type="text"
+                value={settings.serverAddress}
+                onChange={(event) => actions.updateSettings({ serverAddress: event.target.value })}
+                placeholder="127.0.0.1"
+              />
+            </label>
+            <label className="stack">
+              Server Args
+              <input
+                type="text"
+                value={settings.serverArgs}
+                onChange={(event) => actions.updateSettings({ serverArgs: event.target.value })}
+                placeholder="--headless --server --port 7777"
+              />
+            </label>
             <div className="row">
               <Button variant="ghost" type="button" onClick={() => actions.resetSettings()}>
                 Reset Settings

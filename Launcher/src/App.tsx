@@ -5,6 +5,7 @@ import Settings from './pages/Settings';
 import Social from './pages/Social';
 import Debug from './pages/Debug';
 import { useLauncherState } from './state/useLauncherState';
+import chiiLogo from './assets/chii_logo.png';
 
 const App = () => {
   const state = useLauncherState();
@@ -27,7 +28,7 @@ const App = () => {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark" />
+          <img className="brand-mark" src={chiiLogo} alt="CHII logo" />
           <div className="brand-text">
             <span>Cydonian Heavy Industries</span>
             <strong>Project P1L0T</strong>
