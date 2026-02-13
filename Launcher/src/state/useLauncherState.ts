@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Channel } from '../types/channel';
 import type { InstallStatus, InstallState, InstallStep } from '../types/install';
 import type { LauncherSettings } from '../types/settings';
@@ -47,6 +47,7 @@ const coerceState = (value?: string): InstallState | undefined => {
 export const useLauncherState = (): LauncherState => {
   const installedRecord = useMemo(() => readInstalled(), []);
   const installedAt = installedRecord?.installedAt;
+  const autoUpdateTriggeredRef = useRef(false);
   const [channel, setChannel] = useState<Channel>('dev');
   const [release, setRelease] = useState<GitHubRelease | null>(null);
   const [install, setInstall] = useState<InstallStatus>(() => initialInstallStatus(installedRecord?.version ?? null));
@@ -99,14 +100,6 @@ export const useLauncherState = (): LauncherState => {
       pushLog(`Update failed (${error instanceof Error ? error.message : String(error)})`);
     });
   }, [channel]);
-
-  useEffect(() => {
-    if (settings.useLocalBuild) return;
-    const updated = { ...settings, useLocalBuild: true };
-    setSettings(updated);
-    writeSettings(updated);
-    pushLog('Local Godot build enforced');
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -240,6 +233,17 @@ export const useLauncherState = (): LauncherState => {
     finalizeInstall(result.version);
     pushLog(`Update complete (${result.version})`);
   };
+
+  useEffect(() => {
+    if (autoUpdateTriggeredRef.current) return;
+    if (!settings.autoUpdate || settings.useLocalBuild) return;
+    autoUpdateTriggeredRef.current = true;
+
+    attemptUpdate('update').catch((error) => {
+      pushLog(`Auto-update failed (${error instanceof Error ? error.message : String(error)})`);
+      setInstall({ state: 'Error', step: 'Idle', progress: 0, error: String(error) });
+    });
+  }, [settings.autoUpdate, settings.useLocalBuild]);
 
   const startInstall = () => {
     attemptUpdate('update').catch((error) => {
