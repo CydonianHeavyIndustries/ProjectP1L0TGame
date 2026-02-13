@@ -1,21 +1,21 @@
 extends Control
-signal play_pressed
+signal sandbox_pressed
+signal tutorial_pressed
 
-@onready var play_button: Button = $VBox/Play
-@onready var options_button: Button = $VBox/Options
+@onready var sandbox_button: Button = $VBox/Sandbox
+@onready var tutorial_button: Button = $VBox/Tutorial
 @onready var exit_button: Button = $VBox/Exit
 
 func _ready() -> void:
-	play_button.pressed.connect(_on_play)
-	options_button.pressed.connect(_on_options)
+	sandbox_button.pressed.connect(_on_sandbox)
+	tutorial_button.pressed.connect(_on_tutorial)
 	exit_button.pressed.connect(_on_exit)
 
-func _on_play() -> void:
-	play_pressed.emit()
+func _on_sandbox() -> void:
+	sandbox_pressed.emit()
 
-func _on_options() -> void:
-	# Placeholder: hook options later
-	pass
+func _on_tutorial() -> void:
+	tutorial_pressed.emit()
 
 func _on_exit() -> void:
 	get_tree().quit()

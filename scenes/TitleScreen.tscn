@@ -1,4 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=4 format=3 uid="uid://title"]
+
+[ext_resource type="Script" path="res://scripts/TitleScreen.gd" id=1]
+[ext_resource type="Texture2D" path="res://assets/ui/chii_logo.png" id=2]
 
 [ext_resource type="Script" path="res://scripts/TitleScreen.gd" id=1]
 
@@ -6,13 +9,26 @@
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-script = ExtResource( 1 )
+script = ExtResource(1)
 
 [node name="Background" type="ColorRect" parent="."]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 color = Color(0.05, 0.07, 0.1, 1)
+
+[node name="Logo" type="TextureRect" parent="."]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -360.0
+offset_right = 180.0
+offset_bottom = -40.0
+texture = ExtResource(2)
+stretch_mode = 5
 
 [node name="VBox" type="VBoxContainer" parent="."]
 anchors_preset = 5
@@ -37,15 +53,15 @@ horizontal_alignment = 1
 [node name="Spacer" type="Control" parent="VBox"]
 custom_minimum_size = Vector2(0, 12)
 
-[node name="Play" type="Button" parent="VBox"]
-text = "Play"
+[node name="Sandbox" type="Button" parent="VBox"]
+text = "Sandbox"
 
-[node name="Options" type="Button" parent="VBox"]
-text = "Options"
+[node name="Tutorial" type="Button" parent="VBox"]
+text = "Tutorial"
 
 [node name="Exit" type="Button" parent="VBox"]
 text = "Exit"
 
 [node name="Hint" type="Label" parent="VBox"]
-text = "WASD Move | Mouse Look | Shift Sprint | C Slide"
+text = "Sandbox = Movement test | Tutorial = Empty plane"
 horizontal_alignment = 1

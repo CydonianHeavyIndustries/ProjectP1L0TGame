@@ -28,9 +28,11 @@ const parseReleaseNotes = (body?: string | null) => {
 };
 
 const Home = ({ state }: { state: LauncherState }) => {
-  const { channel, setChannel, release, install, installedVersion, actions, settings } = state;
+  const { channel, setChannel, release, install, server, installedVersion, actions, settings } = state;
   const isBusy = install.state === 'Updating' || install.state === 'Repairing';
-  const remoteVersion = release?.version ?? '—';
+  const isServerBusy = server.status === 'Starting' || server.status === 'Stopping';
+  const isServerRunning = server.status === 'Running';
+  const remoteVersion = settings.useLocalBuild ? installedVersion : release?.version ?? '—';
   const payloadSize = release?.asset?.size ? formatBytes(release.asset.size) : '—';
   const releaseDate = release?.publishedAt ? formatDate(release.publishedAt) : '—';
   const primaryLabel = settings.useLocalBuild && !isBusy ? 'Play (Local)' : primaryActionLabel(install.state);
@@ -127,6 +129,27 @@ const Home = ({ state }: { state: LauncherState }) => {
                 : channel === 'test'
                 ? 'Test builds are stabilized for squads and external pilots.'
                 : 'Live is the public rail. Updates may be required before launch.'}
+            </div>
+          </div>
+        </Panel>
+
+        <Panel title="Server Host">
+          <div className="stack">
+            <KeyValue label="Status" value={server.status} />
+            <KeyValue label="Port" value={server.port ? String(server.port) : String(settings.serverPort)} />
+            <KeyValue label="PID" value={server.pid ? String(server.pid) : '—'} />
+            <KeyValue label="Started" value={server.startedAt ? formatDate(server.startedAt) : '—'} />
+            {server.message && <div className="notice">{server.message}</div>}
+            <div className="row">
+              <Button variant="primary" onClick={() => actions.startServer()} disabled={isServerBusy || isServerRunning}>
+                Start Server
+              </Button>
+              <Button variant="ghost" onClick={() => actions.requestJoinServer()} disabled={isBusy || isServerBusy}>
+                Join Server
+              </Button>
+              <Button variant="ghost" onClick={() => actions.stopServer()} disabled={isServerBusy || !isServerRunning}>
+                Stop Server
+              </Button>
             </div>
           </div>
         </Panel>

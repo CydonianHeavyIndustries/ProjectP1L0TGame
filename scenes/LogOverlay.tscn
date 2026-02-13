@@ -1,0 +1,26 @@
+[gd_scene load_steps=2 format=3 uid="uid://byi35vy86vgvs"]
+
+[ext_resource type="Script" path="res://scripts/core_systems/logging/LogOverlay.gd" id="1"]
+
+[node name="LogOverlay" type="CanvasLayer"]
+layer = 20
+script = ExtResource("1")
+
+[node name="Panel" type="PanelContainer" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -220.0
+offset_right = 560.0
+offset_bottom = -12.0
+mouse_filter = 2
+
+[node name="Margins" type="MarginContainer" parent="Panel"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="LogLabel" type="RichTextLabel" parent="Panel/Margins"]
+layout_mode = 2
+mouse_filter = 2
+scroll_active = false

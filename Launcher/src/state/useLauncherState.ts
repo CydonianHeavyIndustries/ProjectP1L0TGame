@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Channel } from '../types/channel';
 import type { InstallStatus, InstallState, InstallStep } from '../types/install';
 import type { LauncherSettings } from '../types/settings';
 import type { LauncherState } from '../types/launcher';
 import type { GitHubRelease } from '../types/github';
+import type { ServerState } from '../types/server';
 import type { UpdateCheckResult, UpdateResult } from '../types/update';
 import { formatDate } from '../utils/format';
 import { checkGitHubUpdate } from './github';
@@ -14,6 +15,10 @@ const initialInstallStatus = (installedVersion: string | null): InstallStatus =>
   step: 'Idle',
   progress: 0
 });
+
+const initialServerState: ServerState = {
+  status: 'Stopped'
+};
 
 const coerceStep = (value?: string): InstallStep => {
   if (value === 'Downloading') return 'Downloading';
@@ -42,9 +47,11 @@ const coerceState = (value?: string): InstallState | undefined => {
 export const useLauncherState = (): LauncherState => {
   const installedRecord = useMemo(() => readInstalled(), []);
   const installedAt = installedRecord?.installedAt;
+  const autoUpdateTriggeredRef = useRef(false);
   const [channel, setChannel] = useState<Channel>('dev');
   const [release, setRelease] = useState<GitHubRelease | null>(null);
   const [install, setInstall] = useState<InstallStatus>(() => initialInstallStatus(installedRecord?.version ?? null));
+  const [server, setServer] = useState<ServerState>(initialServerState);
   const [installedVersion, setInstalledVersion] = useState(installedRecord?.version ?? '0.0.0');
   const [settings, setSettings] = useState<LauncherSettings>(() => readSettings());
   const [logs, setLogs] = useState<string[]>([`[${formatDate(new Date().toISOString())}] Launcher booted`]);
@@ -95,12 +102,34 @@ export const useLauncherState = (): LauncherState => {
   }, [channel]);
 
   useEffect(() => {
-    if (settings.useLocalBuild) return;
-    const updated = { ...settings, useLocalBuild: true };
-    setSettings(updated);
-    writeSettings(updated);
-    pushLog('Local Godot build enforced');
-  }, []);
+    let active = true;
+
+    const syncLocalVersion = async () => {
+      if (!settings.useLocalBuild || !window.launcher?.getBuildInfo) return;
+      const result = await window.launcher.getBuildInfo();
+      if (!active || result.status !== 'ok') return;
+      const localVersion = result.gameVersion?.trim();
+      if (!localVersion || localVersion === installedVersion) return;
+
+      setInstalledVersion(localVersion);
+      setInstall((prev) => ({ ...prev, state: 'Installed' }));
+      writeInstalled({
+        version: localVersion,
+        channel,
+        installedAt: new Date().toISOString(),
+        path: settings.installDir
+      });
+      pushLog(`Local version synced (${localVersion})`);
+    };
+
+    syncLocalVersion().catch((error) => {
+      pushLog(`Version sync failed (${error instanceof Error ? error.message : String(error)})`);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [settings.useLocalBuild, settings.installDir, channel, installedVersion]);
 
   useEffect(() => {
     if (!window.launcher?.onUpdateProgress) return undefined;
@@ -114,6 +143,46 @@ export const useLauncherState = (): LauncherState => {
       }));
     });
     return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const hydrateServerStatus = async () => {
+      if (!window.launcher?.getServerStatus) return;
+      const result = await window.launcher.getServerStatus();
+      if (!mounted || result.status !== 'ok') return;
+      setServer(result.server);
+    };
+
+    hydrateServerStatus().catch((error) => {
+      pushLog(`Server status failed (${error instanceof Error ? error.message : String(error)})`);
+    });
+
+    if (!window.launcher?.onServerStatus) {
+      return () => {
+        mounted = false;
+      };
+    }
+
+    const unsubscribe = window.launcher.onServerStatus((payload) => {
+      if (!mounted) return;
+      setServer(payload);
+      if (payload.status === 'Running' && payload.port) {
+        pushLog(`Server running on port ${payload.port}`);
+      }
+      if (payload.status === 'Stopped') {
+        pushLog('Server stopped');
+      }
+      if (payload.status === 'Error' && payload.message) {
+        pushLog(`Server error (${payload.message})`);
+      }
+    });
+
+    return () => {
+      mounted = false;
       if (unsubscribe) unsubscribe();
     };
   }, []);
@@ -164,6 +233,17 @@ export const useLauncherState = (): LauncherState => {
     finalizeInstall(result.version);
     pushLog(`Update complete (${result.version})`);
   };
+
+  useEffect(() => {
+    if (autoUpdateTriggeredRef.current) return;
+    if (!settings.autoUpdate || settings.useLocalBuild) return;
+    autoUpdateTriggeredRef.current = true;
+
+    attemptUpdate('update').catch((error) => {
+      pushLog(`Auto-update failed (${error instanceof Error ? error.message : String(error)})`);
+      setInstall({ state: 'Error', step: 'Idle', progress: 0, error: String(error) });
+    });
+  }, [settings.autoUpdate, settings.useLocalBuild]);
 
   const startInstall = () => {
     attemptUpdate('update').catch((error) => {
@@ -270,6 +350,71 @@ export const useLauncherState = (): LauncherState => {
     pushLog('Local launch initiated');
   };
 
+  const requestJoinServer = async () => {
+    if (!window.launcher?.launchGame) {
+      pushLog('Launch failed (Launcher bridge unavailable)');
+      return;
+    }
+
+    const joinArgs = `--connect ${settings.serverAddress} --port ${settings.serverPort}`;
+    const launchArgs = [settings.launchArgs.trim(), joinArgs].filter(Boolean).join(' ');
+
+    const result = await window.launcher.launchGame({
+      channel,
+      installDir: settings.installDir,
+      gameExeRelative: settings.gameExeRelative,
+      useLocalBuild: settings.useLocalBuild,
+      localBuildRelative: settings.localBuildRelative,
+      launchArgs,
+      safeMode: settings.safeMode,
+      buildVersion: installedVersion
+    });
+
+    if (result.status === 'error') {
+      pushLog(`Launch failed (${result.reason})`);
+      setInstall((prev) => ({ ...prev, state: 'Error', error: result.reason }));
+      return;
+    }
+
+    pushLog(`Join initiated (${settings.serverAddress}:${settings.serverPort})`);
+  };
+
+  const startServer = async () => {
+    if (!window.launcher?.startServer) {
+      pushLog('Server start failed (Launcher bridge unavailable)');
+      return;
+    }
+    const result = await window.launcher.startServer({
+      channel,
+      installDir: settings.installDir,
+      gameExeRelative: settings.gameExeRelative,
+      useLocalBuild: settings.useLocalBuild,
+      localBuildRelative: settings.localBuildRelative,
+      serverPort: settings.serverPort,
+      serverArgs: settings.serverArgs
+    });
+    if (result.status === 'error') {
+      pushLog(`Server start failed (${result.reason})`);
+      setServer({ status: 'Error', message: result.reason });
+      return;
+    }
+    setServer(result.server);
+  };
+
+  const stopServer = async () => {
+    if (!window.launcher?.stopServer) {
+      pushLog('Server stop failed (Launcher bridge unavailable)');
+      return;
+    }
+    const result = await window.launcher.stopServer();
+    if (result.status === 'error') {
+      pushLog(`Server stop failed (${result.reason})`);
+      setServer((prev) => ({ ...prev, status: 'Error', message: result.reason }));
+      return;
+    }
+    setServer(result.server);
+  };
+
   const openInstallDir = () => {
     if (window.launcher?.openPath) {
       window.launcher.openPath(settings.installDir);
@@ -287,6 +432,7 @@ export const useLauncherState = (): LauncherState => {
     setChannel,
     release,
     install,
+    server,
     installedVersion,
     settings,
     logs,
@@ -302,6 +448,9 @@ export const useLauncherState = (): LauncherState => {
       resetSettings: resetLauncherSettings,
       requestLaunch,
       requestLocalLaunch,
+      requestJoinServer,
+      startServer,
+      stopServer,
       openInstallDir,
       openLogs
     }

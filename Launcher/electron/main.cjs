@@ -11,6 +11,16 @@ const REPO = 'CydonianHeavyIndustries/ProjectP1L0TGame';
 const API_BASE = `https://api.github.com/repos/${REPO}`;
 const logDir = path.join(app.getPath('userData'), 'logs');
 const logFile = path.join(logDir, 'launcher.log');
+const DEFAULT_SERVER_PORT = 7777;
+
+let serverProcess = null;
+let serverState = {
+  status: 'Stopped',
+  pid: undefined,
+  port: undefined,
+  startedAt: undefined,
+  message: undefined
+};
 
 const safeStringify = (value) => {
   try {
@@ -28,6 +38,15 @@ const writeLog = (level, message, meta) => {
     fs.appendFileSync(logFile, `[${stamp}] [${level}] ${message}${extra}\n`);
   } catch (error) {
     console.error('Logger failure:', error);
+  }
+};
+
+const publishServerState = (next) => {
+  serverState = { ...serverState, ...next };
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('launcher:serverStatus', serverState);
+    }
   }
 };
 
@@ -198,6 +217,26 @@ const parseArgs = (value) => {
   return args;
 };
 
+const coercePort = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return DEFAULT_SERVER_PORT;
+  const rounded = Math.trunc(numeric);
+  if (rounded < 1 || rounded > 65535) return DEFAULT_SERVER_PORT;
+  return rounded;
+};
+
+const buildServerArgs = (serverArgs, port) => {
+  const args = parseArgs(serverArgs || '');
+  if (args.length === 0) {
+    return ['--headless', '--server', '--port', String(port)];
+  }
+  const hasPort = args.some((arg) => arg === '--port' || arg.startsWith('--port='));
+  if (!hasPort) {
+    args.push('--port', String(port));
+  }
+  return args;
+};
+
 const resolveExecutable = (installRoot, relativePath) => {
   const installDir = path.join(installRoot, 'install');
   const normalized = relativePath.replace(/^[\\/]+/, '');
@@ -239,6 +278,133 @@ const resolveLaunchTarget = (payload) => {
   return resolveExecutable(rootDir, relative);
 };
 
+const waitForServerStop = (processRef) =>
+  new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      resolve();
+    };
+
+    processRef.once('exit', finish);
+
+    const forceStop = () => {
+      if (processRef.exitCode !== null) {
+        finish();
+        return;
+      }
+
+      if (process.platform === 'win32' && processRef.pid) {
+        const killer = spawn('taskkill', ['/PID', String(processRef.pid), '/T', '/F'], {
+          windowsHide: true,
+          stdio: 'ignore'
+        });
+        killer.once('close', finish);
+        killer.once('error', finish);
+        return;
+      }
+
+      try {
+        processRef.kill('SIGKILL');
+      } catch {
+        // no-op
+      }
+      finish();
+    };
+
+    setTimeout(forceStop, 2000);
+
+    try {
+      processRef.kill('SIGTERM');
+    } catch {
+      finish();
+    }
+  });
+
+const stopServerProcess = async () => {
+  const processRef = serverProcess;
+  if (!processRef) {
+    publishServerState({ status: 'Stopped', pid: undefined, startedAt: undefined, message: undefined });
+    return;
+  }
+
+  publishServerState({ status: 'Stopping', message: 'Stopping server...' });
+  await waitForServerStop(processRef);
+};
+
+const startHostedServer = (payload) => {
+  if (serverProcess && serverProcess.exitCode === null) {
+    return serverState;
+  }
+
+  const exePath = resolveLaunchTarget(payload);
+  if (!fs.existsSync(exePath)) {
+    throw new Error(`Game executable not found: ${exePath}`);
+  }
+
+  const port = coercePort(payload.serverPort);
+  const args = buildServerArgs(payload.serverArgs, port);
+
+  writeLog('INFO', 'Starting hosted server', `${exePath} ${args.join(' ')}`);
+  publishServerState({ status: 'Starting', port, message: 'Starting server...' });
+
+  const child = spawn(exePath, args, {
+    cwd: path.dirname(exePath),
+    detached: false,
+    windowsHide: true,
+    stdio: 'ignore'
+  });
+
+  serverProcess = child;
+
+  child.once('spawn', () => {
+    publishServerState({
+      status: 'Running',
+      pid: child.pid,
+      port,
+      startedAt: new Date().toISOString(),
+      message: 'Server running'
+    });
+  });
+
+  child.once('error', (error) => {
+    writeLog('ERROR', 'Server process error', error?.message || String(error));
+    publishServerState({
+      status: 'Error',
+      pid: undefined,
+      startedAt: undefined,
+      message: error instanceof Error ? error.message : String(error)
+    });
+    serverProcess = null;
+  });
+
+  child.once('exit', (code, signal) => {
+    const wasStopping = serverState.status === 'Stopping';
+    serverProcess = null;
+    if (wasStopping || code === 0) {
+      publishServerState({
+        status: 'Stopped',
+        pid: undefined,
+        startedAt: undefined,
+        message: wasStopping ? 'Server stopped' : undefined
+      });
+      return;
+    }
+
+    const failure = `Server exited (code: ${code ?? 'null'}, signal: ${signal ?? 'none'})`;
+    writeLog('WARN', 'Server exited unexpectedly', failure);
+    publishServerState({
+      status: 'Error',
+      pid: undefined,
+      startedAt: undefined,
+      message: failure
+    });
+  });
+
+  return serverState;
+};
+
 const launchGame = (payload) => {
   const exePath = resolveLaunchTarget(payload);
   if (!fs.existsSync(exePath)) {
@@ -267,6 +433,16 @@ const resolveRepoRoot = () => {
   }
   const appPath = app.getAppPath();
   return path.resolve(appPath, '..');
+};
+
+const readGameVersion = () => {
+  try {
+    const versionPath = path.join(resolveRepoRoot(), 'VERSION');
+    const value = fs.readFileSync(versionPath, 'utf-8').trim();
+    return value.length > 0 ? value : null;
+  } catch {
+    return null;
+  }
 };
 
 const runPackagingScript = (payload) => {
@@ -474,6 +650,34 @@ ipcMain.handle('launcher:packageBuild', async (_event, payload) => {
   }
 });
 
+ipcMain.handle('launcher:getServerStatus', async () => {
+  return { status: 'ok', server: serverState };
+});
+
+ipcMain.handle('launcher:startServer', async (_event, payload) => {
+  try {
+    const server = startHostedServer(payload || {});
+    return { status: 'ok', server };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    writeLog('ERROR', 'Server start failed', reason);
+    publishServerState({ status: 'Error', message: reason, pid: undefined, startedAt: undefined });
+    return { status: 'error', reason };
+  }
+});
+
+ipcMain.handle('launcher:stopServer', async () => {
+  try {
+    await stopServerProcess();
+    return { status: 'ok', server: serverState };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    writeLog('ERROR', 'Server stop failed', reason);
+    publishServerState({ status: 'Error', message: reason });
+    return { status: 'error', reason };
+  }
+});
+
 ipcMain.handle('launcher:openPath', async (_event, targetPath) => {
   if (!targetPath) return;
   await shell.openPath(targetPath);
@@ -482,6 +686,14 @@ ipcMain.handle('launcher:openPath', async (_event, targetPath) => {
 ipcMain.handle('launcher:openLogs', async () => {
   await ensureDir(logDir);
   await shell.openPath(logDir);
+});
+
+ipcMain.handle('launcher:getBuildInfo', async () => {
+  return {
+    status: 'ok',
+    launcherVersion: app.getVersion(),
+    gameVersion: readGameVersion()
+  };
 });
 
 app.whenReady().then(() => {
@@ -497,7 +709,9 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    app.quit();
+    stopServerProcess()
+      .catch((error) => writeLog('WARN', 'Server shutdown failed', error instanceof Error ? error.message : String(error)))
+      .finally(() => app.quit());
   }
 });
 

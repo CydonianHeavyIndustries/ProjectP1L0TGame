@@ -3,6 +3,7 @@ extends StaticBody3D
 @export var max_health := 150.0
 @export var healthbar_height := 1.85
 @export var healthbar_forward := 0.18
+@export var xp_reward := 25
 var current_health := 150.0
 var is_ko := false
 var _fill_base_pos := Vector3.ZERO
@@ -17,6 +18,7 @@ var mesh_parts: Array[MeshInstance3D] = []
 func _ready() -> void:
 	current_health = max_health
 	_cache_mesh_parts()
+	_autoplay_first_animation(mesh_root)
 	_setup_healthbar()
 	_update_healthbar()
 	_update_color(false)
@@ -39,9 +41,28 @@ func _update_color(dead: bool) -> void:
 func _cache_mesh_parts() -> void:
 	mesh_parts.clear()
 	if mesh_root:
-		for child in mesh_root.get_children():
-			if child is MeshInstance3D:
-				mesh_parts.append(child)
+		_collect_meshes(mesh_root)
+
+func _collect_meshes(node: Node) -> void:
+	for child in node.get_children():
+		if child is MeshInstance3D:
+			mesh_parts.append(child)
+		_collect_meshes(child)
+
+func _autoplay_first_animation(root: Node) -> void:
+	if root == null:
+		return
+	var players: Array = root.find_children("*", "AnimationPlayer", true, false)
+	if players.is_empty():
+		return
+	var anim_player: AnimationPlayer = players[0] as AnimationPlayer
+	if anim_player == null:
+		return
+	var anims: PackedStringArray = anim_player.get_animation_list()
+	if anims.is_empty():
+		return
+	if not anim_player.is_playing():
+		anim_player.play(anims[0])
 
 func _setup_healthbar() -> void:
 	if health_back and health_back.get_parent() is Node3D:
@@ -91,6 +112,7 @@ func _start_ko_jump() -> void:
 	if is_ko:
 		return
 	is_ko = true
+	_award_xp()
 	var start_pos := position
 	var up_pos := start_pos + Vector3(0, 0.8, 0)
 	var tween := create_tween()
@@ -103,3 +125,8 @@ func _reset_health() -> void:
 	is_ko = false
 	_update_color(false)
 	_update_healthbar()
+
+func _award_xp() -> void:
+	var player = get_tree().get_first_node_in_group("player")
+	if player and player.has_method("add_xp"):
+		player.add_xp(xp_reward)
