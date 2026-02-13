@@ -1,4 +1,4 @@
-﻿const { app, BrowserWindow, shell, ipcMain } = require('electron');
+﻿const { app, BrowserWindow, shell, ipcMain, dialog } = require('electron');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
@@ -359,12 +359,26 @@ const startHostedServer = (payload) => {
   serverProcess = child;
 
   child.once('spawn', () => {
+    if (process.platform === 'win32' && payload?.useAllHardware && child.pid) {
+      const priorityCmd = [
+        '$ErrorActionPreference = "SilentlyContinue";',
+        `$p = Get-Process -Id ${child.pid};`,
+        'if ($p) { $p.PriorityClass = "High" }'
+      ].join(' ');
+      const prioritySetter = spawn('powershell.exe', ['-NoProfile', '-Command', priorityCmd], {
+        windowsHide: true,
+        stdio: 'ignore'
+      });
+      prioritySetter.unref();
+      writeLog('INFO', 'Server performance mode', `High priority requested for PID ${child.pid}`);
+    }
+
     publishServerState({
       status: 'Running',
       pid: child.pid,
       port,
       startedAt: new Date().toISOString(),
-      message: 'Server running'
+      message: payload?.useAllHardware ? 'Server running (max performance)' : 'Server running'
     });
   });
 
@@ -686,6 +700,20 @@ ipcMain.handle('launcher:openPath', async (_event, targetPath) => {
 ipcMain.handle('launcher:openLogs', async () => {
   await ensureDir(logDir);
   await shell.openPath(logDir);
+});
+
+ipcMain.handle('launcher:pickDirectory', async (_event, payload) => {
+  const result = await dialog.showOpenDialog({
+    title: payload?.title || 'Select Install Directory',
+    defaultPath: payload?.defaultPath || app.getPath('documents'),
+    properties: ['openDirectory', 'createDirectory', 'dontAddToRecent']
+  });
+
+  if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+    return { status: 'cancelled' };
+  }
+
+  return { status: 'ok', path: result.filePaths[0] };
 });
 
 ipcMain.handle('launcher:getBuildInfo', async () => {

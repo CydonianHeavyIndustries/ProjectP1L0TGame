@@ -57,10 +57,12 @@ declare global {
         localBuildRelative: string;
         serverPort: number;
         serverArgs: string;
+        useAllHardware?: boolean;
       }) => Promise<LauncherServerResult>;
       stopServer: () => Promise<LauncherServerResult>;
       openPath: (targetPath: string) => Promise<void>;
       openLogs: () => Promise<void>;
+      pickDirectory: (payload: { title?: string; defaultPath?: string }) => Promise<{ status: 'ok'; path: string } | { status: 'cancelled' }>;
       onUpdateProgress: (
         callback: (payload: { step: string; progress: number; message?: string; state?: string }) => void
       ) => () => void;

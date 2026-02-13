@@ -20,6 +20,7 @@ export interface LauncherActions {
   startServer: () => void;
   stopServer: () => void;
   openInstallDir: () => void;
+  chooseInstallDir: () => Promise<boolean>;
   openLogs: () => void;
 }
 

@@ -8,6 +8,8 @@ import StatChip from '../components/StatChip';
 import KeyValue from '../components/KeyValue';
 import { formatBytes, formatDate } from '../utils/format';
 
+const DISCORD_INVITE = 'https://discord.gg/SJGXsUXWGS';
+
 const primaryActionLabel = (state: string) => {
   if (state === 'NotInstalled') return 'Install';
   if (state === 'UpdateAvailable') return 'Update';
@@ -37,6 +39,9 @@ const Home = ({ state }: { state: LauncherState }) => {
   const releaseDate = release?.publishedAt ? formatDate(release.publishedAt) : '—';
   const primaryLabel = settings.useLocalBuild && !isBusy ? 'Play (Local)' : primaryActionLabel(install.state);
   const notes = parseReleaseNotes(release?.body);
+  const openDiscord = () => {
+    window.open(DISCORD_INVITE, '_blank', 'noopener,noreferrer');
+  };
 
   const handlePrimary = () => {
     if (settings.useLocalBuild) return actions.requestLaunch();
@@ -130,6 +135,20 @@ const Home = ({ state }: { state: LauncherState }) => {
                 ? 'Test builds are stabilized for squads and external pilots.'
                 : 'Live is the public rail. Updates may be required before launch.'}
             </div>
+          </div>
+        </Panel>
+
+        <Panel title="Community" variant="alt">
+          <div className="stack">
+            <div className="notice">
+              Join us, follow progress, and support the project in the CHII Discord.
+            </div>
+            <div className="row">
+              <Button variant="primary" onClick={openDiscord}>
+                Join Us on Discord
+              </Button>
+            </div>
+            <KeyValue label="Invite" value={DISCORD_INVITE} />
           </div>
         </Panel>
 

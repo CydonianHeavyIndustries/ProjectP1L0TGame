@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('launcher', {
   stopServer: () => ipcRenderer.invoke('launcher:stopServer'),
   openPath: (targetPath) => ipcRenderer.invoke('launcher:openPath', targetPath),
   openLogs: () => ipcRenderer.invoke('launcher:openLogs'),
+  pickDirectory: (payload) => ipcRenderer.invoke('launcher:pickDirectory', payload),
   onUpdateProgress,
   onServerStatus
 });
