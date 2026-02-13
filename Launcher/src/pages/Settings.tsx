@@ -17,6 +17,11 @@ const Settings = ({ state }: { state: LauncherState }) => {
                 value={settings.installDir}
                 onChange={(event) => actions.updateSettings({ installDir: event.target.value })}
               />
+              <div className="row">
+                <Button variant="ghost" type="button" onClick={() => void actions.chooseInstallDir()}>
+                  Browse…
+                </Button>
+              </div>
             </label>
             <label className="stack">
               Installed Game Executable (relative to /install)

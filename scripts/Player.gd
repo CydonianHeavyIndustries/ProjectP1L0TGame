@@ -386,12 +386,6 @@ func _physics_process(delta: float) -> void:
 				is_crouching = true
 
 	var direction := (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
-	if direction:
-		velocity.x = direction.x * speed
-		velocity.z = direction.z * speed
-	else:
-		velocity.x = move_toward(velocity.x, 0, speed)
-		velocity.z = move_toward(velocity.z, 0, speed)
 
 	var speed = walk_speed
 	if is_prone:
@@ -402,18 +396,17 @@ func _physics_process(delta: float) -> void:
 		speed = sprint_speed
 	if not sliding:
 		var accel = accel_ground if on_floor else accel_air
-		var decel = decel_ground if on_floor else decel_air
 		var target_velocity = direction * speed
 		var horizontal = Vector3(velocity.x, 0, velocity.z)
 		if direction != Vector3.ZERO:
 			var control = 1.0
+			var applied_accel = accel
+			if horizontal.length() > 0.01 and horizontal.normalized().dot(direction) < 0.0:
+				# Counter-strafe should be the primary way to slow down.
+				applied_accel *= air_reverse_accel_multiplier
 			if not on_floor:
 				control = air_control
-				if velocity.y < 0.0 and horizontal.length() > 0.01 and horizontal.normalized().dot(direction) < 0.0:
-					accel *= air_reverse_accel_multiplier
-			horizontal = horizontal.move_toward(target_velocity, accel * control * delta)
-		else:
-			horizontal = horizontal.move_toward(Vector3.ZERO, decel * delta)
+			horizontal = horizontal.move_toward(target_velocity, applied_accel * control * delta)
 		velocity.x = horizontal.x
 		velocity.z = horizontal.z
 

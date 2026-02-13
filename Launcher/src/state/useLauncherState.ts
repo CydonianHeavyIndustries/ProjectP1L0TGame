@@ -246,7 +246,17 @@ export const useLauncherState = (): LauncherState => {
   }, [settings.autoUpdate, settings.useLocalBuild]);
 
   const startInstall = () => {
-    attemptUpdate('update').catch((error) => {
+    (async () => {
+      if (install.state === 'NotInstalled') {
+        const chosen = await chooseInstallDir();
+        if (!chosen) {
+          pushLog('Install cancelled (no download directory selected)');
+          return;
+        }
+      }
+
+      await attemptUpdate('update');
+    })().catch((error) => {
       pushLog(`Update failed (${error instanceof Error ? error.message : String(error)})`);
       setInstall({ state: 'Error', step: 'Idle', progress: 0, error: String(error) });
     });
@@ -292,6 +302,26 @@ export const useLauncherState = (): LauncherState => {
       writeSettings(updated);
       return updated;
     });
+  };
+
+  const chooseInstallDir = async (): Promise<boolean> => {
+    if (!window.launcher?.pickDirectory) {
+      pushLog('Directory picker unavailable in this environment');
+      return false;
+    }
+
+    const result = await window.launcher.pickDirectory({
+      title: 'Choose where Project P1L0T will be downloaded',
+      defaultPath: settings.installDir
+    });
+
+    if (result.status !== 'ok' || !result.path) {
+      return false;
+    }
+
+    updateSettings({ installDir: result.path });
+    pushLog(`Install directory set (${result.path})`);
+    return true;
   };
 
   const resetLauncherSettings = () => {
@@ -384,6 +414,9 @@ export const useLauncherState = (): LauncherState => {
       pushLog('Server start failed (Launcher bridge unavailable)');
       return;
     }
+    const useAllHardware = window.confirm(
+      'Enable max performance mode for hosted server?\n\nThis will request high process priority and full hardware utilization.'
+    );
     const result = await window.launcher.startServer({
       channel,
       installDir: settings.installDir,
@@ -391,13 +424,15 @@ export const useLauncherState = (): LauncherState => {
       useLocalBuild: settings.useLocalBuild,
       localBuildRelative: settings.localBuildRelative,
       serverPort: settings.serverPort,
-      serverArgs: settings.serverArgs
+      serverArgs: settings.serverArgs,
+      useAllHardware
     });
     if (result.status === 'error') {
       pushLog(`Server start failed (${result.reason})`);
       setServer({ status: 'Error', message: result.reason });
       return;
     }
+    pushLog(useAllHardware ? 'Server started (max performance mode)' : 'Server started (standard mode)');
     setServer(result.server);
   };
 
@@ -452,6 +487,7 @@ export const useLauncherState = (): LauncherState => {
       startServer,
       stopServer,
       openInstallDir,
+      chooseInstallDir,
       openLogs
     }
   };
