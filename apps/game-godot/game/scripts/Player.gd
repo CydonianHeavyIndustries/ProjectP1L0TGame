@@ -57,6 +57,7 @@ signal died
 @export var wallrun_roll := 0.26
 @export var wallrun_roll_speed := 12.0
 @export var wallrun_reentry_delay := 0.75
+@export var wallrun_side_switch_delay := 0.25
 @export var wallrun_intent_time := 0.25
 @export var wallrun_chain_time := 0.35
 @export var wallrun_steer_speed := 10.0
@@ -970,21 +971,25 @@ func _log(message: String) -> void:
 func _try_start_wallrun(input_dir: Vector2) -> void:
 	if wallrunning:
 		return
-	if wallrun_cooldown > 0.0:
-		return
 	var horiz_speed = Vector3(velocity.x, 0, velocity.z).length()
 	if horiz_speed < wallrun_min_speed:
 		return
 	var hit = _get_wallrun_hit()
 	if not (hit and hit.has("normal")):
 		return
-	if last_wall_normal != Vector3.ZERO:
-		var dot = hit["normal"].dot(last_wall_normal)
-		if dot > 0.8:
-			if wallrun_chain_timer > 0.0:
-				return
-			if wallrun_cooldown > 0.0 and wallrun_intent <= 0.0:
-				return
+	var has_last = last_wall_normal != Vector3.ZERO
+	var last_dot := 0.0
+	if has_last:
+		last_dot = hit["normal"].dot(last_wall_normal)
+		if last_dot > 0.8 and wallrun_chain_timer > 0.0:
+			return
+	if wallrun_cooldown > 0.0 and wallrun_intent <= 0.0:
+		var allow_early = false
+		if has_last and last_dot < -0.2:
+			var switch_threshold = max(0.0, wallrun_reentry_delay - wallrun_side_switch_delay)
+			allow_early = wallrun_cooldown <= switch_threshold
+		if not allow_early:
+			return
 	var desired = Vector3.ZERO
 	if input_dir.length() > 0.1:
 		desired = (global_transform.basis * Vector3(input_dir.x, 0, input_dir.y))

@@ -210,8 +210,7 @@ weapon_melee={
 "events": [{
 "keycode": 52,
 "type": "Key"
-}
-]
+}]
 }
 weapon_extras={
 "deadzone": 0.5,
