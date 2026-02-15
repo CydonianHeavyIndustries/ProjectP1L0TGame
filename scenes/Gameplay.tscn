@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://scripts/Dummy.gd" id=8]
 [ext_resource type="Mesh" path="res://scenes/dummy_mesh.tres" id=9]
 [ext_resource type="Script" path="res://scripts/HUD.gd" id=10]
+[ext_resource type="Script" path="res://scripts/PauseMenu.gd" id=11]
 
 [node name="Gameplay" type="Node3D"]
 script = ExtResource(1)
@@ -503,4 +504,282 @@ layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource(10)
+
+[node name="PauseMenu" type="Control" parent="HUD" unique_id=261225987]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource(11)
+
+[node name="Dim" type="ColorRect" parent="HUD/PauseMenu" unique_id=922507345]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.55)
+
+[node name="Panel" type="Panel" parent="HUD/PauseMenu" unique_id=935822126]
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -210.0
+offset_top = -180.0
+offset_right = 210.0
+offset_bottom = 180.0
+
+[node name="VBox" type="VBoxContainer" parent="HUD/PauseMenu/Panel" unique_id=1888569166]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
+alignment = 1
+
+[node name="Title" type="Label" parent="HUD/PauseMenu/Panel/VBox" unique_id=1014026261]
+layout_mode = 2
+text = "PAUSED"
+horizontal_alignment = 1
+
+[node name="ResumeButton" type="Button" parent="HUD/PauseMenu/Panel/VBox" unique_id=727066240]
+layout_mode = 2
+text = "Resume"
+
+[node name="LoadoutButton" type="Button" parent="HUD/PauseMenu/Panel/VBox" unique_id=1276430187]
+layout_mode = 2
+text = "Loadout"
+
+[node name="SettingsButton" type="Button" parent="HUD/PauseMenu/Panel/VBox" unique_id=1943438993]
+layout_mode = 2
+text = "Settings"
+
+[node name="ControlsButton" type="Button" parent="HUD/PauseMenu/Panel/VBox" unique_id=1566159265]
+layout_mode = 2
+text = "Controls"
+
+[node name="AudioButton" type="Button" parent="HUD/PauseMenu/Panel/VBox" unique_id=16331348]
+layout_mode = 2
+text = "Audio"
+
+[node name="GraphicsButton" type="Button" parent="HUD/PauseMenu/Panel/VBox" unique_id=1832224116]
+layout_mode = 2
+text = "Graphics"
+
+[node name="CreditsButton" type="Button" parent="HUD/PauseMenu/Panel/VBox" unique_id=609465924]
+layout_mode = 2
+text = "Credits"
+
+[node name="QuitButton" type="Button" parent="HUD/PauseMenu/Panel/VBox" unique_id=2055441440]
+layout_mode = 2
+text = "Quit to Desktop"
+
+[node name="LoadoutPanel" type="Panel" parent="HUD/PauseMenu" unique_id=1914783260]
+visible = false
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+
+[node name="LoadoutVBox" type="VBoxContainer" parent="HUD/PauseMenu/LoadoutPanel" unique_id=447891260]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = 24.0
+offset_right = -24.0
+offset_bottom = -24.0
+
+[node name="Header" type="HBoxContainer" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox" unique_id=1646873908]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/Header" unique_id=2126327814]
+layout_mode = 2
+text = "LOADOUT"
+
+[node name="HeaderSpacer" type="Control" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/Header" unique_id=1377486675]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BackButton" type="Button" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/Header" unique_id=75793609]
+layout_mode = 2
+text = "Back"
+
+[node name="LoadoutSlots" type="GridContainer" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox" unique_id=1755482244]
+layout_mode = 2
+columns = 5
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="Slot1" type="Button" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/LoadoutSlots" unique_id=1856917869]
+layout_mode = 2
+text = "Loadout 1"
+
+[node name="Slot2" type="Button" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/LoadoutSlots" unique_id=964251359]
+layout_mode = 2
+text = "Loadout 2"
+
+[node name="Slot3" type="Button" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/LoadoutSlots" unique_id=580239100]
+layout_mode = 2
+text = "Loadout 3"
+
+[node name="Slot4" type="Button" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/LoadoutSlots" unique_id=2060340830]
+layout_mode = 2
+text = "Loadout 4"
+
+[node name="Slot5" type="Button" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/LoadoutSlots" unique_id=861176302]
+layout_mode = 2
+text = "Loadout 5"
+
+[node name="Slot6" type="Button" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/LoadoutSlots" unique_id=1253638804]
+layout_mode = 2
+text = "Loadout 6"
+
+[node name="Slot7" type="Button" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/LoadoutSlots" unique_id=584270984]
+layout_mode = 2
+text = "Loadout 7"
+
+[node name="Slot8" type="Button" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/LoadoutSlots" unique_id=533136660]
+layout_mode = 2
+text = "Loadout 8"
+
+[node name="Slot9" type="Button" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/LoadoutSlots" unique_id=902795796]
+layout_mode = 2
+text = "Loadout 9"
+
+[node name="Slot10" type="Button" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/LoadoutSlots" unique_id=619719827]
+layout_mode = 2
+text = "Loadout 10"
+
+[node name="Body" type="HBoxContainer" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox" unique_id=2063217885]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="CategoryPanel" type="Panel" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/Body" unique_id=2110439195]
+layout_mode = 2
+custom_minimum_size = Vector2(240, 0)
+size_flags_vertical = 3
+
+[node name="CategoryMargin" type="MarginContainer" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/Body/CategoryPanel" unique_id=6386655]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+
+[node name="CategoryList" type="VBoxContainer" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/Body/CategoryPanel/CategoryMargin" unique_id=1769653168]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 6
+
+[node name="ItemsPanel" type="Panel" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/Body" unique_id=1240693605]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ItemsMargin" type="MarginContainer" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/Body/ItemsPanel" unique_id=1087612475]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+
+[node name="ItemsVBox" type="VBoxContainer" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/Body/ItemsPanel/ItemsMargin" unique_id=1301640819]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 10
+
+[node name="ItemsTitle" type="Label" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/Body/ItemsPanel/ItemsMargin/ItemsVBox" unique_id=1372456820]
+layout_mode = 2
+text = "Category"
+
+[node name="ItemsScroll" type="ScrollContainer" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/Body/ItemsPanel/ItemsMargin/ItemsVBox" unique_id=1121305924]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ItemsGrid" type="GridContainer" parent="HUD/PauseMenu/LoadoutPanel/LoadoutVBox/Body/ItemsPanel/ItemsMargin/ItemsVBox/ItemsScroll" unique_id=862012326]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+size_flags_horizontal = 3
+columns = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+
+[node name="SelectedItemLabel" type="Label" parent="HUD/PauseMenu/LoadoutPanel" unique_id=1774616511]
+layout_mode = 0
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -360.0
+offset_top = -64.0
+offset_right = -24.0
+offset_bottom = -24.0
+text = ""
+horizontal_alignment = 2
+vertical_alignment = 2
+theme_override_font_sizes/font_size = 28
+
+[node name="GrenadeInfoPanel" type="Panel" parent="HUD/PauseMenu/LoadoutPanel" unique_id=276940154]
+visible = false
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -230.0
+offset_top = -160.0
+offset_right = 230.0
+offset_bottom = 160.0
+
+[node name="GrenadeInfoMargin" type="MarginContainer" parent="HUD/PauseMenu/LoadoutPanel/GrenadeInfoPanel" unique_id=1888362607]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+
+[node name="GrenadeInfoVBox" type="VBoxContainer" parent="HUD/PauseMenu/LoadoutPanel/GrenadeInfoPanel/GrenadeInfoMargin" unique_id=1965261694]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 8
+
+[node name="GrenadeInfoTitle" type="Label" parent="HUD/PauseMenu/LoadoutPanel/GrenadeInfoPanel/GrenadeInfoMargin/GrenadeInfoVBox" unique_id=338638301]
+layout_mode = 2
+text = "Grenade Info"
+horizontal_alignment = 1
+
+[node name="GrenadeInfoDesc" type="Label" parent="HUD/PauseMenu/LoadoutPanel/GrenadeInfoPanel/GrenadeInfoMargin/GrenadeInfoVBox" unique_id=680259914]
+layout_mode = 2
+text = "Info"
+autowrap_mode = 3
+size_flags_vertical = 3
+
+[node name="GrenadeInfoClose" type="Button" parent="HUD/PauseMenu/LoadoutPanel/GrenadeInfoPanel/GrenadeInfoMargin/GrenadeInfoVBox" unique_id=1953626577]
+layout_mode = 2
+text = "Close"

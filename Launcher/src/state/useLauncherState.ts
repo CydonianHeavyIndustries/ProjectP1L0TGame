@@ -244,7 +244,6 @@ export const useLauncherState = (): LauncherState => {
       setInstall({ state: 'Error', step: 'Idle', progress: 0, error: String(error) });
     });
   }, [settings.autoUpdate, settings.useLocalBuild]);
-
   const startInstall = () => {
     (async () => {
       if (install.state === 'NotInstalled') {
