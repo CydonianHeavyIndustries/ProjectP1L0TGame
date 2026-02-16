@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "powershell -NoProfile -Command \"$env:ELECTRON_RUN_AS_NODE=$null; concurrently --kill-others-on-fail 'vite' 'wait-on http://localhost:5173 && cross-env NODE_ENV=development ELECTRON_START_URL=http://localhost:5173 electron .'\"",
     "build": "vite build",
+    "dist:win": "npm run build && electron-builder --win nsis portable",
     "preview": "vite preview",
     "lint": "eslint . --ext .ts,.tsx",
     "postinstall": "patch-package"
@@ -33,5 +34,47 @@
     "typescript": "^5.3.3",
     "vite": "^7.3.1",
     "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "inc.cydonianheavyindustries.projectp1lot.launcher",
+    "productName": "Project P1L0T Launcher",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "electron/main.cjs"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "ProjectP1L0T_Launcher_${version}_${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Project P1L0T Launcher",
+      "artifactName": "ProjectP1L0T_Launcher_Setup_${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "ProjectP1L0T_Launcher_${version}_Portable.${ext}"
+    }
   }
 }
