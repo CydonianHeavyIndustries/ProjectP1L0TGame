@@ -48,6 +48,11 @@ declare global {
         configuration?: string;
         zip?: boolean;
       }) => Promise<{ status: 'ok' } | { status: 'error'; reason: string }>;
+      sendVerificationEmail: (payload: {
+        username: string;
+        email: string;
+        code: string;
+      }) => Promise<{ status: 'ok' } | { status: 'error'; reason: string }>;
       getServerStatus: () => Promise<LauncherServerResult>;
       startServer: (payload: {
         channel: string;
@@ -63,6 +68,20 @@ declare global {
       openPath: (targetPath: string) => Promise<void>;
       openLogs: () => Promise<void>;
       pickDirectory: (payload: { title?: string; defaultPath?: string }) => Promise<{ status: 'ok'; path: string } | { status: 'cancelled' }>;
+      socialCreateProfile: (payload: { id: string; username: string; email: string }) => Promise<{ status: 'ok' } | { status: 'error'; reason: string }>;
+      socialUpdateProfile: (payload: {
+        userId: string;
+        bio: string;
+        statusMessage: string;
+        discordUsername: string;
+        avatarDataUrl?: string;
+      }) => Promise<{ status: 'ok' } | { status: 'error'; reason: string }>;
+      socialSetPresence: (payload: { userId: string; online: boolean }) => Promise<{ status: 'ok' } | { status: 'error'; reason: string }>;
+      socialSearchPlayers: (payload: { query: string; requesterId: string }) => Promise<{ status: 'ok'; results: any[] } | { status: 'error'; reason: string }>;
+      socialSendFriendRequest: (payload: { fromId: string; toId: string }) => Promise<{ status: 'ok' } | { status: 'error'; reason: string }>;
+      socialRespondFriendRequest: (payload: { requestId: string; accept: boolean }) => Promise<{ status: 'ok' } | { status: 'error'; reason: string }>;
+      socialListFriendRequests: (payload: { userId: string }) => Promise<{ status: 'ok'; requests: any[] } | { status: 'error'; reason: string }>;
+      socialListFriends: (payload: { userId: string }) => Promise<{ status: 'ok'; friends: any[] } | { status: 'error'; reason: string }>;
       onUpdateProgress: (
         callback: (payload: { step: string; progress: number; message?: string; state?: string }) => void
       ) => () => void;

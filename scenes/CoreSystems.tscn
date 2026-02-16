@@ -32,4 +32,4 @@ player_path = NodePath("../World/Player")
 
 [node name="LevelSystem" type="Node" parent="."]
 script = ExtResource("7")
-level_scene_path = "res://levels/Level_Main.tscn"
+level_scene_path = "res://scenes/levels/Level_Main.tscn"

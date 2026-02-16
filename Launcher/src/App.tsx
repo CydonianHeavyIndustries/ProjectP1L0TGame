@@ -3,6 +3,7 @@ import Home from './pages/Home';
 import Updates from './pages/Updates';
 import Settings from './pages/Settings';
 import Social from './pages/Social';
+import Account from './pages/Account';
 import Debug from './pages/Debug';
 import { useLauncherState } from './state/useLauncherState';
 import chiiLogo from './assets/chii_logo.png';
@@ -19,6 +20,7 @@ const App = () => {
         { id: 'updates', label: 'Updates' },
         { id: 'settings', label: 'Settings' },
         { id: 'social', label: 'Social' },
+        { id: 'account', label: 'Account' },
         ...(isDev ? [{ id: 'debug', label: 'Debug' }] : [])
       ],
     [isDev]
@@ -47,6 +49,9 @@ const App = () => {
           ))}
         </nav>
         <div className="status-strip">
+          <span className="stat-chip" data-accent={state.authUser ? 'cyan' : 'orange'}>
+            {state.authUser ? `Pilot ${state.authUser.username}` : 'Guest'}
+          </span>
           <span className="stat-chip" data-accent="cyan">
             Env {state.channel}
           </span>
@@ -60,7 +65,8 @@ const App = () => {
         {active === 'home' && <Home state={state} />}
         {active === 'updates' && <Updates state={state} />}
         {active === 'settings' && <Settings state={state} />}
-        {active === 'social' && <Social />}
+        {active === 'social' && <Social state={state} />}
+        {active === 'account' && <Account state={state} />}
         {active === 'debug' && <Debug state={state} />}
       </main>
     </div>
