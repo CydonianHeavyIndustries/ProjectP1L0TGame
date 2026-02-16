@@ -370,3 +370,7 @@ FodyWeavers.xsd
 .godot/
 .import/
 Builds/
+
+# Generated server installer staging artifacts
+tools/server_setup/staging/
+tools/server_setup/*.sed

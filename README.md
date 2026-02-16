@@ -32,3 +32,11 @@ Edit `scripts/core_systems/DebugConfig.gd` to change:
 1. Open Project > Export in Godot.
 2. Use the Windows preset from `export_presets.cfg`.
 3. Export to a local folder.
+
+**Repository Structure**
+- `scenes/`, `scripts/`, `assets/`, `materials/`: game runtime content.
+- `scenes/levels/`: playable level scenes (main level moved from `levels/`).
+- `Launcher/`: Electron launcher.
+- `services/server-api/`: backend API host files.
+- `tools/server_setup/`: single-file Windows server setup builder.
+- `docs/`: roadmap and project documentation.

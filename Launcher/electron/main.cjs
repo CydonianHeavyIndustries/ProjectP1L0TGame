@@ -12,6 +12,15 @@ const API_BASE = `https://api.github.com/repos/${REPO}`;
 const logDir = path.join(app.getPath('userData'), 'logs');
 const logFile = path.join(logDir, 'launcher.log');
 const DEFAULT_SERVER_PORT = 7777;
+const DEFAULT_EMAIL_FROM = process.env.P1LOT_EMAIL_FROM || 'noreply@cydonianheavyindustries.inc';
+const DEFAULT_EMAIL_FROM_NAME = process.env.P1LOT_EMAIL_FROM_NAME || 'Project P1L0T';
+const EMAIL_API_URL = process.env.P1LOT_EMAIL_API_URL || '';
+const EMAIL_API_KEY = process.env.P1LOT_EMAIL_API_KEY || '';
+const SOCIAL_ONLINE_TTL_MS = 45 * 1000;
+const socialDir = path.join(app.getPath('userData'), 'social');
+const socialDbPath = path.join(socialDir, 'social-db.json');
+
+let socialDb = null;
 
 let serverProcess = null;
 let serverState = {
@@ -87,6 +96,111 @@ const requestGitHub = async (endpoint) => {
   }
   return response.json();
 };
+
+const escapeHtml = (value) =>
+  String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+const buildVerificationEmailPayload = ({ username, email, code }) => {
+  const safeName = escapeHtml(username);
+  const safeCode = escapeHtml(code);
+  return {
+    to: email,
+    from: `${DEFAULT_EMAIL_FROM_NAME} <${DEFAULT_EMAIL_FROM}>`,
+    subject: 'Project P1L0T - Verify your account email',
+    text: [
+      `Pilot ${username},`,
+      '',
+      `Your Project P1L0T verification code is: ${code}`,
+      '',
+      'This code expires in 15 minutes.',
+      '',
+      `This mailbox is not monitored. Do not reply (${DEFAULT_EMAIL_FROM}).`
+    ].join('\n'),
+    html: `
+      <div style="font-family:Segoe UI,Arial,sans-serif;background:#0b1114;color:#d8ecf0;padding:20px">
+        <h2 style="margin:0 0 12px 0;color:#2fd3d6">Project P1L0T Account Verification</h2>
+        <p style="margin:0 0 10px 0">Pilot <strong>${safeName}</strong>,</p>
+        <p style="margin:0 0 14px 0">Use this verification code to activate your account:</p>
+        <div style="display:inline-block;padding:10px 14px;border:1px solid #2fd3d6;background:#081523;font-size:24px;letter-spacing:2px;font-weight:700">${safeCode}</div>
+        <p style="margin:14px 0 0 0;color:#7ea5ad">Code expires in 15 minutes.</p>
+        <p style="margin:6px 0 0 0;color:#7ea5ad">This mailbox is not monitored. Do not reply (${escapeHtml(DEFAULT_EMAIL_FROM)}).</p>
+      </div>
+    `.trim()
+  };
+};
+
+const sendVerificationEmail = async ({ username, email, code }) => {
+  if (!EMAIL_API_URL) {
+    throw new Error('Email API is not configured (set P1LOT_EMAIL_API_URL).');
+  }
+
+  const payload = buildVerificationEmailPayload({ username, email, code });
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+  if (EMAIL_API_KEY) {
+    headers.Authorization = `Bearer ${EMAIL_API_KEY}`;
+  }
+
+  const response = await fetch(EMAIL_API_URL, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`Email API failed (${response.status}) ${body}`.trim());
+  }
+};
+
+const emptySocialDb = () => ({
+  profiles: [],
+  friendRequests: [],
+  friendships: []
+});
+
+const loadSocialDb = async () => {
+  if (socialDb) return socialDb;
+  await ensureDir(socialDir);
+  try {
+    const raw = await fsp.readFile(socialDbPath, 'utf-8');
+    socialDb = JSON.parse(raw);
+  } catch {
+    socialDb = emptySocialDb();
+  }
+  return socialDb;
+};
+
+const saveSocialDb = async () => {
+  if (!socialDb) return;
+  await ensureDir(socialDir);
+  await fsp.writeFile(socialDbPath, JSON.stringify(socialDb, null, 2), 'utf-8');
+};
+
+const normalizeQuery = (value) => String(value || '').trim().toLowerCase();
+
+const resolvePresence = (profile) => {
+  const lastSeen = profile?.lastSeenAt ? Date.parse(profile.lastSeenAt) : 0;
+  if (!lastSeen) return 'offline';
+  const online = Date.now() - lastSeen <= SOCIAL_ONLINE_TTL_MS;
+  return online ? 'online' : 'offline';
+};
+
+const mapProfileForClient = (profile) => ({
+  id: profile.id,
+  username: profile.username,
+  status: resolvePresence(profile),
+  lastSeenAt: profile.lastSeenAt,
+  statusMessage: profile.statusMessage || '',
+  discordUsername: profile.discordUsername || '',
+  avatarDataUrl: profile.avatarDataUrl || ''
+});
 
 const pickRelease = (releases, channel) => {
   const filtered = channel === 'dev' ? releases : releases.filter((rel) => !rel.prerelease && !rel.draft);
@@ -661,6 +775,218 @@ ipcMain.handle('launcher:packageBuild', async (_event, payload) => {
     const reason = error instanceof Error ? error.message : String(error);
     writeLog('ERROR', 'Packaging failed', reason);
     return { status: 'error', reason };
+  }
+});
+
+ipcMain.handle('launcher:sendVerificationEmail', async (_event, payload) => {
+  try {
+    if (!payload || !payload.email || !payload.code) {
+      return { status: 'error', reason: 'Invalid verification payload' };
+    }
+    await sendVerificationEmail(payload);
+    writeLog('INFO', 'Verification email sent', payload.email);
+    return { status: 'ok' };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    writeLog('WARN', 'Verification email failed', reason);
+    return { status: 'error', reason };
+  }
+});
+
+ipcMain.handle('launcher:socialCreateProfile', async (_event, payload) => {
+  try {
+    if (!payload?.id || !payload?.username || !payload?.email) {
+      return { status: 'error', reason: 'Invalid profile payload' };
+    }
+    const db = await loadSocialDb();
+    const now = new Date().toISOString();
+    const existing = db.profiles.find((profile) => profile.id === payload.id);
+    if (existing) {
+      existing.username = payload.username;
+      existing.email = payload.email;
+      existing.updatedAt = now;
+    } else {
+      db.profiles.push({
+        id: payload.id,
+        username: payload.username,
+        email: payload.email,
+        statusMessage: 'Online',
+        discordUsername: '',
+        avatarDataUrl: '',
+        createdAt: now,
+        lastSeenAt: undefined
+      });
+    }
+    await saveSocialDb();
+    return { status: 'ok' };
+  } catch (error) {
+    return { status: 'error', reason: error instanceof Error ? error.message : String(error) };
+  }
+});
+
+ipcMain.handle('launcher:socialUpdateProfile', async (_event, payload) => {
+  try {
+    if (!payload?.userId) {
+      return { status: 'error', reason: 'Invalid profile update payload' };
+    }
+    const db = await loadSocialDb();
+    const profile = db.profiles.find((entry) => entry.id === payload.userId);
+    if (!profile) {
+      return { status: 'error', reason: 'Profile not found' };
+    }
+    profile.statusMessage = payload.statusMessage ?? profile.statusMessage;
+    profile.discordUsername = payload.discordUsername ?? profile.discordUsername;
+    profile.avatarDataUrl = payload.avatarDataUrl ?? profile.avatarDataUrl;
+    profile.bio = payload.bio ?? profile.bio;
+    profile.updatedAt = new Date().toISOString();
+    await saveSocialDb();
+    return { status: 'ok' };
+  } catch (error) {
+    return { status: 'error', reason: error instanceof Error ? error.message : String(error) };
+  }
+});
+
+ipcMain.handle('launcher:socialSetPresence', async (_event, payload) => {
+  try {
+    if (!payload?.userId) {
+      return { status: 'error', reason: 'Invalid presence payload' };
+    }
+    const db = await loadSocialDb();
+    const profile = db.profiles.find((entry) => entry.id === payload.userId);
+    if (!profile) {
+      return { status: 'error', reason: 'Profile not found' };
+    }
+    profile.lastSeenAt = new Date().toISOString();
+    profile.presenceStatus = payload.online ? 'online' : 'offline';
+    await saveSocialDb();
+    return { status: 'ok' };
+  } catch (error) {
+    return { status: 'error', reason: error instanceof Error ? error.message : String(error) };
+  }
+});
+
+ipcMain.handle('launcher:socialSearchPlayers', async (_event, payload) => {
+  try {
+    const query = normalizeQuery(payload?.query);
+    if (!query) return { status: 'ok', results: [] };
+    const db = await loadSocialDb();
+    const results = db.profiles
+      .filter((profile) => profile.id !== payload?.requesterId)
+      .filter((profile) => {
+        const name = normalizeQuery(profile.username);
+        const id = normalizeQuery(profile.id);
+        return name.includes(query) || id.includes(query);
+      })
+      .map(mapProfileForClient);
+    return { status: 'ok', results };
+  } catch (error) {
+    return { status: 'error', reason: error instanceof Error ? error.message : String(error) };
+  }
+});
+
+ipcMain.handle('launcher:socialSendFriendRequest', async (_event, payload) => {
+  try {
+    if (!payload?.fromId || !payload?.toId) {
+      return { status: 'error', reason: 'Invalid friend request payload' };
+    }
+    if (payload.fromId === payload.toId) {
+      return { status: 'error', reason: 'Cannot friend yourself' };
+    }
+    const db = await loadSocialDb();
+    const fromProfile = db.profiles.find((profile) => profile.id === payload.fromId);
+    const toProfile = db.profiles.find((profile) => profile.id === payload.toId);
+    if (!fromProfile || !toProfile) {
+      return { status: 'error', reason: 'Profile not found' };
+    }
+    const alreadyFriends = db.friendships.some(
+      (entry) =>
+        (entry.userA === payload.fromId && entry.userB === payload.toId) ||
+        (entry.userA === payload.toId && entry.userB === payload.fromId)
+    );
+    if (alreadyFriends) {
+      return { status: 'error', reason: 'Already friends' };
+    }
+    const pending = db.friendRequests.some(
+      (request) =>
+        (request.fromId === payload.fromId && request.toId === payload.toId) ||
+        (request.fromId === payload.toId && request.toId === payload.fromId)
+    );
+    if (pending) {
+      return { status: 'error', reason: 'Friend request already pending' };
+    }
+    db.friendRequests.push({
+      id: `req_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+      fromId: payload.fromId,
+      toId: payload.toId,
+      createdAt: new Date().toISOString()
+    });
+    await saveSocialDb();
+    return { status: 'ok' };
+  } catch (error) {
+    return { status: 'error', reason: error instanceof Error ? error.message : String(error) };
+  }
+});
+
+ipcMain.handle('launcher:socialRespondFriendRequest', async (_event, payload) => {
+  try {
+    if (!payload?.requestId) {
+      return { status: 'error', reason: 'Invalid response payload' };
+    }
+    const db = await loadSocialDb();
+    const requestIndex = db.friendRequests.findIndex((request) => request.id === payload.requestId);
+    if (requestIndex === -1) {
+      return { status: 'error', reason: 'Friend request not found' };
+    }
+    const request = db.friendRequests[requestIndex];
+    db.friendRequests.splice(requestIndex, 1);
+
+    if (payload.accept) {
+      db.friendships.push({
+        id: `fr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+        userA: request.fromId,
+        userB: request.toId,
+        createdAt: new Date().toISOString()
+      });
+    }
+    await saveSocialDb();
+    return { status: 'ok' };
+  } catch (error) {
+    return { status: 'error', reason: error instanceof Error ? error.message : String(error) };
+  }
+});
+
+ipcMain.handle('launcher:socialListFriendRequests', async (_event, payload) => {
+  try {
+    if (!payload?.userId) return { status: 'error', reason: 'Invalid user id' };
+    const db = await loadSocialDb();
+    const requests = db.friendRequests
+      .filter((request) => request.toId === payload.userId)
+      .map((request) => {
+        const fromProfile = db.profiles.find((profile) => profile.id === request.fromId);
+        return {
+          id: request.id,
+          fromId: request.fromId,
+          fromUsername: fromProfile?.username || 'Unknown',
+          createdAt: request.createdAt
+        };
+      });
+    return { status: 'ok', requests };
+  } catch (error) {
+    return { status: 'error', reason: error instanceof Error ? error.message : String(error) };
+  }
+});
+
+ipcMain.handle('launcher:socialListFriends', async (_event, payload) => {
+  try {
+    if (!payload?.userId) return { status: 'error', reason: 'Invalid user id' };
+    const db = await loadSocialDb();
+    const friendIds = db.friendships
+      .filter((entry) => entry.userA === payload.userId || entry.userB === payload.userId)
+      .map((entry) => (entry.userA === payload.userId ? entry.userB : entry.userA));
+    const friends = db.profiles.filter((profile) => friendIds.includes(profile.id)).map(mapProfileForClient);
+    return { status: 'ok', friends };
+  } catch (error) {
+    return { status: 'error', reason: error instanceof Error ? error.message : String(error) };
   }
 });
 
