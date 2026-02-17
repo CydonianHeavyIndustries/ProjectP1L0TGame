@@ -288,6 +288,10 @@ Launcher/node_modules/
 Launcher/dist/
 Launcher/.vite/
 Launcher/out/
+services/server-api/node_modules/
+services/server-api/data/
+tools/server_setup/staging/
+tools/discord_dev_feedback.bat
 
 # Visual Studio 6 build log
 *.plg
