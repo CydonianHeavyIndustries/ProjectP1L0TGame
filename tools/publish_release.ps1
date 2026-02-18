@@ -17,7 +17,7 @@ if (-not $token) {
 }
 
 $repoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-$versionFile = Join-Path $repoRoot "VERSION"
+$versionFile = Join-Path $repoRoot "apps/game-godot/VERSION"
 
 if (-not $ZipPath) {
   $zipDir = Join-Path $repoRoot "Builds"

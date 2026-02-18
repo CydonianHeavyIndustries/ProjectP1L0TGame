@@ -1,12 +1,20 @@
 @echo off
 setlocal
 
-set "ROOT=%~dp0.."
-for %%I in ("%ROOT%") do set "ROOT=%%~fI"
+set "PROJECT_ROOT=%~1"
+if "%PROJECT_ROOT%"=="" set "PROJECT_ROOT=%~dp0..\apps\game-godot"
+for %%I in ("%PROJECT_ROOT%") do set "PROJECT_ROOT=%%~fI"
+set "REPO_ROOT=%~dp0.."
+for %%I in ("%REPO_ROOT%") do set "REPO_ROOT=%%~fI"
+
+if not exist "%PROJECT_ROOT%\project.godot" (
+  echo [P1L0T] project.godot not found at %PROJECT_ROOT%
+  exit /b 1
+)
 set "GODOT="
 if not "%GODOT_PATH%"=="" set "GODOT=%GODOT_PATH%"
-if "%GODOT%"=="" if exist "%ROOT%\\tools\\godot\\godot.exe" set "GODOT=%ROOT%\\tools\\godot\\godot.exe"
-if "%GODOT%"=="" if exist "%ROOT%\\tools\\godot.exe" set "GODOT=%ROOT%\\tools\\godot.exe"
+if "%GODOT%"=="" if exist "%REPO_ROOT%\\tools\\godot\\godot.exe" set "GODOT=%REPO_ROOT%\\tools\\godot\\godot.exe"
+if "%GODOT%"=="" if exist "%REPO_ROOT%\\tools\\godot.exe" set "GODOT=%REPO_ROOT%\\tools\\godot.exe"
 if "%GODOT%"=="" if exist "C:\\Program Files\\Godot\\godot.exe" set "GODOT=C:\\Program Files\\Godot\\godot.exe"
 if "%GODOT%"=="" if exist "C:\\Program Files\\Godot\\Godot.exe" set "GODOT=C:\\Program Files\\Godot\\Godot.exe"
 if "%GODOT%"=="" if exist "C:\\Program Files\\Godot Engine\\godot.exe" set "GODOT=C:\\Program Files\\Godot Engine\\godot.exe"
@@ -25,9 +33,9 @@ if "%GODOT%"=="" (
 )
 
 set "EXPORT_PRESET=Windows Desktop"
-set "BUILD_DIR=%ROOT%\\Builds\\Godot"
+set "BUILD_DIR=%REPO_ROOT%\\Builds\\Godot"
 set "EXE_PATH=%BUILD_DIR%\\ProjectP1L0T.exe"
-set "ZIP_PATH=%ROOT%\\Builds\\ProjectP1L0T_Godot.zip"
+set "ZIP_PATH=%REPO_ROOT%\\Builds\\ProjectP1L0T_Godot.zip"
 
 for /f "tokens=1" %%V in ('"%GODOT%" --headless --version') do set "GODOT_VER=%%V"
 for /f "tokens=1-3 delims=." %%a in ("%GODOT_VER%") do (
@@ -63,13 +71,13 @@ mkdir "%BUILD_DIR%"
 if exist "%ZIP_PATH%" del /f /q "%ZIP_PATH%"
 
 echo [P1L0T] Importing assets...
-"%GODOT%" --headless --path "%ROOT%" --import
+"%GODOT%" --headless --path "%PROJECT_ROOT%" --import
 if errorlevel 1 (
   echo [P1L0T] Import step failed - continuing to export.
 )
 
 echo [P1L0T] Exporting Godot build...
-"%GODOT%" --headless --path "%ROOT%" --export-release "%EXPORT_PRESET%" "%EXE_PATH%"
+"%GODOT%" --headless --path "%PROJECT_ROOT%" --export-release "%EXPORT_PRESET%" "%EXE_PATH%"
 set "EXPORT_CODE=%errorlevel%"
 if not "%EXPORT_CODE%"=="0" (
   echo [P1L0T] Export failed.

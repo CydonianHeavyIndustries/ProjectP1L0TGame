@@ -1,0 +1,513 @@
+================================================================================
+CHII COMPLETE SYSTEM - BACKEND INTEGRATION GUIDE
+================================================================================
+
+Component Locations:
+- Login: /src/app/components/LoginPage.tsx
+- Dashboard: /src/app/components/Dashboard.tsx
+- Home Page: /src/app/components/HomePage.tsx
+- Project Page: /src/app/components/ProjectP1L0T.tsx
+- Account Settings: /src/app/components/AccountSettings.tsx
+
+This document outlines all functions and integration points that need to be 
+connected to your backend system.
+
+================================================================================
+TEST CREDENTIALS
+================================================================================
+
+For testing the login system, use:
+  Username/Email: "user" or "user@cydonian.com"
+  Password: "12345"
+
+These credentials are hardcoded in the LoginPage component for development.
+
+================================================================================
+1. LOGIN FUNCTIONALITY
+================================================================================
+
+Function Name: handleLogin(email: string, password: string)
+
+Location: /src/app/components/LoginPage.tsx
+
+Description:
+  Called when user submits the login form. Currently has test credentials built in.
+
+Parameters:
+  - email: string (user's email address or username)
+  - password: string (user's password)
+
+Expected API Call:
+  Method: POST
+  Endpoint: /api/auth/login
+  Request Body: 
+    {
+      "email": "user@example.com",
+      "password": "userPassword123"
+    }
+
+Expected Response:
+  Success (200):
+    {
+      "token": "jwt_token_here",
+      "user": {
+        "id": "user_id",
+        "username": "username",
+        "email": "user@example.com"
+      }
+    }
+  
+  Error (401):
+    {
+      "error": "Invalid credentials",
+      "message": "Email or password is incorrect"
+    }
+
+================================================================================
+2. SIGNUP/REGISTRATION FUNCTIONALITY
+================================================================================
+
+Function Name: handleSignup(email: string, password: string, confirmPassword: string, username: string)
+
+Location: /src/app/components/LoginPage.tsx
+
+Description:
+  Called when user submits the sign-up form. Note: Changed from "employeeId" to "username".
+
+Parameters:
+  - email: string (user's email address)
+  - password: string (user's chosen password)
+  - confirmPassword: string (password confirmation)
+  - username: string (chosen username)
+
+Expected API Call:
+  Method: POST
+  Endpoint: /api/auth/register
+  Request Body:
+    {
+      "email": "newuser@example.com",
+      "password": "newPassword123",
+      "username": "newusername"
+    }
+
+================================================================================
+3. FORGOT PASSWORD FUNCTIONALITY
+================================================================================
+
+Function Name: handleForgotPassword(email: string)
+
+Location: /src/app/components/LoginPage.tsx
+
+Expected API Call:
+  Method: POST
+  Endpoint: /api/auth/forgot-password
+  Request Body:
+    {
+      "email": "user@example.com"
+    }
+
+================================================================================
+4. REQUEST ACCESS FUNCTIONALITY
+================================================================================
+
+Function Name: handleRequestAccess(data: RequestAccessData)
+
+Location: /src/app/components/LoginPage.tsx
+
+Parameters (RequestAccessData):
+  - fullName: string
+  - email: string
+  - username: string (changed from employeeId)
+  - department: string
+  - reason: string
+
+Expected API Call:
+  Method: POST
+  Endpoint: /api/auth/request-access
+
+================================================================================
+5. ACCOUNT SETTINGS - PROFILE UPDATES
+================================================================================
+
+Function Name: handleSaveProfile()
+
+Location: /src/app/components/AccountSettings.tsx
+
+Description:
+  Saves all profile-related changes including username, phone, bio, status, and profile picture.
+
+Profile Data Structure:
+  {
+    "username": "string",
+    "email": "string",
+    "phone": "string",
+    "bio": "string",
+    "status": "online" | "away" | "busy" | "offline",
+    "profilePicture": "base64_string_or_url"
+  }
+
+Expected API Call:
+  Method: PUT
+  Endpoint: /api/user/profile
+  Request Body: (profile data structure above)
+
+Response:
+  Success (200):
+    {
+      "success": true,
+      "message": "Profile updated successfully",
+      "user": { updated user object }
+    }
+
+================================================================================
+6. ACCOUNT SETTINGS - CHANGE PASSWORD
+================================================================================
+
+Function Name: handleChangePassword()
+
+Location: /src/app/components/AccountSettings.tsx
+
+Parameters:
+  - currentPassword: string
+  - newPassword: string
+  - confirmPassword: string
+
+Expected API Call:
+  Method: PUT
+  Endpoint: /api/user/change-password
+  Request Body:
+    {
+      "currentPassword": "oldpass123",
+      "newPassword": "newpass456"
+    }
+
+Response:
+  Success (200):
+    {
+      "success": true,
+      "message": "Password changed successfully"
+    }
+
+  Error (400):
+    {
+      "success": false,
+      "error": "Incorrect password",
+      "message": "Current password is incorrect"
+    }
+
+================================================================================
+7. ACCOUNT SETTINGS - CHANGE EMAIL
+================================================================================
+
+Function Name: handleChangeEmail()
+
+Location: /src/app/components/AccountSettings.tsx
+
+Expected API Call:
+  Method: PUT
+  Endpoint: /api/user/change-email
+  Request Body:
+    {
+      "newEmail": "newemail@example.com"
+    }
+
+Response:
+  Success (200):
+    {
+      "success": true,
+      "message": "Verification email sent to new address"
+    }
+
+Backend Actions:
+  - Send verification email to new address
+  - Keep current email active until verification
+  - Provide verification link/code
+  - Update email only after verification
+
+================================================================================
+8. ACCOUNT SETTINGS - SOCIAL LINKS
+================================================================================
+
+Function Name: handleSaveSocials()
+
+Location: /src/app/components/AccountSettings.tsx
+
+Social Data Structure:
+  {
+    "twitter": "string (URL)",
+    "github": "string (URL)",
+    "discord": "string (username#0000)",
+    "website": "string (URL)"
+  }
+
+Expected API Call:
+  Method: PUT
+  Endpoint: /api/user/socials
+  Request Body: (social data structure above)
+
+================================================================================
+9. ACCOUNT SETTINGS - PROFILE PICTURE UPLOAD
+================================================================================
+
+Function Name: handleProfilePictureChange(e: React.ChangeEvent<HTMLInputElement>)
+
+Location: /src/app/components/AccountSettings.tsx
+
+Description:
+  Handles file selection and converts to base64. You may want to change this
+  to upload directly to a file storage service.
+
+Current Implementation:
+  - Converts image to base64 string
+  - Stores in profile data
+  - Saved with profile update
+
+Recommended Alternative:
+  - Upload directly to cloud storage (AWS S3, Cloudinary, etc.)
+  - Return URL from upload endpoint
+  - Save URL in user profile
+
+Expected API Call (Alternative):
+  Method: POST
+  Endpoint: /api/user/upload-avatar
+  Request: FormData with image file
+  Response:
+    {
+      "success": true,
+      "url": "https://cdn.example.com/avatars/user123.jpg"
+    }
+
+================================================================================
+10. EXTERNAL LINKS
+================================================================================
+
+Contact Us Email:
+  Function: handleContactUs()
+  Action: Opens mailto link
+  Email: Cydonianheavyindustries@gmail.com
+
+Join Discord Community:
+  Function: handleJoinCommunity()
+  Action: Opens Discord invite in new tab
+  URL: https://discord.gg/SJGXsUXWGS
+
+Project-P1L0T GitHub:
+  Function: handleGithub() in ProjectP1L0T.tsx
+  Action: Opens GitHub repository in new tab
+  URL: https://github.com/cydonianheavyindustries/project-p1l0t
+  Note: Update with actual repository URL
+
+Project-P1L0T Download:
+  Function: handleDownload() in ProjectP1L0T.tsx
+  Current: Shows alert message
+  TODO: Implement actual download link or page
+
+================================================================================
+11. NAVIGATION & STATE MANAGEMENT
+================================================================================
+
+Main App State:
+  Location: /src/app/App.tsx
+  
+  State Variables:
+    - isAuthenticated: boolean (controls login/dashboard view)
+    - user: { username: string, email: string } | null
+
+  Functions:
+    - handleLoginSuccess(userData): Sets user and authenticates
+    - handleLogout(): Clears user and returns to login
+
+Dashboard Navigation:
+  Location: /src/app/components/Dashboard.tsx
+  
+  State: activeTab: 'home' | 'project' | 'account'
+  
+  Tabs:
+    - Home: Company welcome page
+    - Project-P1L0T: Game project information
+    - Account: User settings and preferences
+
+Account Settings Navigation:
+  Location: /src/app/components/AccountSettings.tsx
+  
+  State: activeSection: 'profile' | 'security' | 'socials'
+  
+  Sections:
+    - Profile: Avatar, username, phone, bio, status
+    - Security: Password change, email change
+    - Socials: Social media links
+
+================================================================================
+12. DATA PERSISTENCE RECOMMENDATIONS
+================================================================================
+
+User Session:
+  - Store JWT token in httpOnly cookie (most secure)
+  - Alternative: localStorage (less secure but simpler)
+  - Implement token refresh mechanism
+  - Set appropriate expiration (e.g., 7 days with refresh)
+
+Profile Data:
+  - Fetch on login/page load
+  - Cache in application state
+  - Invalidate cache on updates
+  - Use optimistic updates for better UX
+
+File Uploads:
+  - Implement size limits (5MB recommended for avatars)
+  - Validate file types (JPG, PNG, GIF)
+  - Use CDN for serving images
+  - Generate thumbnails for performance
+
+================================================================================
+13. UI/UX FEATURES
+================================================================================
+
+Animations:
+  - All pages use Framer Motion (imported as 'motion/react')
+  - Smooth transitions between states
+  - Spinning logo badge on all pages
+  - Animated background grids and glowing orbs
+
+Color Scheme:
+  - Primary: #00a5ff (cyan blue)
+  - Background: #0a0e1a (dark blue-black)
+  - Card: #151922 (dark gray-blue)
+  - Text: #c0c5ce (light gray)
+  - Accent: Blue gradients
+
+Responsive Design:
+  - Grid layouts for feature cards
+  - Mobile-friendly navigation
+  - Responsive typography
+  - Adaptive component sizing
+
+================================================================================
+14. SECURITY CONSIDERATIONS
+================================================================================
+
+Password Requirements:
+  - Minimum 8 characters (implement in frontend validation)
+  - Mix of letters, numbers, symbols (optional but recommended)
+  - Hash with bcrypt/Argon2 on backend
+
+Email Verification:
+  - Send verification email on signup
+  - Allow login with unverified email but limit features
+  - Require verification for email changes
+
+Rate Limiting:
+  - Login attempts: 5 per 15 minutes
+  - Password reset: 3 per hour
+  - Profile updates: 10 per hour
+  - Avatar upload: 5 per hour
+
+Input Sanitization:
+  - Sanitize all text inputs (bio, username, etc.)
+  - Validate URLs for social links
+  - Prevent XSS attacks
+  - Validate file uploads
+
+================================================================================
+15. TESTING CHECKLIST
+================================================================================
+
+Authentication:
+  ☐ Login with test credentials (user/12345)
+  ☐ Login with invalid credentials
+  ☐ Signup with new account
+  ☐ Signup with existing email
+  ☐ Forgot password flow
+  ☐ Request access flow
+  ☐ Logout functionality
+
+Profile Management:
+  ☐ Upload profile picture
+  ☐ Update username
+  ☐ Add phone number
+  ☐ Edit bio
+  ☐ Change status (online/away/busy/offline)
+  ☐ Save profile changes
+
+Security:
+  ☐ Change password with correct current password
+  ☐ Change password with incorrect current password
+  ☐ Change password with mismatched new passwords
+  ☐ Request email change
+  ☐ Verify new email
+
+Social Links:
+  ☐ Add Twitter/X link
+  ☐ Add GitHub link
+  ☐ Add Discord username
+  ☐ Add website URL
+  ☐ Save social links
+
+Navigation:
+  ☐ Switch between Home/Project/Account tabs
+  ☐ Navigate between Profile/Security/Socials sections
+  ☐ Contact Us button opens email client
+  ☐ Join Community opens Discord
+  ☐ GitHub links work
+  ☐ Download button shows message
+
+================================================================================
+16. FUNCTION REFERENCE QUICK LIST
+================================================================================
+
+Authentication Functions (LoginPage.tsx):
+  1. handleLogin(email, password)
+  2. handleSignup(email, password, confirmPassword, username)
+  3. handleForgotPassword(email)
+  4. handleRequestAccess(requestAccessData)
+  5. switchToLogin()
+  6. switchToSignup()
+  7. openRequestAccessModal()
+  8. openForgotPasswordModal()
+
+Dashboard Functions (Dashboard.tsx):
+  1. handleContactUs() - Opens email client
+  2. handleJoinCommunity() - Opens Discord
+  3. setActiveTab(tab) - Navigation between pages
+
+Account Settings Functions (AccountSettings.tsx):
+  1. handleProfilePictureChange(e)
+  2. handleSaveProfile()
+  3. handleChangePassword()
+  4. handleChangeEmail()
+  5. handleSaveSocials()
+  6. handleSaveBio()
+  7. setActiveSection(section)
+
+Project Page Functions (ProjectP1L0T.tsx):
+  1. handleGithub() - Opens GitHub repository
+  2. handleDownload() - Download game build
+
+================================================================================
+17. API ENDPOINTS SUMMARY
+================================================================================
+
+Authentication:
+  POST   /api/auth/login
+  POST   /api/auth/register
+  POST   /api/auth/forgot-password
+  POST   /api/auth/request-access
+
+User Profile:
+  GET    /api/user/profile
+  PUT    /api/user/profile
+  PUT    /api/user/change-password
+  PUT    /api/user/change-email
+  PUT    /api/user/socials
+  POST   /api/user/upload-avatar
+
+================================================================================
+END OF INTEGRATION GUIDE
+================================================================================
+
+For questions or issues, refer to the component code files listed at the top.
+
+Last Updated: 2026-02-13
+Version: 3.0 (Complete Dashboard System)
+
+TEST LOGIN: user / 12345

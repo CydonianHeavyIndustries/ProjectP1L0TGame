@@ -288,6 +288,16 @@ Launcher/node_modules/
 Launcher/dist/
 Launcher/.vite/
 Launcher/out/
+apps/launcher/node_modules/
+apps/launcher/dist/
+apps/launcher/.vite/
+apps/launcher/out/
+apps/server-api/node_modules/
+apps/server-api/data/
+apps/game-godot/.godot/
+apps/website/node_modules/
+apps/website/dist/
+tools/server_setup/staging/
 
 # Visual Studio 6 build log
 *.plg
@@ -370,3 +380,4 @@ FodyWeavers.xsd
 .godot/
 .import/
 Builds/
+

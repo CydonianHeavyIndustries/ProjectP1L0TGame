@@ -5,9 +5,9 @@ set ELECTRON_ENABLE_LOGGING=1
 set ELECTRON_ENABLE_STACK_DUMPING=1
 set ELECTRON_RUN_AS_NODE=
 
-cd /d "%~dp0Launcher"
+cd /d "%~dp0apps\launcher"
 if errorlevel 1 (
-  echo Failed to enter Launcher directory.
+  echo Failed to enter apps\launcher directory.
   pause
   exit /b 1
 )

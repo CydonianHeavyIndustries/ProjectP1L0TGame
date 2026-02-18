@@ -38,7 +38,7 @@ static string? FindLatestZip(string repoRoot)
 
 static string? ReadVersionFile(string repoRoot)
 {
-    var versionPath = Path.Combine(repoRoot, "VERSION");
+    var versionPath = Path.Combine(repoRoot, "apps", "game-godot", "VERSION");
     if (!File.Exists(versionPath)) return null;
     var text = File.ReadAllText(versionPath).Trim();
     return string.IsNullOrWhiteSpace(text) ? null : text;

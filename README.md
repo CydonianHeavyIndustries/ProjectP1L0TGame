@@ -1,34 +1,24 @@
-# ProjectP1L0T
+# Project P1L0T Monorepo
 
-Standalone Godot 4.2 project for Project-P1L0T (not a Titanfall mod).
+## Layout
+- `apps/game-godot` - Godot 4 game project
+- `apps/launcher` - Electron + React launcher
+- `apps/server-api` - Node server API + admin UI
+- `apps/website` - CHII web assets and templates
+- `tools` - build/publish/server setup scripts
+- `Builds` - packaged outputs (ignored)
 
-**Quick Start**
-1. Open `project.godot` in Godot 4.2 (GL Compatibility renderer enabled).
-2. Run the project (F5). Main scene is `res://scenes/Main.tscn`.
+## Quick Start
+- Launcher dev: `run.bat`
+- Launcher debug: `run_debug.bat`
+- Game package build: `build_and_package.bat`
 
-**Controls**
-- `WASD` move
-- `Space` jump
-- `Shift` sprint
-- `C` slide
-- `LMB` fire
-- `R` reload
-- `Esc` toggle mouse capture
-- `F` open Faction Select (UI placeholder)
-- `K` debug kill (respawns at ship home)
+## Godot Runtime Canonical Paths
+- `res://game/scenes/...`
+- `res://game/scripts/...`
+- `res://game/materials/...`
+- `res://game/levels/...`
 
-**Debug Toggles**
-Edit `scripts/core_systems/DebugConfig.gd` to change:
-- `BOOT_TO_GAMEPLAY`: start in gameplay or title screen
-- `SHOW_SAFEZONE_GIZMO`: show safe-zone volume mesh
-- `AUTO_SAVE_ON_CHANGE`: auto-save when data changes
-
-**Logging**
-- On-screen log overlay appears in the bottom-left.
-- Log file: `user://logs/latest.log`
-- Typical Windows path: `C:\Users\<you>\AppData\Roaming\Godot\app_userdata\ProjectP1L0T\logs\latest.log`
-
-**Export (Windows)**
-1. Open Project > Export in Godot.
-2. Use the Windows preset from `export_presets.cfg`.
-3. Export to a local folder.
+## Notes
+- Legacy game folders were migrated under `apps/game-godot`.
+- Build artifacts and dependency folders are intentionally excluded from git tracking.

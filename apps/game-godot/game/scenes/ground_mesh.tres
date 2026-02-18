@@ -1,0 +1,8 @@
+[gd_resource type="PlaneMesh" format=3 uid="uid://ground_mesh"]
+
+[ext_resource type="Material" path="res://game/materials/placeholder_floor.tres" id=1]
+
+[resource]
+size = Vector2(600, 600)
+material = ExtResource( 1 )
+

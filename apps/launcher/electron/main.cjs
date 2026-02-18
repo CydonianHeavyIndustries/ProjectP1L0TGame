@@ -1,0 +1,847 @@
+﻿const { app, BrowserWindow, shell, ipcMain, dialog } = require('electron');
+const fs = require('fs');
+const fsp = require('fs/promises');
+const path = require('path');
+const { Readable } = require('stream');
+const { pipeline } = require('stream/promises');
+const { spawn } = require('child_process');
+const extract = require('extract-zip');
+
+const REPO = 'CydonianHeavyIndustries/ProjectP1L0TGame';
+const API_BASE = `https://api.github.com/repos/${REPO}`;
+const logDir = path.join(app.getPath('userData'), 'logs');
+const logFile = path.join(logDir, 'launcher.log');
+const DEFAULT_SERVER_PORT = 7777;
+const DEFAULT_EMAIL_FROM = process.env.P1LOT_EMAIL_FROM || 'noreply@cydonianheavyindustries.inc';
+const DEFAULT_EMAIL_FROM_NAME = process.env.P1LOT_EMAIL_FROM_NAME || 'Project P1L0T';
+const EMAIL_API_URL = process.env.P1LOT_EMAIL_API_URL || '';
+const EMAIL_API_KEY = process.env.P1LOT_EMAIL_API_KEY || '';
+const SOCIAL_ONLINE_TTL_MS = 45 * 1000;
+const socialDir = path.join(app.getPath('userData'), 'social');
+const socialDbPath = path.join(socialDir, 'social-db.json');
+
+let socialDb = {
+  profiles: [],
+  friendRequests: [],
+  friendships: []
+};
+
+let serverProcess = null;
+let serverState = {
+  status: 'Stopped',
+  pid: undefined,
+  port: undefined,
+  startedAt: undefined,
+  message: undefined
+};
+
+const safeStringify = (value) => {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
+const writeLog = (level, message, meta) => {
+  try {
+    fs.mkdirSync(logDir, { recursive: true });
+    const stamp = new Date().toISOString();
+    const extra = meta ? ` | ${meta}` : '';
+    fs.appendFileSync(logFile, `[${stamp}] [${level}] ${message}${extra}\n`);
+  } catch (error) {
+    console.error('Logger failure:', error);
+  }
+};
+
+const publishServerState = (next) => {
+  serverState = { ...serverState, ...next };
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('launcher:serverStatus', serverState);
+    }
+  }
+};
+
+const normalizeVersion = (value) => value.replace(/^v/i, '');
+const isSemver = (value) => /^\d+\.\d+\.\d+$/.test(normalizeVersion(value || ''));
+const isTimestampVersion = (value) => /^\d{4}\.\d{2}\.\d{2}\.\d{4}$/.test(normalizeVersion(value || ''));
+
+const compareSemver = (a, b) => {
+  const left = normalizeVersion(a).split('.').map((part) => Number(part) || 0);
+  const right = normalizeVersion(b).split('.').map((part) => Number(part) || 0);
+  const max = Math.max(left.length, right.length);
+  for (let i = 0; i < max; i += 1) {
+    const l = left[i] ?? 0;
+    const r = right[i] ?? 0;
+    if (l > r) return 1;
+    if (l < r) return -1;
+  }
+  return 0;
+};
+
+const shouldUpdateWithDates = (installedAt, publishedAt) => {
+  if (!installedAt || !publishedAt) return false;
+  const installedTime = Date.parse(installedAt);
+  const releaseTime = Date.parse(publishedAt);
+  if (Number.isNaN(installedTime) || Number.isNaN(releaseTime)) return false;
+  return releaseTime > installedTime;
+};
+
+const requestGitHub = async (endpoint) => {
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'User-Agent': 'ProjectP1L0TLauncher'
+    }
+  });
+  if (!response.ok) {
+    throw new Error(`GitHub request failed (${response.status})`);
+  }
+  return response.json();
+};
+
+const escapeHtml = (value) =>
+  String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+const buildVerificationEmailPayload = ({ username, email, code }) => {
+  const safeName = escapeHtml(username);
+  const safeCode = escapeHtml(code);
+  return {
+    to: email,
+    from: `${DEFAULT_EMAIL_FROM_NAME} <${DEFAULT_EMAIL_FROM}>`,
+    subject: 'Project P1L0T - Verify your account email',
+    text: [
+      `Pilot ${username},`,
+      '',
+      `Your Project P1L0T verification code is: ${code}`,
+      '',
+      'This code expires in 15 minutes.',
+      '',
+      `This mailbox is not monitored. Do not reply (${DEFAULT_EMAIL_FROM}).`
+    ].join('\n'),
+    html: `
+      <div style="font-family:Segoe UI,Arial,sans-serif;background:#0b1114;color:#d8ecf0;padding:20px">
+        <h2 style="margin:0 0 12px 0;color:#2fd3d6">Project P1L0T Account Verification</h2>
+        <p style="margin:0 0 10px 0">Pilot <strong>${safeName}</strong>,</p>
+        <p style="margin:0 0 14px 0">Use this verification code to activate your account:</p>
+        <div style="display:inline-block;padding:10px 14px;border:1px solid #2fd3d6;background:#081523;font-size:24px;letter-spacing:2px;font-weight:700">${safeCode}</div>
+        <p style="margin:14px 0 0 0;color:#7ea5ad">Code expires in 15 minutes.</p>
+        <p style="margin:6px 0 0 0;color:#7ea5ad">This mailbox is not monitored. Do not reply (${escapeHtml(DEFAULT_EMAIL_FROM)}).</p>
+      </div>
+    `.trim()
+  };
+};
+
+const sendVerificationEmail = async ({ username, email, code }) => {
+  if (!EMAIL_API_URL) {
+    throw new Error('Email API is not configured (set P1LOT_EMAIL_API_URL).');
+  }
+
+  const payload = buildVerificationEmailPayload({ username, email, code });
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+  if (EMAIL_API_KEY) {
+    headers.Authorization = `Bearer ${EMAIL_API_KEY}`;
+  }
+
+  const response = await fetch(EMAIL_API_URL, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`Email API failed (${response.status}) ${body}`.trim());
+  }
+};
+
+const pickRelease = (releases, channel) => {
+  const filtered = channel === 'dev' ? releases : releases.filter((rel) => !rel.prerelease && !rel.draft);
+  if (filtered.length === 0) return null;
+  return filtered.sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at))[0];
+};
+
+const mapRelease = (release) => {
+  const asset = release.assets.find((item) => item.name.endsWith('.zip')) ?? release.assets[0];
+  return {
+    version: normalizeVersion(release.tag_name),
+    name: release.name || release.tag_name,
+    publishedAt: release.published_at,
+    body: release.body,
+    asset: asset
+      ? {
+          name: asset.name,
+          size: asset.size,
+          url: asset.browser_download_url
+        }
+      : null
+  };
+};
+
+const getReleaseForChannel = async (channel) => {
+  const releases = await requestGitHub('/releases');
+  if (!Array.isArray(releases) || releases.length === 0) {
+    throw new Error('No releases found');
+  }
+  const picked = pickRelease(releases, channel);
+  if (!picked) {
+    throw new Error(`No releases available for ${channel}`);
+  }
+  const release = mapRelease(picked);
+  if (!release.asset) {
+    throw new Error('No downloadable assets on release');
+  }
+  return release;
+};
+
+const ensureDir = async (dir) => {
+  await fsp.mkdir(dir, { recursive: true });
+};
+
+const sendProgress = (sender, payload) => {
+  try {
+    sender.send('launcher:updateProgress', payload);
+  } catch (error) {
+    writeLog('WARN', 'Failed to send progress', safeStringify(error));
+  }
+};
+
+const downloadAsset = async (asset, destination, sender) => {
+  writeLog('INFO', 'Download started', asset.url);
+  const response = await fetch(asset.url);
+  if (!response.ok || !response.body) {
+    throw new Error(`Download failed (${response.status})`);
+  }
+
+  const total = Number(response.headers.get('content-length') || asset.size || 0);
+  const fileStream = fs.createWriteStream(destination);
+  const nodeStream = Readable.fromWeb(response.body);
+
+  let downloaded = 0;
+  nodeStream.on('data', (chunk) => {
+    downloaded += chunk.length;
+    const ratio = total > 0 ? Math.min(downloaded / total, 1) : 0;
+    sendProgress(sender, {
+      state: 'Updating',
+      step: 'Downloading',
+      progress: Math.round(ratio * 70),
+      message: `Downloading ${Math.round(ratio * 100)}%`
+    });
+  });
+
+  await pipeline(nodeStream, fileStream);
+  const stats = await fsp.stat(destination);
+  if (asset.size && stats.size !== asset.size) {
+    throw new Error('Downloaded size mismatch');
+  }
+  writeLog('INFO', 'Download complete', destination);
+};
+
+const extractPayload = async (archivePath, stagingDir, sender) => {
+  sendProgress(sender, { state: 'Updating', step: 'Verifying', progress: 75, message: 'Verifying payload' });
+  await ensureDir(stagingDir);
+  sendProgress(sender, { state: 'Updating', step: 'Installing', progress: 85, message: 'Extracting payload' });
+  await extract(archivePath, { dir: stagingDir });
+  sendProgress(sender, { state: 'Updating', step: 'Installing', progress: 92, message: 'Staging build' });
+};
+
+const swapInstall = async (installDir, payloadDir, sender) => {
+  sendProgress(sender, { state: 'Updating', step: 'Cleaning', progress: 96, message: 'Swapping build' });
+  const backupDir = `${installDir}_old_${Date.now()}`;
+  if (fs.existsSync(installDir)) {
+    await fsp.rename(installDir, backupDir);
+  }
+  await fsp.rename(payloadDir, installDir);
+  if (fs.existsSync(backupDir)) {
+    await fsp.rm(backupDir, { recursive: true, force: true });
+  }
+  sendProgress(sender, { state: 'Updating', step: 'Cleaning', progress: 100, message: 'Cleanup complete' });
+};
+
+const parseArgs = (value) => {
+  if (!value) return [];
+  const args = [];
+  let current = '';
+  let quoted = false;
+  for (let i = 0; i < value.length; i += 1) {
+    const char = value[i];
+    if (char === '"') {
+      quoted = !quoted;
+      continue;
+    }
+    if (char === ' ' && !quoted) {
+      if (current.length > 0) {
+        args.push(current);
+        current = '';
+      }
+      continue;
+    }
+    current += char;
+  }
+  if (current.length > 0) {
+    args.push(current);
+  }
+  return args;
+};
+
+const coercePort = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return DEFAULT_SERVER_PORT;
+  const rounded = Math.trunc(numeric);
+  if (rounded < 1 || rounded > 65535) return DEFAULT_SERVER_PORT;
+  return rounded;
+};
+
+const buildServerArgs = (serverArgs, port) => {
+  const args = parseArgs(serverArgs || '');
+  if (args.length === 0) {
+    return ['--headless', '--server', '--port', String(port)];
+  }
+  const hasPort = args.some((arg) => arg === '--port' || arg.startsWith('--port='));
+  if (!hasPort) {
+    args.push('--port', String(port));
+  }
+  return args;
+};
+
+const resolveExecutable = (installRoot, relativePath) => {
+  const installDir = path.join(installRoot, 'install');
+  const normalized = relativePath.replace(/^[\\/]+/, '');
+  return path.join(installDir, normalized);
+};
+
+const resolveExecutableInDir = (baseDir, relativePath) => {
+  const normalized = relativePath.replace(/^[\\/]+/, '');
+  return path.join(baseDir, normalized);
+};
+
+const findPayloadRoot = async (stagingDir, relativePath) => {
+  const direct = resolveExecutableInDir(stagingDir, relativePath);
+  if (fs.existsSync(direct)) {
+    return stagingDir;
+  }
+  const entries = await fsp.readdir(stagingDir, { withFileTypes: true });
+  const dirs = entries.filter((entry) => entry.isDirectory());
+  if (dirs.length === 1) {
+    const candidate = path.join(stagingDir, dirs[0].name);
+    const candidateExe = resolveExecutableInDir(candidate, relativePath);
+    if (fs.existsSync(candidateExe)) {
+      return candidate;
+    }
+  }
+  return null;
+};
+
+const resolveLaunchTarget = (payload) => {
+  const relative = payload.useLocalBuild ? payload.localBuildRelative : payload.gameExeRelative;
+  if (!relative || relative.trim().length === 0) {
+    throw new Error('Game executable path is not configured');
+  }
+  if (payload.useLocalBuild) {
+    const repoRoot = resolveRepoRoot();
+    return resolveExecutableInDir(repoRoot, relative);
+  }
+  const rootDir = payload.installDir && payload.installDir.trim().length > 0 ? payload.installDir : app.getPath('userData');
+  return resolveExecutable(rootDir, relative);
+};
+
+const waitForServerStop = (processRef) =>
+  new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      resolve();
+    };
+
+    processRef.once('exit', finish);
+
+    const forceStop = () => {
+      if (processRef.exitCode !== null) {
+        finish();
+        return;
+      }
+
+      if (process.platform === 'win32' && processRef.pid) {
+        const killer = spawn('taskkill', ['/PID', String(processRef.pid), '/T', '/F'], {
+          windowsHide: true,
+          stdio: 'ignore'
+        });
+        killer.once('close', finish);
+        killer.once('error', finish);
+        return;
+      }
+
+      try {
+        processRef.kill('SIGKILL');
+      } catch {
+        // no-op
+      }
+      finish();
+    };
+
+    setTimeout(forceStop, 2000);
+
+    try {
+      processRef.kill('SIGTERM');
+    } catch {
+      finish();
+    }
+  });
+
+const stopServerProcess = async () => {
+  const processRef = serverProcess;
+  if (!processRef) {
+    publishServerState({ status: 'Stopped', pid: undefined, startedAt: undefined, message: undefined });
+    return;
+  }
+
+  publishServerState({ status: 'Stopping', message: 'Stopping server...' });
+  await waitForServerStop(processRef);
+};
+
+const startHostedServer = (payload) => {
+  if (serverProcess && serverProcess.exitCode === null) {
+    return serverState;
+  }
+
+  const exePath = resolveLaunchTarget(payload);
+  if (!fs.existsSync(exePath)) {
+    throw new Error(`Game executable not found: ${exePath}`);
+  }
+
+  const port = coercePort(payload.serverPort);
+  const args = buildServerArgs(payload.serverArgs, port);
+
+  writeLog('INFO', 'Starting hosted server', `${exePath} ${args.join(' ')}`);
+  publishServerState({ status: 'Starting', port, message: 'Starting server...' });
+
+  const child = spawn(exePath, args, {
+    cwd: path.dirname(exePath),
+    detached: false,
+    windowsHide: true,
+    stdio: 'ignore'
+  });
+
+  serverProcess = child;
+
+  child.once('spawn', () => {
+    if (process.platform === 'win32' && payload?.useAllHardware && child.pid) {
+      const priorityCmd = [
+        '$ErrorActionPreference = "SilentlyContinue";',
+        `$p = Get-Process -Id ${child.pid};`,
+        'if ($p) { $p.PriorityClass = "High" }'
+      ].join(' ');
+      const prioritySetter = spawn('powershell.exe', ['-NoProfile', '-Command', priorityCmd], {
+        windowsHide: true,
+        stdio: 'ignore'
+      });
+      prioritySetter.unref();
+      writeLog('INFO', 'Server performance mode', `High priority requested for PID ${child.pid}`);
+    }
+
+    publishServerState({
+      status: 'Running',
+      pid: child.pid,
+      port,
+      startedAt: new Date().toISOString(),
+      message: payload?.useAllHardware ? 'Server running (max performance)' : 'Server running'
+    });
+  });
+
+  child.once('error', (error) => {
+    writeLog('ERROR', 'Server process error', error?.message || String(error));
+    publishServerState({
+      status: 'Error',
+      pid: undefined,
+      startedAt: undefined,
+      message: error instanceof Error ? error.message : String(error)
+    });
+    serverProcess = null;
+  });
+
+  child.once('exit', (code, signal) => {
+    const wasStopping = serverState.status === 'Stopping';
+    serverProcess = null;
+    if (wasStopping || code === 0) {
+      publishServerState({
+        status: 'Stopped',
+        pid: undefined,
+        startedAt: undefined,
+        message: wasStopping ? 'Server stopped' : undefined
+      });
+      return;
+    }
+
+    const failure = `Server exited (code: ${code ?? 'null'}, signal: ${signal ?? 'none'})`;
+    writeLog('WARN', 'Server exited unexpectedly', failure);
+    publishServerState({
+      status: 'Error',
+      pid: undefined,
+      startedAt: undefined,
+      message: failure
+    });
+  });
+
+  return serverState;
+};
+
+const launchGame = (payload) => {
+  const exePath = resolveLaunchTarget(payload);
+  if (!fs.existsSync(exePath)) {
+    throw new Error(`Game executable not found: ${exePath}`);
+  }
+
+  const args = [];
+  args.push(...parseArgs(payload.launchArgs || ''));
+  if (payload.safeMode) {
+    args.push('-safemode');
+  }
+
+  writeLog('INFO', 'Launching game', `${exePath} ${args.join(' ')}`);
+
+  const child = spawn(exePath, args, {
+    cwd: path.dirname(exePath),
+    detached: true,
+    stdio: 'ignore'
+  });
+  child.unref();
+};
+
+const resolveRepoRoot = () => {
+  if (process.env.P1LOT_REPO_ROOT) {
+    return process.env.P1LOT_REPO_ROOT;
+  }
+
+  let current = app.getAppPath();
+  for (let i = 0; i < 8; i += 1) {
+    const marker = path.join(current, 'apps', 'game-godot', 'project.godot');
+    if (fs.existsSync(marker)) {
+      return current;
+    }
+    const parent = path.dirname(current);
+    if (!parent || parent === current) {
+      break;
+    }
+    current = parent;
+  }
+
+  return path.resolve(app.getAppPath(), '..', '..');
+};
+
+const readGameVersion = () => {
+  try {
+    const versionPath = path.join(resolveRepoRoot(), 'apps', 'game-godot', 'VERSION');
+    const value = fs.readFileSync(versionPath, 'utf-8').trim();
+    return value.length > 0 ? value : null;
+  } catch {
+    return null;
+  }
+};
+
+const runPackagingScript = (payload) => {
+  const repoRoot = resolveRepoRoot();
+  const godotPs1Path = path.join(repoRoot, 'tools', 'package_godot_build.ps1');
+  const godotBatPath = path.join(repoRoot, 'tools', 'package_godot_build.bat');
+  const hasGodotPs1 = fs.existsSync(godotPs1Path);
+  const hasGodotBat = fs.existsSync(godotBatPath);
+  if (!hasGodotPs1 && !hasGodotBat) {
+    throw new Error(`Packaging script not found: ${godotPs1Path} or ${godotBatPath}`);
+  }
+
+  const args = [];
+  const projectRoot = path.join(repoRoot, 'apps', 'game-godot');
+
+  return new Promise((resolve, reject) => {
+    const scriptPath = hasGodotPs1 ? godotPs1Path : godotBatPath;
+    writeLog('INFO', 'Packaging started', scriptPath);
+
+    let command = '';
+    let commandArgs = [];
+    if (hasGodotPs1) {
+      command = 'powershell.exe';
+      commandArgs = ['-ExecutionPolicy', 'Bypass', '-File', godotPs1Path, ...args];
+    } else {
+      command = 'cmd.exe';
+      commandArgs = ['/c', godotBatPath, projectRoot];
+    }
+
+    writeLog('INFO', 'Packager', `${command} ${commandArgs.join(' ')}`.trim());
+    const child = spawn(command, commandArgs, { cwd: repoRoot });
+
+    child.stdout.on('data', (data) => {
+      writeLog('INFO', 'Packager', data.toString().trim());
+    });
+    child.stderr.on('data', (data) => {
+      writeLog('WARN', 'Packager', data.toString().trim());
+    });
+    child.on('error', (error) => reject(error));
+    child.on('close', (code) => {
+      if (code === 0) {
+        writeLog('INFO', 'Packaging completed');
+        resolve();
+      } else {
+        reject(new Error(`Packaging failed (exit ${code})`));
+      }
+    });
+  });
+};
+
+process.on('uncaughtException', (error) => {
+  writeLog('FATAL', 'Uncaught exception', error?.stack || String(error));
+});
+
+process.on('unhandledRejection', (reason) => {
+  writeLog('FATAL', 'Unhandled rejection', safeStringify(reason));
+});
+
+const createWindow = () => {
+  writeLog('INFO', 'Creating main window');
+
+  const win = new BrowserWindow({
+    width: 1280,
+    height: 820,
+    minWidth: 1080,
+    minHeight: 700,
+    backgroundColor: '#0b1114',
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  const startUrl =
+    process.env.ELECTRON_START_URL ||
+    `file://${path.join(__dirname, '../dist/index.html')}`;
+
+  writeLog('INFO', 'Loading URL', startUrl);
+  win.loadURL(startUrl);
+
+  win.once('ready-to-show', () => {
+    writeLog('INFO', 'Window ready');
+    win.show();
+  });
+
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  win.webContents.on('did-fail-load', (_event, code, description, validatedURL) => {
+    writeLog('ERROR', 'Load failed', `${code} ${description} ${validatedURL}`);
+  });
+};
+
+ipcMain.handle('launcher:checkUpdate', async (_event, payload) => {
+  try {
+    const release = await getReleaseForChannel(payload.channel);
+    const installedVersion = payload.installedVersion || '0.0.0';
+    const compare = compareSemver(installedVersion, release.version);
+    let updateAvailable = compare < 0;
+    if (!updateAvailable && compare > 0) {
+      const semverMismatch = isSemver(release.version) && isTimestampVersion(installedVersion);
+      if (semverMismatch || !isSemver(installedVersion)) {
+        updateAvailable = shouldUpdateWithDates(payload.installedAt, release.publishedAt);
+      }
+    }
+    return {
+      status: 'ok',
+      updateAvailable,
+      latestVersion: release.version,
+      release
+    };
+  } catch (error) {
+    return { status: 'error', reason: error instanceof Error ? error.message : String(error) };
+  }
+});
+
+ipcMain.handle('launcher:performUpdate', async (event, payload) => {
+  const sender = event.sender;
+  try {
+    const release = await getReleaseForChannel(payload.channel);
+    if (!release.asset) {
+      return { status: 'error', reason: 'No downloadable assets on release' };
+    }
+
+    const rootDir = payload.installDir && payload.installDir.trim().length > 0 ? payload.installDir : app.getPath('userData');
+    const installDir = path.join(rootDir, 'install');
+    const stagingDir = path.join(rootDir, 'staging');
+    const cacheDir = path.join(rootDir, 'cache');
+    const configDir = path.join(rootDir, 'config');
+
+    await ensureDir(cacheDir);
+    await ensureDir(configDir);
+    await fsp.rm(stagingDir, { recursive: true, force: true });
+
+    const archivePath = path.join(cacheDir, release.asset.name);
+
+    sendProgress(sender, { state: 'Updating', step: 'Downloading', progress: 0, message: 'Contacting GitHub' });
+    await downloadAsset(release.asset, archivePath, sender);
+    await extractPayload(archivePath, stagingDir, sender);
+
+    const exeRelative = payload.gameExeRelative || '';
+    if (!exeRelative) {
+      throw new Error('Game executable path is not configured');
+    }
+    const payloadRoot = await findPayloadRoot(stagingDir, exeRelative);
+    if (!payloadRoot) {
+      await fsp.rm(stagingDir, { recursive: true, force: true });
+      throw new Error(`Payload missing game executable (${exeRelative})`);
+    }
+
+    await swapInstall(installDir, payloadRoot, sender);
+    if (payloadRoot !== stagingDir && fs.existsSync(stagingDir)) {
+      await fsp.rm(stagingDir, { recursive: true, force: true });
+    }
+
+    const installedRecord = {
+      version: release.version,
+      channel: payload.channel,
+      installedAt: new Date().toISOString(),
+      path: rootDir,
+      asset: release.asset.name
+    };
+    await fsp.writeFile(path.join(configDir, 'installed.json'), JSON.stringify(installedRecord, null, 2), 'utf-8');
+
+    writeLog('INFO', 'Update completed', release.version);
+    return { status: 'ok', version: release.version, installDir: rootDir };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    writeLog('ERROR', 'Update failed', reason);
+    return { status: 'error', reason };
+  }
+});
+
+ipcMain.handle('launcher:launchGame', async (_event, payload) => {
+  try {
+    launchGame(payload);
+    return { status: 'ok' };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    writeLog('ERROR', 'Launch failed', reason);
+    return { status: 'error', reason };
+  }
+});
+
+ipcMain.handle('launcher:packageBuild', async (_event, payload) => {
+  try {
+    await runPackagingScript(payload || {});
+    return { status: 'ok' };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    writeLog('ERROR', 'Packaging failed', reason);
+    return { status: 'error', reason };
+  }
+});
+
+ipcMain.handle('launcher:sendVerificationEmail', async (_event, payload) => {
+  try {
+    if (!payload || !payload.email || !payload.code) {
+      return { status: 'error', reason: 'Invalid verification payload' };
+    }
+    await sendVerificationEmail(payload);
+    writeLog('INFO', 'Verification email sent', payload.email);
+    return { status: 'ok' };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    writeLog('WARN', 'Verification email failed', reason);
+    return { status: 'error', reason };
+  }
+});
+
+ipcMain.handle('launcher:getServerStatus', async () => {
+  return { status: 'ok', server: serverState };
+});
+
+ipcMain.handle('launcher:startServer', async (_event, payload) => {
+  try {
+    const server = startHostedServer(payload || {});
+    return { status: 'ok', server };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    writeLog('ERROR', 'Server start failed', reason);
+    publishServerState({ status: 'Error', message: reason, pid: undefined, startedAt: undefined });
+    return { status: 'error', reason };
+  }
+});
+
+ipcMain.handle('launcher:stopServer', async () => {
+  try {
+    await stopServerProcess();
+    return { status: 'ok', server: serverState };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    writeLog('ERROR', 'Server stop failed', reason);
+    publishServerState({ status: 'Error', message: reason });
+    return { status: 'error', reason };
+  }
+});
+
+ipcMain.handle('launcher:openPath', async (_event, targetPath) => {
+  if (!targetPath) return;
+  await shell.openPath(targetPath);
+});
+
+ipcMain.handle('launcher:openLogs', async () => {
+  await ensureDir(logDir);
+  await shell.openPath(logDir);
+});
+
+ipcMain.handle('launcher:pickDirectory', async (_event, payload) => {
+  const result = await dialog.showOpenDialog({
+    title: payload?.title || 'Select Install Directory',
+    defaultPath: payload?.defaultPath || app.getPath('documents'),
+    properties: ['openDirectory', 'createDirectory', 'dontAddToRecent']
+  });
+
+  if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+    return { status: 'cancelled' };
+  }
+
+  return { status: 'ok', path: result.filePaths[0] };
+});
+
+ipcMain.handle('launcher:getBuildInfo', async () => {
+  return {
+    status: 'ok',
+    launcherVersion: app.getVersion(),
+    gameVersion: readGameVersion()
+  };
+});
+
+app.whenReady().then(() => {
+  writeLog('INFO', 'App ready');
+  createWindow();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    stopServerProcess()
+      .catch((error) => writeLog('WARN', 'Server shutdown failed', error instanceof Error ? error.message : String(error)))
+      .finally(() => app.quit());
+  }
+});
+
+app.on('render-process-gone', (_event, _webContents, details) => {
+  writeLog('ERROR', 'Renderer process gone', safeStringify(details));
+});
+
+app.on('child-process-gone', (_event, details) => {
+  writeLog('ERROR', 'Child process gone', safeStringify(details));
+});

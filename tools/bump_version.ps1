@@ -8,7 +8,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-$versionPath = Join-Path $repoRoot "VERSION"
+$versionPath = Join-Path $repoRoot "apps/game-godot/VERSION"
 
 if (-not (Test-Path $versionPath)) {
   Set-Content -Path $versionPath -Value "0.1.0" -Encoding UTF8
