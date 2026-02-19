@@ -34,6 +34,18 @@ internal static class Program
         RunStep("Checking npm", () => EnsureTool("npm", "--version"));
         RunStep("Installing launcher dependencies", () => RunOrThrow("npm", "install", Path.Combine(repoRoot, "apps", "launcher")));
         RunStep("Installing server-api dependencies", () => RunOrThrow("npm", "install", Path.Combine(repoRoot, "apps", "server-api")));
+        RunStep("Building launcher setup installer", () =>
+        {
+            var launcherDir = Path.Combine(repoRoot, "apps", "launcher");
+            RunOrThrow("npm", "run dist:win", launcherDir);
+            var installer = FindLatestLauncherInstaller(launcherDir);
+            if (string.IsNullOrWhiteSpace(installer))
+            {
+                throw new InvalidOperationException("Launcher setup .exe was not generated in apps/launcher/release.");
+            }
+
+            Info($"Launcher setup: {installer}");
+        });
         RunStep("Checking .NET SDK", () => EnsureTool("dotnet", "--version"));
         RunStep("Building ReleasePublisher tool", () =>
             RunOrThrow("dotnet", "build tools/ReleasePublisher/ReleasePublisher.csproj -nologo", repoRoot));
@@ -196,6 +208,22 @@ internal static class Program
         }
 
         return string.Empty;
+    }
+
+    private static string FindLatestLauncherInstaller(string launcherDir)
+    {
+        var releaseDir = Path.Combine(launcherDir, "release");
+        if (!Directory.Exists(releaseDir))
+        {
+            return string.Empty;
+        }
+
+        var installer = new DirectoryInfo(releaseDir)
+            .GetFiles("ProjectP1L0T_Launcher_Setup_*.exe", SearchOption.TopDirectoryOnly)
+            .OrderByDescending(f => f.LastWriteTimeUtc)
+            .FirstOrDefault();
+
+        return installer?.FullName ?? string.Empty;
     }
 
     private static void WriteReport(string reportPath, string repoRoot)
