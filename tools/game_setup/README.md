@@ -2,6 +2,10 @@
 
 This setup tool bootstraps a fresh repo clone for game development.
 
+Update policy:
+- Game update downloads from GitHub are handled by the launcher only.
+- This setup tool does not pull game updates/releases from GitHub; it builds from local repo files.
+
 ## Build
 
 Run:
