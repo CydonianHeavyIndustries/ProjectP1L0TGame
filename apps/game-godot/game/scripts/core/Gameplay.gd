@@ -4,7 +4,7 @@ const DEFAULT_HOST := "127.0.0.1"
 const DEFAULT_PORT := 7777
 
 @export var max_players := 16
-@export var player_scene: PackedScene = preload("res://game/scenes/Player.tscn")
+@export var player_scene: PackedScene = preload("res://game/scenes/entities/Player.tscn")
 
 @onready var world: Node3D = $World
 

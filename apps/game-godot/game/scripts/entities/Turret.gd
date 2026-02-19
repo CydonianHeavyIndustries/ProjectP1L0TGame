@@ -10,7 +10,7 @@ extends StaticBody3D
 @export var projectile_speed := 6.0
 @export var projectile_lifetime := 3.5
 @export var projectile_offset := 0.5
-@export var projectile_scene: PackedScene = preload("res://game/scenes/TurretProjectile.tscn")
+@export var projectile_scene: PackedScene = preload("res://game/scenes/projectiles/TurretProjectile.tscn")
 @export var xp_reward := 40
 
 var current_health := 0.0

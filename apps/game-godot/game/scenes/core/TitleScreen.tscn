@@ -1,9 +1,9 @@
 [gd_scene load_steps=4 format=3 uid="uid://title"]
 
-[ext_resource type="Script" path="res://game/scripts/TitleScreen.gd" id=1]
+[ext_resource type="Script" path="res://game/scripts/ui/TitleScreen.gd" id=1]
 [ext_resource type="Texture2D" path="res://assets/ui/chii_logo.png" id=2]
 
-[ext_resource type="Script" path="res://game/scripts/TitleScreen.gd" id=1]
+[ext_resource type="Script" path="res://game/scripts/ui/TitleScreen.gd" id=1]
 
 [node name="TitleScreen" type="Control"]
 anchors_preset = 15

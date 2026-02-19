@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="ProjectP1L0T"
-run/main_scene="res://game/scenes/Main.tscn"
+run/main_scene="res://game/scenes/core/Main.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
 
@@ -23,7 +23,7 @@ config/icon="res://icon.svg"
 
 Logger="*res://game/scripts/core_systems/logging/Logger.gd"
 SaveManager="*res://game/scripts/core_systems/save/SaveManager.gd"
-LogOverlay="*res://game/scenes/LogOverlay.tscn"
+LogOverlay="*res://game/scenes/ui/LogOverlay.tscn"
 
 [display]
 

@@ -1,6 +1,6 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://game/scripts/RocketProjectile.gd" id="1"]
+[ext_resource type="Script" path="res://game/scripts/combat/RocketProjectile.gd" id="1"]
 
 [sub_resource type="SphereShape3D" id="1"]
 radius = 0.18

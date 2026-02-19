@@ -1,8 +1,8 @@
 extends Node
 
-@onready var title_scene: PackedScene = preload("res://game/scenes/TitleScreen.tscn")
-@onready var gameplay_scene: PackedScene = preload("res://game/scenes/Gameplay.tscn")
-@onready var tutorial_scene: PackedScene = preload("res://game/scenes/Tutorial.tscn")
+@onready var title_scene: PackedScene = preload("res://game/scenes/core/TitleScreen.tscn")
+@onready var gameplay_scene: PackedScene = preload("res://game/scenes/core/Gameplay.tscn")
+@onready var tutorial_scene: PackedScene = preload("res://game/scenes/core/Tutorial.tscn")
 
 var current_scene: Node
 

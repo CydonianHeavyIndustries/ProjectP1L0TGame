@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bc64gw4jg61r"]
 
-[ext_resource type="Script" uid="uid://b16ete3e6wr4b" path="res://game/scripts/Grenade.gd" id="1_tnb4b"]
+[ext_resource type="Script" uid="uid://b16ete3e6wr4b" path="res://game/scripts/combat/Grenade.gd" id="1_tnb4b"]
 [ext_resource type="PackedScene" uid="uid://ctqf00764m2er" path="res://Blender/Grenade_Frag.glb" id="2_1u7xw"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_gsmc7"]

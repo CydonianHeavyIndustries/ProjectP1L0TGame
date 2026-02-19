@@ -3,7 +3,7 @@ class_name SpaceshipHomeSystem
 
 @export var world_path: NodePath
 @export var player_path: NodePath
-@export var home_scene: PackedScene = preload("res://game/scenes/SpaceshipHome.tscn")
+@export var home_scene: PackedScene = preload("res://game/scenes/world/SpaceshipHome.tscn")
 
 var _home_instance: Node3D
 var _world: Node3D
