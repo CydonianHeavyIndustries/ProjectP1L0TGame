@@ -20,6 +20,7 @@ Output:
 - Installs dependencies in:
   - `apps/launcher`
   - `apps/server-api`
+- Builds launcher installer (`apps/launcher/release/ProjectP1L0T_Launcher_Setup_*.exe`)
 - Builds `tools/ReleasePublisher`.
 - Runs Godot headless import/validation (if Godot is found).
 - Writes report to:
@@ -29,4 +30,3 @@ Output:
 
 1. `GODOT_PATH` environment variable
 2. Known local install paths (console exe preferred)
-
