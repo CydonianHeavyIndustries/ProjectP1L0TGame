@@ -8,7 +8,7 @@ if exist "%OUT_DIR%" rmdir /s /q "%OUT_DIR%"
 echo [P1L0T] Building ProjectP1L0T_Game_Setup.exe ...
 dotnet publish GameRepoSetup.csproj -c Release -r win-x64 ^
   -p:PublishSingleFile=true ^
-  -p:SelfContained=false ^
+  -p:SelfContained=true ^
   -p:PublishTrimmed=false ^
   -o "%OUT_DIR%"
 if errorlevel 1 (

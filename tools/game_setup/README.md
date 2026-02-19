@@ -14,6 +14,8 @@ Output:
 
 `tools\game_setup\dist\ProjectP1L0T_Game_Setup.exe`
 
+Build mode: single-file, self-contained (`win-x64`), so target machines do not need a preinstalled .NET runtime.
+
 ## What Setup Does
 
 - Checks `node`, `npm`, and `.NET SDK`.
