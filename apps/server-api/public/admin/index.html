@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project P1L0T Server Admin</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div>
+          <div class="kicker">CYDONIAN HEAVY INDUSTRIES</div>
+          <h1>Project P1L0T Server Admin</h1>
+        </div>
+        <div class="token-row">
+          <input id="admin-token" type="password" placeholder="Admin token" />
+          <button id="save-token" class="btn">Save Token</button>
+          <button id="refresh-all" class="btn btn-accent">Refresh</button>
+        </div>
+      </header>
+
+      <main class="grid">
+        <section class="card">
+          <h2>Server Settings</h2>
+          <div class="form-grid">
+            <label>Server Name <input id="server-name" type="text" /></label>
+            <label>Website Title <input id="website-title" type="text" /></label>
+            <label>Hardware Profile
+              <select id="hardware-profile">
+                <option value="recommended">Recommended</option>
+                <option value="max">Use All Hardware</option>
+              </select>
+            </label>
+            <label>Max Players <input id="max-players" type="number" min="1" max="512" /></label>
+            <label>Tick Rate <input id="tick-rate" type="number" min="10" max="240" /></label>
+            <label>Autosave (sec) <input id="autosave-seconds" type="number" min="5" max="600" /></label>
+            <label>Max Upload (MB) <input id="max-upload" type="number" min="1" /></label>
+            <label class="checkbox"><input id="allow-signup" type="checkbox" /> Allow Signup</label>
+            <label class="checkbox"><input id="maintenance" type="checkbox" /> Maintenance Mode</label>
+            <label class="checkbox"><input id="telemetry-enabled" type="checkbox" /> Telemetry Enabled</label>
+          </div>
+          <label>MOTD <textarea id="motd" rows="3"></textarea></label>
+          <div class="actions">
+            <button id="save-settings" class="btn btn-accent">Save Settings</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>User Management</h2>
+          <div class="row">
+            <input id="new-username" type="text" placeholder="username" />
+            <input id="new-email" type="email" placeholder="email" />
+            <button id="create-user" class="btn btn-accent">Create User</button>
+          </div>
+          <div class="split-grid">
+            <table class="table" id="users-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>User</th>
+                  <th>Email</th>
+                  <th>Admin</th>
+                  <th>Enabled</th>
+                  <th>Open</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+            <aside class="detail-pane">
+              <h3>User Detail</h3>
+              <div id="selected-user-id" class="muted">No user selected.</div>
+              <label>Status <input id="detail-status" type="text" placeholder="Status line" /></label>
+              <label>Discord <input id="detail-discord" type="text" placeholder="username#0000" /></label>
+              <label>Bio <textarea id="detail-bio" rows="4" placeholder="User bio"></textarea></label>
+              <label class="checkbox"><input id="detail-admin" type="checkbox" /> Admin</label>
+              <label class="checkbox"><input id="detail-enabled" type="checkbox" /> Enabled</label>
+              <div class="actions">
+                <button id="save-user-detail" class="btn btn-accent">Save User</button>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>User File Management</h2>
+          <div class="row">
+            <select id="file-user-select"></select>
+            <input id="file-upload" type="file" multiple />
+            <button id="upload-files" class="btn btn-accent">Upload</button>
+          </div>
+          <ul id="file-list" class="file-list"></ul>
+        </section>
+
+        <section class="card">
+          <h2>Server Logs</h2>
+          <pre id="logs" class="logs"></pre>
+        </section>
+      </main>
+
+      <footer id="status" class="status">Ready.</footer>
+    </div>
+    <script src="./app.js"></script>
+  </body>
+</html>

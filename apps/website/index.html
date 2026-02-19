@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CydonianHeavyIndustries.inc - Pilot Signup</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="card">
+        <header class="brand">
+          <p class="kicker">Cydonian Heavy Industries Incorporated</p>
+          <h1>CydonianHeavyIndustries.inc</h1>
+          <p class="subtitle">Project P1L0T Pilot Access</p>
+        </header>
+
+        <div class="tabs">
+          <button id="tab-signup" class="tab tab-active" type="button">Create account</button>
+          <button id="tab-verify" class="tab" type="button">Verify email</button>
+        </div>
+
+        <form id="signup-form" novalidate>
+          <label class="field">
+            <span>Enter username</span>
+            <input id="username" name="username" type="text" minlength="3" maxlength="24" required />
+          </label>
+
+          <label class="field">
+            <span>Enter email</span>
+            <input id="email" name="email" type="email" required />
+          </label>
+
+          <label class="field">
+            <span>Enter password</span>
+            <input id="password" name="password" type="password" minlength="8" required />
+          </label>
+
+          <button id="submit-btn" type="submit">Create pilot profile</button>
+        </form>
+
+        <form id="verify-form" class="hidden" novalidate>
+          <label class="field">
+            <span>Username or email</span>
+            <input id="verify-identity" name="verifyIdentity" type="text" required />
+          </label>
+
+          <label class="field">
+            <span>Validation code</span>
+            <input id="verify-code" name="verifyCode" type="text" inputmode="numeric" maxlength="6" required />
+          </label>
+
+          <div class="actions">
+            <button id="verify-btn" type="submit">Validate email</button>
+            <button id="resend-btn" class="secondary" type="button">Resend code</button>
+          </div>
+        </form>
+
+        <p id="status" class="status" aria-live="polite"></p>
+
+        <footer class="meta">
+          <p>
+            Prototype signup page. Validation emails are simulated in local browser storage until backend auth + SMTP are wired.
+          </p>
+        </footer>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

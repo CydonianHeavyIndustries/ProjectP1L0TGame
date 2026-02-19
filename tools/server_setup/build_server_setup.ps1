@@ -1,182 +1,164 @@
 param(
-  [string]$OutputExe = "F:\projectP1_server_setup.exe",
-  [string]$NodeExe = ""
+  [string]$OutputDir = "F:\projectP1_server_setup"
 )
 
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Resolve-Path (Join-Path $scriptDir "..\..")
-$serverRoot = Join-Path $repoRoot "services\server-api"
-$websiteRoot = Join-Path $repoRoot "website\cydonianheavyindustries.inc"
 $installScript = Join-Path $scriptDir "install_server.ps1"
-$serverManagerProject = Join-Path $repoRoot "tools\server_manager_app\ProjectP1ServerManager.csproj"
-$buildRoot = Join-Path $env:TEMP "p1lot_server_setup_build"
-$staging = Join-Path $buildRoot "staging"
-$payload = Join-Path $staging "payload"
-$payloadZip = Join-Path $staging "payload.zip"
-$bootstrapRoot = Join-Path $buildRoot "bootstrap"
-$bootstrapAssets = Join-Path $bootstrapRoot "Assets"
-$publishDir = Join-Path $buildRoot "publish"
-$serverManagerPublishDir = Join-Path $buildRoot "server_manager_publish"
-$intermediateExe = Join-Path $publishDir "projectP1_server_setup.exe"
 
-if (-not (Test-Path $serverRoot)) {
-  throw "Missing server source: $serverRoot"
-}
 if (-not (Test-Path $installScript)) {
   throw "Missing installer script: $installScript"
 }
-if (-not (Test-Path $serverManagerProject)) {
-  throw "Missing server manager project: $serverManagerProject"
+
+if (Test-Path $OutputDir) {
+  Remove-Item -Path $OutputDir -Recurse -Force
 }
+New-Item -Path $OutputDir -ItemType Directory -Force | Out-Null
 
-if ([string]::IsNullOrWhiteSpace($NodeExe)) {
-  $nodeCmd = Get-Command node -ErrorAction SilentlyContinue
-  if (-not $nodeCmd) {
-    throw "node.exe not found. Install Node.js or pass -NodeExe."
-  }
-  $NodeExe = $nodeCmd.Source
-}
-if (-not (Test-Path $NodeExe)) {
-  throw "node.exe not found at: $NodeExe"
-}
+Copy-Item -Path $installScript -Destination (Join-Path $OutputDir "install_server.ps1") -Force
 
-$npmCmd = Get-Command npm -ErrorAction SilentlyContinue
-if (-not $npmCmd) {
-  throw "npm not found. Install Node.js with npm."
-}
+$setupBat = @'
+@echo off
+setlocal EnableDelayedExpansion
+cd /d "%~dp0"
+set "INSTALLER_ROOT=%~dp0"
+if "%INSTALLER_ROOT:~-1%"=="\" set "INSTALLER_ROOT=%INSTALLER_ROOT:~0,-1%"
+echo [P1LOT] Starting host-branch server setup...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0install_server.ps1" -Repo "CydonianHeavyIndustries/ProjectP1L0TGame" -Branch "host" -InstallerRoot "%INSTALLER_ROOT%" %*
+set "CODE=%ERRORLEVEL%"
+if not "%CODE%"=="0" (
+  echo.
+  echo [P1LOT] Setup failed with code %CODE%.
+)
+pause
+exit /b %CODE%
+'@
+Set-Content -Path (Join-Path $OutputDir "setup_server.bat") -Value $setupBat -Encoding ASCII
 
-$dotnetCmd = Get-Command dotnet -ErrorAction SilentlyContinue
-if (-not $dotnetCmd) {
-  throw "dotnet CLI not found. Install .NET SDK 8+."
-}
+$diagnosticsBat = @'
+@echo off
+setlocal
+cd /d "%~dp0"
 
-if (Test-Path $buildRoot) {
-  Remove-Item -Path $buildRoot -Recurse -Force
-}
-New-Item -Path $payload -ItemType Directory -Force | Out-Null
-New-Item -Path $bootstrapAssets -ItemType Directory -Force | Out-Null
+for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set "TS=%%i"
+set "LOG=%~d0\projectp1_server_diagnostics_%COMPUTERNAME%_%TS%.log"
+set "INSTALL_A=C:\Program Files\ProjectP1L0T_Server"
+set "INSTALL_B=C:\Program Files (x86)\ProjectP1L0T_Server"
 
-Write-Host "[P1LOT] Installing backend dependencies..."
-Push-Location $serverRoot
-try {
-  & npm install --omit=dev --no-audit --no-fund | Out-Null
-} finally {
-  Pop-Location
-}
+echo [P1LOT] Writing diagnostics to: %LOG%
+echo Project P1L0T Server Diagnostics > "%LOG%"
+echo Generated: %DATE% %TIME%>> "%LOG%"
+echo Computer: %COMPUTERNAME%>> "%LOG%"
+echo User: %USERNAME%>> "%LOG%"
+echo.>> "%LOG%"
 
-Write-Host "[P1LOT] Preparing payload..."
-Copy-Item -Path $NodeExe -Destination (Join-Path $payload "node.exe") -Force
-Copy-Item -Path $serverRoot -Destination (Join-Path $payload "services\server-api") -Recurse -Force
-if (Test-Path $websiteRoot) {
-  Copy-Item -Path $websiteRoot -Destination (Join-Path $payload "website\cydonianheavyindustries.inc") -Recurse -Force
-}
+echo ===== OS INFO =====>> "%LOG%"
+ver >> "%LOG%" 2>&1
+systeminfo >> "%LOG%" 2>&1
+echo.>> "%LOG%"
 
-Write-Host "[P1LOT] Building server manager UI..."
-& dotnet publish $serverManagerProject -c Release -r win-x64 -o $serverManagerPublishDir -p:PublishSingleFile=true -p:SelfContained=true -p:EnableCompressionInSingleFile=true -p:DebugType=None -p:DebugSymbols=false | Out-Null
-$serverManagerExe = Join-Path $serverManagerPublishDir "ProjectP1ServerManager.exe"
-if (-not (Test-Path $serverManagerExe)) {
-  throw "Server manager build failed: $serverManagerExe not found."
-}
-New-Item -Path (Join-Path $payload "server_manager") -ItemType Directory -Force | Out-Null
-Copy-Item -Path $serverManagerExe -Destination (Join-Path $payload "server_manager\ProjectP1ServerManager.exe") -Force
+echo ===== POWERSHELL / NODE =====>> "%LOG%"
+powershell -NoProfile -Command "$PSVersionTable" >> "%LOG%" 2>&1
+where node >> "%LOG%" 2>&1
+where npm >> "%LOG%" 2>&1
+echo.>> "%LOG%"
 
-# Ship a clean runtime data folder; generated files are created on first launch.
-$runtimeData = Join-Path $payload "services\server-api\data"
-if (Test-Path $runtimeData) {
-  Remove-Item -Path $runtimeData -Recurse -Force
-}
-New-Item -Path (Join-Path $runtimeData "user_files") -ItemType Directory -Force | Out-Null
+echo ===== SERVICE: ProjectP1L0TServer =====>> "%LOG%"
+sc query ProjectP1L0TServer >> "%LOG%" 2>&1
+sc qc ProjectP1L0TServer >> "%LOG%" 2>&1
+powershell -NoProfile -Command "try { Get-Service ProjectP1L0TServer | Format-List * } catch { $_ | Out-String }" >> "%LOG%" 2>&1
+echo.>> "%LOG%"
 
-Write-Host "[P1LOT] Compressing payload..."
-Compress-Archive -Path (Join-Path $payload "*") -DestinationPath $payloadZip -CompressionLevel Optimal -Force
-Copy-Item -Path $payloadZip -Destination (Join-Path $bootstrapAssets "payload.zip") -Force
-Copy-Item -Path $installScript -Destination (Join-Path $bootstrapAssets "install_server.ps1") -Force
+echo ===== TASK / FIREWALL =====>> "%LOG%"
+schtasks /Query /TN ProjectP1L0TServerAutoStart /V /FO LIST >> "%LOG%" 2>&1
+powershell -NoProfile -Command "Get-NetFirewallRule -DisplayName 'ProjectP1L0T Server API' -ErrorAction SilentlyContinue | Format-List *" >> "%LOG%" 2>&1
+echo.>> "%LOG%"
 
-$projectFile = Join-Path $bootstrapRoot "projectP1_server_setup.csproj"
-$programFile = Join-Path $bootstrapRoot "Program.cs"
+echo ===== PORT 4280 =====>> "%LOG%"
+netstat -ano | findstr :4280 >> "%LOG%" 2>&1
+powershell -NoProfile -Command "try { Invoke-RestMethod -Uri 'http://127.0.0.1:4280/api/health' -TimeoutSec 5 | ConvertTo-Json -Depth 6 } catch { $_.Exception.Message }" >> "%LOG%" 2>&1
+echo.>> "%LOG%"
 
-$csproj = @"
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <AssemblyName>projectP1_server_setup</AssemblyName>
-  </PropertyGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Assets\payload.zip" LogicalName="payload.zip" />
-    <EmbeddedResource Include="Assets\install_server.ps1" LogicalName="install_server.ps1" />
-  </ItemGroup>
-</Project>
-"@
+echo ===== INSTALL FOLDERS =====>> "%LOG%"
+call :dump_dir "%INSTALL_A%"
+call :dump_dir "%INSTALL_B%"
+echo.>> "%LOG%"
 
-$program = @"
-using System.Diagnostics;
-using System.Reflection;
+echo ===== SERVER RUNTIME LOGS =====>> "%LOG%"
+call :dump_runtime_logs "%INSTALL_A%"
+call :dump_runtime_logs "%INSTALL_B%"
+echo.>> "%LOG%"
 
-try
-{
-    var assembly = Assembly.GetExecutingAssembly();
-    var tempRoot = Path.Combine(Path.GetTempPath(), "ProjectP1L0T_ServerSetup_" + Guid.NewGuid().ToString("N"));
-    Directory.CreateDirectory(tempRoot);
+echo ===== INSTALLER LOGS =====>> "%LOG%"
+if exist "%~d0\installer.log" (
+  echo --- %~d0\installer.log --- >> "%LOG%"
+  type "%~d0\installer.log" >> "%LOG%" 2>&1
+) else (
+  echo Missing: %~d0\installer.log>> "%LOG%"
+)
+if exist "C:\ProgramData\ProjectP1L0TServer\logs\installer.log" (
+  echo --- C:\ProgramData\ProjectP1L0TServer\logs\installer.log --- >> "%LOG%"
+  type "C:\ProgramData\ProjectP1L0TServer\logs\installer.log" >> "%LOG%" 2>&1
+) else (
+  echo Missing: C:\ProgramData\ProjectP1L0TServer\logs\installer.log>> "%LOG%"
+)
+echo.>> "%LOG%"
 
-    ExtractResource(assembly, "payload.zip", Path.Combine(tempRoot, "payload.zip"));
-    ExtractResource(assembly, "install_server.ps1", Path.Combine(tempRoot, "install_server.ps1"));
+echo ===== CONNECTIVITY =====>> "%LOG%"
+powershell -NoProfile -Command "try { (Invoke-WebRequest -Uri 'https://codeload.github.com/CydonianHeavyIndustries/ProjectP1L0TGame/zip/refs/heads/host' -Method Head -UseBasicParsing -TimeoutSec 20).StatusCode } catch { $_.Exception.Message }" >> "%LOG%" 2>&1
+echo.>> "%LOG%"
 
-    var scriptPath = Path.Combine(tempRoot, "install_server.ps1");
-    var process = Process.Start(new ProcessStartInfo
-    {
-        FileName = "powershell.exe",
-        Arguments = "-NoProfile -ExecutionPolicy Bypass -STA -File \"" + scriptPath + "\"",
-        WorkingDirectory = tempRoot,
-        UseShellExecute = true
-    });
+echo [P1LOT] Diagnostics complete.
+echo [P1LOT] File: %LOG%
+pause
+exit /b 0
 
-    if (process is null)
-    {
-        Console.Error.WriteLine("Failed to start install_server.ps1");
-        return 1;
-    }
+:dump_dir
+set "TARGET=%~1"
+if exist "!TARGET!" (
+  echo Found: !TARGET!>> "%LOG%"
+  dir "!TARGET!" /s /b >> "%LOG%" 2>&1
+) else (
+  echo Missing: !TARGET!>> "%LOG%"
+)
+exit /b 0
 
-    process.WaitForExit();
-    return process.ExitCode;
-}
-catch (Exception ex)
-{
-    Console.Error.WriteLine(ex.ToString());
-    return 1;
-}
+:dump_runtime_logs
+set "ROOT=%~1"
+if exist "!ROOT!\apps\server-api\data\server.log" (
+  echo --- !ROOT!\apps\server-api\data\server.log --- >> "%LOG%"
+  powershell -NoProfile -Command "Get-Content -Path '!ROOT!\apps\server-api\data\server.log' -Tail 200" >> "%LOG%" 2>&1
+)
+if exist "!ROOT!\apps\server-api\data\service_stdout.log" (
+  echo --- !ROOT!\apps\server-api\data\service_stdout.log --- >> "%LOG%"
+  powershell -NoProfile -Command "Get-Content -Path '!ROOT!\apps\server-api\data\service_stdout.log' -Tail 200" >> "%LOG%" 2>&1
+)
+if exist "!ROOT!\apps\server-api\data\service_stderr.log" (
+  echo --- !ROOT!\apps\server-api\data\service_stderr.log --- >> "%LOG%"
+  powershell -NoProfile -Command "Get-Content -Path '!ROOT!\apps\server-api\data\service_stderr.log' -Tail 200" >> "%LOG%" 2>&1
+)
+exit /b 0
+'@
+Set-Content -Path (Join-Path $OutputDir "server_diagnostics.bat") -Value $diagnosticsBat -Encoding ASCII
 
-static void ExtractResource(Assembly assembly, string resourceName, string destination)
-{
-    using var stream = assembly.GetManifestResourceStream(resourceName)
-        ?? throw new InvalidOperationException("Missing resource: " + resourceName);
-    using var file = File.Create(destination);
-    stream.CopyTo(file);
-}
-"@
+$readme = @'
+Project P1L0T Server Setup (Host Branch)
+----------------------------------------
 
-Set-Content -Path $projectFile -Value $csproj -Encoding UTF8
-Set-Content -Path $programFile -Value $program -Encoding UTF8
+This installer always pulls install content from:
+https://github.com/CydonianHeavyIndustries/ProjectP1L0TGame/tree/host
 
-Write-Host "[P1LOT] Building one-file installer..."
-& dotnet publish $projectFile -c Release -r win-x64 -o $publishDir -p:PublishSingleFile=true -p:SelfContained=true -p:EnableCompressionInSingleFile=true -p:DebugType=None -p:DebugSymbols=false | Out-Null
+How to run:
+1) Copy this folder to target machine.
+2) Right-click setup_server.bat and Run as Administrator.
+3) Choose install directory.
+4) If setup/service fails, run server_diagnostics.bat and send generated log.
 
-if (-not (Test-Path $intermediateExe)) {
-  throw "Installer was not created: $intermediateExe"
-}
+Requirements:
+- Internet access (for GitHub and Node runtime download if needed).
+'@
+Set-Content -Path (Join-Path $OutputDir "README.txt") -Value $readme -Encoding ASCII
 
-$targetDir = Split-Path -Parent $OutputExe
-if (-not (Test-Path $targetDir)) {
-  New-Item -Path $targetDir -ItemType Directory -Force | Out-Null
-}
-if (Test-Path $OutputExe) {
-  Remove-Item -Path $OutputExe -Force
-}
+Write-Host "[P1LOT] Created setup bundle at: $OutputDir"
 
-Copy-Item -Path $intermediateExe -Destination $OutputExe -Force
-$item = Get-Item $OutputExe
-Write-Host "[P1LOT] Created $($item.FullName) ($([math]::Round($item.Length / 1MB, 2)) MB)"
