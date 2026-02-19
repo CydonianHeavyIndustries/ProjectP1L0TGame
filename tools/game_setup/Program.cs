@@ -30,11 +30,14 @@ internal static class Program
             return 1;
         }
 
+        Info("Update policy: only the launcher pulls game updates from GitHub releases.");
+        Info("This setup prepares local tooling and builds installers from local repo state.");
+
         RunStep("Checking Node.js", () => EnsureTool("node", "--version"));
         RunStep("Checking npm", () => EnsureTool("npm", "--version"));
         RunStep("Installing launcher dependencies", () => RunOrThrow("npm", "install", Path.Combine(repoRoot, "apps", "launcher")));
         RunStep("Installing server-api dependencies", () => RunOrThrow("npm", "install", Path.Combine(repoRoot, "apps", "server-api")));
-        RunStep("Building launcher setup installer", () =>
+        RunStep("Building launcher setup installer (local repo state)", () =>
         {
             var launcherDir = Path.Combine(repoRoot, "apps", "launcher");
             RunOrThrow("npm", "run dist:win", launcherDir);
