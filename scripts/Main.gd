@@ -3,11 +3,12 @@ extends Node
 @onready var title_scene: PackedScene = preload("res://scenes/TitleScreen.tscn")
 @onready var gameplay_scene: PackedScene = preload("res://scenes/Gameplay.tscn")
 @onready var tutorial_scene: PackedScene = preload("res://scenes/Tutorial.tscn")
+const DEBUG_CONFIG = preload("res://scripts/core_systems/DebugConfig.gd")
 
 var current_scene: Node
 
 func _ready() -> void:
-	if DebugConfig.BOOT_TO_GAMEPLAY:
+	if DEBUG_CONFIG.BOOT_TO_GAMEPLAY:
 		_show_gameplay()
 	else:
 		_show_title()

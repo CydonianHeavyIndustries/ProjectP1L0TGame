@@ -1,22 +1,48 @@
-[gd_scene format=3 uid="uid://player"]
+[gd_scene load_steps=9 format=3 uid="uid://player"]
 
-[ext_resource type="Script" path="res://scripts/Player.gd" id=1]
+[ext_resource type="Script" path="res://scripts/Player.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/Gun.gd" id="2"]
 
-[sub_resource type="CapsuleShape3D" id=1]
+[sub_resource type="CapsuleShape3D" id="1"]
 radius = 0.35
 height = 1.2
 
-[sub_resource type="CapsuleMesh" id=2]
+[sub_resource type="CapsuleMesh" id="2"]
 radius = 0.35
 height = 1.2
+
+[sub_resource type="StandardMaterial3D" id="3"]
+albedo_color = Color(0.72, 0.74, 0.78, 1)
+roughness = 0.88
+
+[sub_resource type="BoxMesh" id="4"]
+size = Vector3(0.18, 0.14, 0.22)
+
+[sub_resource type="StandardMaterial3D" id="5"]
+albedo_color = Color(0.18, 0.2, 0.24, 1)
+roughness = 0.9
 
 [node name="Player" type="CharacterBody3D"]
-script = ExtResource(1)
+script = ExtResource("1")
 
 [node name="Camera" type="Camera3D" parent="."]
+position = Vector3(0, 0.62, 0)
+current = false
+
+[node name="GunPivot" type="Node3D" parent="Camera"]
+position = Vector3(0.28, -0.16, -0.55)
+
+[node name="Gun" type="Node3D" parent="Camera/GunPivot"]
+script = ExtResource("2")
+
+[node name="FallbackGun" type="MeshInstance3D" parent="Camera/GunPivot/Gun"]
+visible = false
+mesh = SubResource("4")
+material_override = SubResource("5")
 
 [node name="PlayerCollision" type="CollisionShape3D" parent="."]
-shape = SubResource(1)
+shape = SubResource("1")
 
 [node name="PlayerMesh" type="MeshInstance3D" parent="."]
-mesh = SubResource(2)
+mesh = SubResource("2")
+material_override = SubResource("3")

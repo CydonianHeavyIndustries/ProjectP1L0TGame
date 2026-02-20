@@ -10,6 +10,7 @@ signal spaceship_home_changed(home_data: Dictionary)
 
 const SAVE_PATH := "user://savegame.json"
 const SAVE_VERSION := 1
+const DEBUG_CONFIG = preload("res://scripts/core_systems/DebugConfig.gd")
 
 var _save_data: Dictionary = {}
 var _dirty := false
@@ -44,7 +45,7 @@ func save_now() -> void:
 	_log("Save written to %s" % SAVE_PATH)
 
 func _log(message: String) -> void:
-	if not DebugConfig.LOGGING:
+	if not DEBUG_CONFIG.LOGGING:
 		return
 	var logger = get_node_or_null("/root/Logger")
 	if logger and logger.has_method("info"):
@@ -54,7 +55,7 @@ func _log(message: String) -> void:
 
 func queue_save() -> void:
 	_dirty = true
-	if not DebugConfig.AUTO_SAVE_ON_CHANGE:
+	if not DEBUG_CONFIG.AUTO_SAVE_ON_CHANGE:
 		return
 	if _save_queued:
 		return

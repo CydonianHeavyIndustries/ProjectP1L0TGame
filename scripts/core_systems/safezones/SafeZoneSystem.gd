@@ -20,21 +20,21 @@ func _register_zone(zone: Area3D) -> void:
 	zone.body_entered.connect(_on_zone_body_entered.bind(zone))
 	zone.body_exited.connect(_on_zone_body_exited.bind(zone))
 
-func _on_zone_body_entered(body: Node, zone: SafeZoneArea) -> void:
+func _on_zone_body_entered(body: Node, zone: Area3D) -> void:
 	if not body:
 		return
 	var zones: Array = _node_zones.get(body, [])
-	var zone_id = zone.zone_id
+	var zone_id = String(zone.get("zone_id"))
 	if zone_id not in zones:
 		zones.append(zone_id)
 	_node_zones[body] = zones
 	emit_signal("node_safezone_changed", body, true, zones)
 
-func _on_zone_body_exited(body: Node, zone: SafeZoneArea) -> void:
+func _on_zone_body_exited(body: Node, zone: Area3D) -> void:
 	if not body or not _node_zones.has(body):
 		return
 	var zones: Array = _node_zones[body]
-	zones.erase(zone.zone_id)
+	zones.erase(String(zone.get("zone_id")))
 	if zones.is_empty():
 		_node_zones.erase(body)
 		emit_signal("node_safezone_changed", body, false, [])
