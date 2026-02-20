@@ -21,7 +21,7 @@ signal died
 @export var decel_ground := 36.0
 @export var decel_air := 10.0
 @export var input_smooth := 12.0
-@export var coyote_time := 0.12
+@export var coyote_time := 0.12 # wtf is coyote time ?
 @export var air_control := 0.85
 @export var crouch_cam_offset := -0.45
 @export var prone_cam_offset := -0.85
@@ -84,8 +84,9 @@ signal died
 @export var grenade_throw_force := 12.0
 @export var grenade_upward_force := 2.5
 @export var grenade_cooldown_time := 3.5
-@export var blink_range := 12.0
-@export var blink_cooldown_time := 6.0
+@export var blink_range := 15.0
+@export var blink_Charge_time := 0.5 # need to implement a timer that will freeze the player movement and wait 0,5 sec before casting the teleport, the player wont be able not shoot
+@export var blink_cooldown_time := 10.0
 @export var slide_cancel_boost := 3.5
 @export var slide_landing_inherit := 1.4
 @export var slide_downhill_friction_multiplier := 0.03

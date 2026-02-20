@@ -29,7 +29,9 @@ func take_damage(amount: float) -> void:
 	_update_color(current_health <= 0.0)
 	if current_health <= 0.0:
 		_start_ko_jump()
-
+		# we need to find the killed and give them points, this function should be called "Minions_Killed_Points_Giver()"
+			#find the owner of the bullet, give them a node in an array called points, a minions kill should give a player "var Minion Killed = 1"
+			# each source should be an an entry, there should be a point history
 func _update_color(dead: bool) -> void:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.8, 0.2, 0.2) if dead else Color(0.95, 0.8, 0.2)
