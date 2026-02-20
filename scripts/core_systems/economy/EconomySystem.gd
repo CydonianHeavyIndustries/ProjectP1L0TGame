@@ -4,31 +4,51 @@ class_name EconomySystem
 signal inventory_updated
 signal credits_updated
 
+const ITEM_DATABASE = preload("res://scripts/core_systems/economy/ItemDatabase.gd")
+const DEBUG_CONFIG = preload("res://scripts/core_systems/DebugConfig.gd")
+
+func _save_manager() -> Node:
+	return get_node_or_null("/root/SaveManager")
+
 func add_credits(amount: int) -> void:
 	if amount == 0:
 		return
-	SaveManager.add_credits(amount)
+	var save_manager = _save_manager()
+	if save_manager and save_manager.has_method("add_credits"):
+		save_manager.add_credits(amount)
 	emit_signal("credits_updated")
 
 func spend_credits(amount: int) -> bool:
-	var ok = SaveManager.spend_credits(amount)
+	var save_manager = _save_manager()
+	var ok := false
+	if save_manager and save_manager.has_method("spend_credits"):
+		ok = save_manager.spend_credits(amount)
 	if ok:
 		emit_signal("credits_updated")
 	return ok
 
 func get_credits() -> int:
-	return SaveManager.get_currency().get("credits", 0)
+	var save_manager = _save_manager()
+	if save_manager and save_manager.has_method("get_currency"):
+		return save_manager.get_currency().get("credits", 0)
+	return 0
 
 func get_inventory_items() -> Array:
-	return SaveManager.get_inventory().get("items", [])
+	var save_manager = _save_manager()
+	if save_manager and save_manager.has_method("get_inventory"):
+		return save_manager.get_inventory().get("items", [])
+	return []
 
 func add_item(item_id: String, amount: int = 1) -> void:
-	if ItemDatabase.get_item(item_id).is_empty():
-		if DebugConfig.LOGGING:
+	if ITEM_DATABASE.get_item(item_id).is_empty():
+		if DEBUG_CONFIG.LOGGING:
 			print("[EconomySystem] Unknown item: ", item_id)
 		return
 
-	var inventory = SaveManager.get_inventory()
+	var save_manager = _save_manager()
+	if save_manager == null or not save_manager.has_method("get_inventory"):
+		return
+	var inventory = save_manager.get_inventory()
 	var items: Array = inventory.get("items", [])
 	var updated := false
 	for stack in items:
@@ -39,11 +59,15 @@ func add_item(item_id: String, amount: int = 1) -> void:
 	if not updated:
 		items.append({"id": item_id, "qty": amount})
 	inventory["items"] = items
-	SaveManager.set_inventory_items(items)
+	if save_manager.has_method("set_inventory_items"):
+		save_manager.set_inventory_items(items)
 	emit_signal("inventory_updated")
 
 func remove_item(item_id: String, amount: int = 1) -> bool:
-	var inventory = SaveManager.get_inventory()
+	var save_manager = _save_manager()
+	if save_manager == null or not save_manager.has_method("get_inventory"):
+		return false
+	var inventory = save_manager.get_inventory()
 	var items: Array = inventory.get("items", [])
 	for stack in items:
 		if stack.get("id", "") == item_id:
@@ -54,7 +78,8 @@ func remove_item(item_id: String, amount: int = 1) -> bool:
 			stack["qty"] = qty
 			if qty <= 0:
 				items.erase(stack)
-			SaveManager.set_inventory_items(items)
+			if save_manager.has_method("set_inventory_items"):
+				save_manager.set_inventory_items(items)
 			emit_signal("inventory_updated")
 			return true
 	return false
