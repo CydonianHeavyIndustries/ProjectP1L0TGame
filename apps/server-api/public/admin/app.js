@@ -36,6 +36,14 @@ const saveToken = () => {
 const loadToken = () => {
   const saved = localStorage.getItem(tokenKey);
   if (saved) tokenInput.value = saved;
+
+  const params = new URLSearchParams(window.location.search);
+  const tokenFromQuery = params.get('token');
+  if (tokenFromQuery) {
+    tokenInput.value = tokenFromQuery;
+    localStorage.setItem(tokenKey, tokenFromQuery);
+    setStatus('Admin token loaded from launch link.');
+  }
 };
 
 const getSelectedUser = () => usersCache.find((u) => u.id === selectedUserId);

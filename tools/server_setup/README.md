@@ -56,6 +56,12 @@ Installer downloads server files from GitHub:
 - Server control scripts:
   - `server_manager\open_admin_ui.bat`
   - `server_manager\server_control.bat`
+  - `server_manager\admin_token.txt`
+- Installer wizard options:
+  - Install folder path
+  - Use all hardware profile
+  - Create desktop shortcut
+  - Launch server manager after install
 
 ## Requirements
 

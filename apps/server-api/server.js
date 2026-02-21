@@ -13,7 +13,22 @@ const USERS_PATH = path.join(DATA_DIR, 'users.json');
 const LOG_PATH = path.join(DATA_DIR, 'server.log');
 const ADMIN_STATIC = path.join(ROOT, 'public', 'admin');
 const SITE_STATIC = path.join(ROOT, 'public', 'site');
-const WEBSITE_SOURCE = path.resolve(ROOT, '..', '..', 'website', 'cydonianheavyindustries.inc');
+const WEBSITE_SOURCE_CANDIDATES = [
+  path.resolve(ROOT, '..', '..', 'website', 'cydonianheavyindustries.inc'),
+  path.resolve(ROOT, '..', '..', 'website', 'dist'),
+  path.resolve(ROOT, '..', '..', 'website')
+];
+
+const resolveFirstExistingDir = (candidates, fallback) => {
+  for (const candidate of candidates) {
+    if (candidate && fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
+      return candidate;
+    }
+  }
+  return fallback;
+};
+
+const WEBSITE_SOURCE = resolveFirstExistingDir(WEBSITE_SOURCE_CANDIDATES, SITE_STATIC);
 
 const ensureDir = (dirPath) => fs.mkdirSync(dirPath, { recursive: true });
 ensureDir(DATA_DIR);
@@ -297,7 +312,10 @@ app.get('/api/admin/bootstrap', authAdmin, (_req, res) => {
 app.use('/admin/assets', express.static(path.join(ROOT, 'public', 'assets')));
 app.use('/admin', express.static(ADMIN_STATIC));
 app.use('/chii', express.static(WEBSITE_SOURCE));
-app.use('/', express.static(SITE_STATIC));
+app.use('/', express.static(WEBSITE_SOURCE));
+if (WEBSITE_SOURCE !== SITE_STATIC) {
+  app.use('/', express.static(SITE_STATIC));
+}
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'not_found' });

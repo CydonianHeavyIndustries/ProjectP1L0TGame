@@ -259,6 +259,12 @@ function New-FileShortcut([string]$ShortcutPath, [string]$TargetPath, [string]$A
   $shortcut.Save()
 }
 
+function New-AdminToken {
+  $bytes = New-Object byte[] 24
+  [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+  return ([Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+', 'A').Replace('/', 'B'))
+}
+
 function Download-RepoBranch([string]$RepoName, [string]$BranchName, [string]$TempRoot) {
   $zipPath = Join-Path $TempRoot "$BranchName.zip"
   $extractDir = Join-Path $TempRoot "$BranchName.extract"
@@ -353,18 +359,22 @@ function Ensure-Nssm([string]$InstallRoot, [string]$TempRoot) {
   return $nssmExe
 }
 
-function Write-ServerManagerScripts([string]$InstallRoot) {
+function Write-ServerManagerScripts([string]$InstallRoot, [string]$AdminToken) {
   $managerDir = Join-Path $InstallRoot "server_manager"
   New-Item -Path $managerDir -ItemType Directory -Force | Out-Null
 
-  $openAdmin = @'
+  $tokenFile = Join-Path $managerDir "admin_token.txt"
+  Set-Content -Path $tokenFile -Value $AdminToken -Encoding ASCII -Force
+
+  $openAdmin = @"
 @echo off
 setlocal
 set "BASE_URL=http://127.0.0.1:4280"
+set "ADMIN_TOKEN=$AdminToken"
 if not "%~1"=="" set "BASE_URL=%~1"
-start "" "%BASE_URL%/admin/"
+start "" "%BASE_URL%/admin/?token=%ADMIN_TOKEN%"
 exit /b 0
-'@
+"@
   Set-Content -Path (Join-Path $managerDir "open_admin_ui.bat") -Value $openAdmin -Encoding ASCII
 
   $control = @'
@@ -585,9 +595,6 @@ try {
   New-Item -Path (Join-Path $runtimeData "user_files") -ItemType Directory -Force | Out-Null
 
   Set-InstallProgress 35 "Writing server management scripts..."
-  Write-ServerManagerScripts -InstallRoot $InstallDir
-  $runnerBat = Write-ServiceRunnerScript -InstallRoot $InstallDir
-
   Set-InstallProgress 45 "Installing runtime dependencies..."
   $runtime = Ensure-NodeRuntime -InstallRoot $InstallDir -TempRoot $tempRoot
   $nodeExe = $runtime.NodeExe
@@ -622,7 +629,16 @@ try {
   $existingConfig["maxPlayers"] = if ($enableMaxHardware) { 128 } else { 64 }
   $existingConfig["tickRate"] = if ($enableMaxHardware) { 120 } else { 60 }
   $existingConfig["autosaveSeconds"] = if ($enableMaxHardware) { 15 } else { 30 }
+  $adminToken = if ($existingConfig.ContainsKey("adminToken") -and -not [string]::IsNullOrWhiteSpace($existingConfig["adminToken"])) { [string]$existingConfig["adminToken"] } else { New-AdminToken }
+  if ($adminToken -eq "change-me-now") {
+    $adminToken = New-AdminToken
+  }
+  $existingConfig["adminToken"] = $adminToken
   $existingConfig | ConvertTo-Json -Depth 8 | Set-Content -Path $configPath -Encoding UTF8
+
+  Set-InstallProgress 74 "Writing server management scripts..."
+  Write-ServerManagerScripts -InstallRoot $InstallDir -AdminToken $adminToken
+  $runnerBat = Write-ServiceRunnerScript -InstallRoot $InstallDir
 
   Set-InstallProgress 78 "Configuring Windows service..."
   $serverJs = Join-Path $serverDest "server.js"
@@ -718,7 +734,7 @@ try {
   }
   Set-InstallProgress 100 "Install complete."
   Stop-InstallProgress
-  Show-Info "Project P1L0T Server installed successfully.`n`nSource branch: $Branch`nService: $serviceName`nAdmin UI: $adminUrl`nServer manager scripts: $($InstallDir)\server_manager`nDesktop shortcut: $(if ($createDesktopShortcut) {'Yes'} else {'No'})`nLaunch after install: $(if ($launchAfterInstall) {'Yes'} else {'No'})`n`nInstaller log:`n$logFile"
+  Show-Info "Project P1L0T Server installed successfully.`n`nSource branch: $Branch`nService: $serviceName`nAdmin UI: $adminUrl`nAdmin token: $adminToken`nToken file: $($InstallDir)\server_manager\admin_token.txt`nServer manager scripts: $($InstallDir)\server_manager`nDesktop shortcut: $(if ($createDesktopShortcut) {'Yes'} else {'No'})`nLaunch after install: $(if ($launchAfterInstall) {'Yes'} else {'No'})`n`nInstaller log:`n$logFile"
 }
 catch {
   Stop-InstallProgress
