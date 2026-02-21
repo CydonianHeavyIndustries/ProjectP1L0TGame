@@ -64,6 +64,188 @@ function Show-Error([string]$message) {
   }
 }
 
+function Show-InstallWizard([string]$DefaultDir) {
+  try {
+    Add-Type -AssemblyName System.Windows.Forms | Out-Null
+    Add-Type -AssemblyName System.Drawing | Out-Null
+  } catch {
+    return @{
+      InstallDir = $DefaultDir
+      EnableMaxHardware = $false
+      CreateDesktopShortcut = $true
+      LaunchAfterInstall = $true
+    }
+  }
+
+  $form = New-Object System.Windows.Forms.Form
+  $form.Text = "Project P1L0T Server Setup"
+  $form.StartPosition = "CenterScreen"
+  $form.FormBorderStyle = "FixedDialog"
+  $form.MaximizeBox = $false
+  $form.MinimizeBox = $false
+  $form.ClientSize = New-Object System.Drawing.Size(640, 300)
+  $form.TopMost = $true
+
+  $title = New-Object System.Windows.Forms.Label
+  $title.Text = "Server Installation Setup"
+  $title.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
+  $title.AutoSize = $true
+  $title.Location = New-Object System.Drawing.Point(16, 14)
+  $form.Controls.Add($title)
+
+  $desc = New-Object System.Windows.Forms.Label
+  $desc.Text = "Choose installation folder and options."
+  $desc.AutoSize = $true
+  $desc.Location = New-Object System.Drawing.Point(16, 44)
+  $form.Controls.Add($desc)
+
+  $pathLabel = New-Object System.Windows.Forms.Label
+  $pathLabel.Text = "Install Location:"
+  $pathLabel.AutoSize = $true
+  $pathLabel.Location = New-Object System.Drawing.Point(16, 78)
+  $form.Controls.Add($pathLabel)
+
+  $pathBox = New-Object System.Windows.Forms.TextBox
+  $pathBox.Size = New-Object System.Drawing.Size(490, 24)
+  $pathBox.Location = New-Object System.Drawing.Point(16, 100)
+  $pathBox.Text = $DefaultDir
+  $form.Controls.Add($pathBox)
+
+  $browse = New-Object System.Windows.Forms.Button
+  $browse.Text = "Browse..."
+  $browse.Size = New-Object System.Drawing.Size(100, 27)
+  $browse.Location = New-Object System.Drawing.Point(522, 98)
+  $browse.Add_Click({
+    $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dialog.Description = "Choose install directory for Project P1L0T Server"
+    $dialog.SelectedPath = if ([string]::IsNullOrWhiteSpace($pathBox.Text)) { $DefaultDir } else { $pathBox.Text }
+    if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+      $pathBox.Text = $dialog.SelectedPath
+    }
+  })
+  $form.Controls.Add($browse)
+
+  $maxHardware = New-Object System.Windows.Forms.CheckBox
+  $maxHardware.Text = "Use all available hardware (max performance profile)"
+  $maxHardware.AutoSize = $true
+  $maxHardware.Location = New-Object System.Drawing.Point(16, 142)
+  $form.Controls.Add($maxHardware)
+
+  $desktopShortcut = New-Object System.Windows.Forms.CheckBox
+  $desktopShortcut.Text = "Create desktop shortcut"
+  $desktopShortcut.Checked = $true
+  $desktopShortcut.AutoSize = $true
+  $desktopShortcut.Location = New-Object System.Drawing.Point(16, 168)
+  $form.Controls.Add($desktopShortcut)
+
+  $launchAfter = New-Object System.Windows.Forms.CheckBox
+  $launchAfter.Text = "Launch server manager after install"
+  $launchAfter.Checked = $true
+  $launchAfter.AutoSize = $true
+  $launchAfter.Location = New-Object System.Drawing.Point(16, 194)
+  $form.Controls.Add($launchAfter)
+
+  $ok = New-Object System.Windows.Forms.Button
+  $ok.Text = "Install"
+  $ok.Size = New-Object System.Drawing.Size(95, 30)
+  $ok.Location = New-Object System.Drawing.Point(430, 248)
+  $ok.DialogResult = [System.Windows.Forms.DialogResult]::OK
+  $form.AcceptButton = $ok
+  $form.Controls.Add($ok)
+
+  $cancel = New-Object System.Windows.Forms.Button
+  $cancel.Text = "Cancel"
+  $cancel.Size = New-Object System.Drawing.Size(95, 30)
+  $cancel.Location = New-Object System.Drawing.Point(535, 248)
+  $cancel.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+  $form.CancelButton = $cancel
+  $form.Controls.Add($cancel)
+
+  $ok.Add_Click({
+    if ([string]::IsNullOrWhiteSpace($pathBox.Text)) {
+      [System.Windows.Forms.MessageBox]::Show("Install location is required.", "Project P1L0T Server Setup") | Out-Null
+      $form.DialogResult = [System.Windows.Forms.DialogResult]::None
+      return
+    }
+  })
+
+  $result = $form.ShowDialog()
+  if ($result -ne [System.Windows.Forms.DialogResult]::OK) {
+    return $null
+  }
+
+  return @{
+    InstallDir = $pathBox.Text.Trim()
+    EnableMaxHardware = [bool]$maxHardware.Checked
+    CreateDesktopShortcut = [bool]$desktopShortcut.Checked
+    LaunchAfterInstall = [bool]$launchAfter.Checked
+  }
+}
+
+$script:ProgressForm = $null
+$script:ProgressLabel = $null
+$script:ProgressBar = $null
+
+function Start-InstallProgress {
+  try {
+    Add-Type -AssemblyName System.Windows.Forms | Out-Null
+    Add-Type -AssemblyName System.Drawing | Out-Null
+  } catch {
+    return
+  }
+
+  $script:ProgressForm = New-Object System.Windows.Forms.Form
+  $script:ProgressForm.Text = "Project P1L0T Server Setup Progress"
+  $script:ProgressForm.StartPosition = "CenterScreen"
+  $script:ProgressForm.FormBorderStyle = "FixedDialog"
+  $script:ProgressForm.MaximizeBox = $false
+  $script:ProgressForm.MinimizeBox = $false
+  $script:ProgressForm.ControlBox = $false
+  $script:ProgressForm.ClientSize = New-Object System.Drawing.Size(620, 120)
+  $script:ProgressForm.TopMost = $true
+
+  $script:ProgressLabel = New-Object System.Windows.Forms.Label
+  $script:ProgressLabel.Text = "Starting setup..."
+  $script:ProgressLabel.AutoSize = $false
+  $script:ProgressLabel.Size = New-Object System.Drawing.Size(590, 26)
+  $script:ProgressLabel.Location = New-Object System.Drawing.Point(15, 18)
+  $script:ProgressLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleLeft
+  $script:ProgressForm.Controls.Add($script:ProgressLabel)
+
+  $script:ProgressBar = New-Object System.Windows.Forms.ProgressBar
+  $script:ProgressBar.Location = New-Object System.Drawing.Point(15, 58)
+  $script:ProgressBar.Size = New-Object System.Drawing.Size(590, 28)
+  $script:ProgressBar.Minimum = 0
+  $script:ProgressBar.Maximum = 100
+  $script:ProgressBar.Value = 0
+  $script:ProgressForm.Controls.Add($script:ProgressBar)
+
+  $script:ProgressForm.Show()
+  [System.Windows.Forms.Application]::DoEvents()
+}
+
+function Set-InstallProgress([int]$Percent, [string]$Message) {
+  $p = [Math]::Min([Math]::Max($Percent, 0), 100)
+  Write-InstallLog "[P1LOT] Progress $p% - $Message"
+  if ($script:ProgressForm -and -not $script:ProgressForm.IsDisposed) {
+    $script:ProgressLabel.Text = $Message
+    $script:ProgressBar.Value = $p
+    [System.Windows.Forms.Application]::DoEvents()
+  } else {
+    Write-Progress -Activity "Project P1L0T Server Setup" -Status $Message -PercentComplete $p
+  }
+}
+
+function Stop-InstallProgress {
+  if ($script:ProgressForm -and -not $script:ProgressForm.IsDisposed) {
+    $script:ProgressForm.Close()
+    $script:ProgressForm.Dispose()
+  }
+  $script:ProgressForm = $null
+  $script:ProgressLabel = $null
+  $script:ProgressBar = $null
+}
+
 function New-FileShortcut([string]$ShortcutPath, [string]$TargetPath, [string]$Arguments = "", [string]$WorkingDirectory = "") {
   $shell = New-Object -ComObject WScript.Shell
   $shortcut = $shell.CreateShortcut($ShortcutPath)
@@ -261,6 +443,43 @@ function Wait-Health([int]$MaxChecks = 20, [int]$DelayMs = 300) {
   return $false
 }
 
+function Stop-NodeProcessesForInstall([string]$InstallRoot) {
+  try {
+    $prefix = [IO.Path]::GetFullPath($InstallRoot).TrimEnd('\') + '\'
+    $nodeProcs = Get-Process -Name "node" -ErrorAction SilentlyContinue
+    foreach ($proc in $nodeProcs) {
+      try {
+        $procPath = $proc.Path
+        if ($procPath -and $procPath.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+          Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+        }
+      } catch {
+      }
+    }
+  } catch {
+  }
+}
+
+function Remove-ExistingService([string]$ServiceName, [string]$InstallRoot) {
+  $existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+  if (-not $existing) {
+    return
+  }
+
+  Write-InstallLog "[P1LOT] Existing service detected. Removing $ServiceName..."
+  try { Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue } catch {}
+  Start-Sleep -Seconds 1
+
+  $nssmFromInstall = Join-Path $InstallRoot "tools\nssm.exe"
+  if (Test-Path $nssmFromInstall) {
+    try { & $nssmFromInstall remove $ServiceName confirm | Out-Null } catch {}
+  }
+
+  try { sc.exe stop $ServiceName | Out-Null } catch {}
+  try { sc.exe delete $ServiceName | Out-Null } catch {}
+  Start-Sleep -Seconds 2
+}
+
 if (-not (Test-Admin)) {
   Write-InstallLog "[P1LOT] Elevating installer to admin..."
   $args = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-STA", "-File", "`"$PSCommandPath`"")
@@ -300,25 +519,29 @@ Start-Transcript -Path $logFile -Append | Out-Null
 try {
   Write-InstallLog "[P1LOT] Running elevated installer."
   Add-Type -AssemblyName System.Windows.Forms | Out-Null
+  Add-Type -AssemblyName System.Drawing | Out-Null
 
-  if ([string]::IsNullOrWhiteSpace($InstallDir)) {
-    Write-InstallLog "[P1LOT] Waiting for install directory selection..."
-    try {
-      $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-      $dialog.Description = "Choose install directory for Project P1L0T Server"
-      $dialog.SelectedPath = "$env:ProgramFiles\ProjectP1L0T_Server"
-      if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
-        throw "Install cancelled."
-      }
-      $InstallDir = $dialog.SelectedPath
-    } catch {
-      $InstallDir = "$env:ProgramFiles\ProjectP1L0T_Server"
-      Write-InstallLog "[P1LOT] Folder picker unavailable. Falling back to $InstallDir"
-    }
+  $serviceName = "ProjectP1L0TServer"
+  $defaultInstallDir = if ([string]::IsNullOrWhiteSpace($InstallDir)) { "$env:ProgramFiles\ProjectP1L0T_Server" } else { $InstallDir }
+  $wizard = Show-InstallWizard -DefaultDir $defaultInstallDir
+  if (-not $wizard) {
+    throw "Install cancelled."
   }
+
+  $InstallDir = $wizard.InstallDir
+  $enableMaxHardware = [bool]$wizard.EnableMaxHardware
+  $createDesktopShortcut = [bool]$wizard.CreateDesktopShortcut
+  $launchAfterInstall = [bool]$wizard.LaunchAfterInstall
+
+  Start-InstallProgress
+  Set-InstallProgress 5 "Preparing installation..."
+
+  Remove-ExistingService -ServiceName $serviceName -InstallRoot $InstallDir
+  Stop-NodeProcessesForInstall -InstallRoot $InstallDir
 
   New-Item -Path $InstallDir -ItemType Directory -Force | Out-Null
 
+  Set-InstallProgress 15 "Downloading host branch files..."
   $sourceRoot = $null
   try {
     $sourceRoot = Download-RepoBranch -RepoName $Repo -BranchName $Branch -TempRoot $tempRoot
@@ -331,6 +554,7 @@ try {
     }
   }
 
+  Set-InstallProgress 25 "Preparing server files..."
   $serverSrc = Join-Path $sourceRoot "apps\server-api"
   $websiteSrc = Join-Path $sourceRoot "apps\website"
   if (-not (Test-Path $serverSrc)) {
@@ -360,15 +584,18 @@ try {
   }
   New-Item -Path (Join-Path $runtimeData "user_files") -ItemType Directory -Force | Out-Null
 
+  Set-InstallProgress 35 "Writing server management scripts..."
   Write-ServerManagerScripts -InstallRoot $InstallDir
   $runnerBat = Write-ServiceRunnerScript -InstallRoot $InstallDir
 
+  Set-InstallProgress 45 "Installing runtime dependencies..."
   $runtime = Ensure-NodeRuntime -InstallRoot $InstallDir -TempRoot $tempRoot
   $nodeExe = $runtime.NodeExe
   $npmCmd = $runtime.NpmCmd
   $nssmExe = Ensure-Nssm -InstallRoot $InstallDir -TempRoot $tempRoot
 
   Write-InstallLog "[P1LOT] Installing server npm dependencies..."
+  Set-InstallProgress 60 "Installing npm dependencies..."
   Push-Location $serverDest
   try {
     & $npmCmd install --omit=dev --no-audit --no-fund | Out-Null
@@ -376,7 +603,7 @@ try {
     Pop-Location
   }
 
-  $enableMaxHardware = Ask-YesNo "Enable MAX hardware profile?`n`nYES = use all available hardware settings for this server profile.`nNO = recommended profile."
+  Set-InstallProgress 70 "Applying server configuration..."
   $configPath = Join-Path $runtimeData "server.config.json"
   $existingConfig = @{}
   if (Test-Path $configPath) {
@@ -397,7 +624,7 @@ try {
   $existingConfig["autosaveSeconds"] = if ($enableMaxHardware) { 15 } else { 30 }
   $existingConfig | ConvertTo-Json -Depth 8 | Set-Content -Path $configPath -Encoding UTF8
 
-  $serviceName = "ProjectP1L0TServer"
+  Set-InstallProgress 78 "Configuring Windows service..."
   $serverJs = Join-Path $serverDest "server.js"
   $serverControlBat = Join-Path $InstallDir "server_manager\server_control.bat"
   $openAdminBat = Join-Path $InstallDir "server_manager\open_admin_ui.bat"
@@ -407,14 +634,8 @@ try {
   if (-not (Test-Path $serverControlBat)) { throw "server manager batch missing at $serverControlBat" }
   if (-not (Test-Path $openAdminBat)) { throw "admin launcher batch missing at $openAdminBat" }
 
-  $existing = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
-  if ($existing) {
-    try { Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue } catch {}
-    try { & $nssmExe remove $serviceName confirm | Out-Null } catch { sc.exe delete $serviceName | Out-Null }
-    Start-Sleep -Seconds 2
-  }
-
   Write-InstallLog "[P1LOT] Running preflight startup test..."
+  Set-InstallProgress 84 "Running preflight health check..."
   $preflightProc = Start-Process -FilePath $nodeExe -ArgumentList "`"$serverJs`"" -WorkingDirectory $serverDest -WindowStyle Hidden -PassThru
   if (-not (Wait-Health -MaxChecks 25 -DelayMs 300)) {
     try { Stop-Process -Id $preflightProc.Id -Force -ErrorAction SilentlyContinue } catch {}
@@ -422,6 +643,8 @@ try {
   }
   try { Stop-Process -Id $preflightProc.Id -Force -ErrorAction SilentlyContinue } catch {}
   Start-Sleep -Milliseconds 800
+
+  Remove-ExistingService -ServiceName $serviceName -InstallRoot $InstallDir
 
   & $nssmExe install $serviceName $nodeExe $serverJs | Out-Null
   & $nssmExe set $serviceName AppDirectory $serverDest | Out-Null
@@ -433,6 +656,7 @@ try {
   & $nssmExe set $serviceName AppRotateFiles 1 | Out-Null
   & $nssmExe set $serviceName AppRotateOnline 1 | Out-Null
   try {
+    Set-InstallProgress 90 "Starting service..."
     Start-Service -Name $serviceName
     Write-InstallLog "[P1LOT] Service installed and started."
   } catch {
@@ -443,6 +667,7 @@ try {
     throw
   }
 
+  Set-InstallProgress 94 "Applying firewall and startup rules..."
   if (-not (Get-NetFirewallRule -DisplayName "ProjectP1L0T Server API" -ErrorAction SilentlyContinue)) {
     New-NetFirewallRule -DisplayName "ProjectP1L0T Server API" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 4280 | Out-Null
   }
@@ -454,14 +679,16 @@ try {
 
   $adminUrl = "http://127.0.0.1:4280/admin/"
   $desktopName = "Project P1L0T Server Manager.lnk"
-  $desktopTargets = @(
-    [Environment]::GetFolderPath("Desktop"),
-    "$env:PUBLIC\Desktop"
-  ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique
+  if ($createDesktopShortcut) {
+    $desktopTargets = @(
+      [Environment]::GetFolderPath("Desktop"),
+      "$env:PUBLIC\Desktop"
+    ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique
 
-  foreach ($desktop in $desktopTargets) {
-    $shortcutPath = Join-Path $desktop $desktopName
-    New-FileShortcut -ShortcutPath $shortcutPath -TargetPath "cmd.exe" -Arguments "/c `"$openAdminBat`"" -WorkingDirectory (Split-Path -Parent $openAdminBat)
+    foreach ($desktop in $desktopTargets) {
+      $shortcutPath = Join-Path $desktop $desktopName
+      New-FileShortcut -ShortcutPath $shortcutPath -TargetPath "cmd.exe" -Arguments "/c `"$openAdminBat`"" -WorkingDirectory (Split-Path -Parent $openAdminBat)
+    }
   }
 
   $startMenuDir = Join-Path $env:ProgramData "Microsoft\Windows\Start Menu\Programs\Project P1L0T"
@@ -478,25 +705,31 @@ try {
     New-FileShortcut -ShortcutPath $startupShortcut -TargetPath "cmd.exe" -Arguments "/c `"$openAdminBat`"" -WorkingDirectory (Split-Path -Parent $openAdminBat)
   }
 
+  Set-InstallProgress 98 "Final health verification..."
   if (-not (Wait-Health -MaxChecks 20 -DelayMs 400)) {
     throw "Service installed but health check failed on port 4280."
   }
 
-  Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$openAdminBat`"" -WorkingDirectory (Split-Path -Parent $openAdminBat) | Out-Null
-  Write-InstallLog "[P1LOT] Admin UI launcher executed."
-  Show-Info "Project P1L0T Server installed successfully.`n`nSource branch: $Branch`nService: $serviceName`nAdmin UI: $adminUrl`nServer manager scripts: $($InstallDir)\server_manager`nDesktop and startup shortcuts created.`n`nInstaller log:`n$logFile"
+  if ($launchAfterInstall) {
+    Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$openAdminBat`"" -WorkingDirectory (Split-Path -Parent $openAdminBat) | Out-Null
+    Write-InstallLog "[P1LOT] Admin UI launcher executed."
+  } else {
+    Write-InstallLog "[P1LOT] Launch-after-install disabled by user."
+  }
+  Set-InstallProgress 100 "Install complete."
+  Stop-InstallProgress
+  Show-Info "Project P1L0T Server installed successfully.`n`nSource branch: $Branch`nService: $serviceName`nAdmin UI: $adminUrl`nServer manager scripts: $($InstallDir)\server_manager`nDesktop shortcut: $(if ($createDesktopShortcut) {'Yes'} else {'No'})`nLaunch after install: $(if ($launchAfterInstall) {'Yes'} else {'No'})`n`nInstaller log:`n$logFile"
 }
 catch {
+  Stop-InstallProgress
   Write-InstallLog "[P1LOT] Install failed: $($_.Exception.Message)"
   Show-Error "Server setup failed.`n`n$($_.Exception.Message)`n`nInstaller log:`n$logFile"
   exit 1
 }
 finally {
+  Stop-InstallProgress
   try {
     if (Test-Path $tempRoot) { Remove-Item -Path $tempRoot -Recurse -Force }
   } catch {}
   try { Stop-Transcript | Out-Null } catch {}
 }
-
-
-
