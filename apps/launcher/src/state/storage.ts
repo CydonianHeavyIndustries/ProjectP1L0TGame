@@ -27,25 +27,59 @@ export const writeInstalled = (record: InstalledRecord | null): void => {
 };
 
 export const defaultSettings: LauncherSettings = {
-  installDir: 'C:/ProjectP1L0T',
+  installDir: 'C:/dev/ProjectP1L0T_godot',
   bandwidthLimitMbps: 0,
   autoUpdate: true,
   runOnStartup: false,
   launchArgs: '',
   safeMode: false,
   gameExeRelative: 'ProjectP1L0T.exe',
-  useLocalBuild: false,
+  useLocalBuild: true,
   localBuildRelative: 'Builds/Godot/ProjectP1L0T.exe',
   serverAddress: '127.0.0.1',
   serverPort: 7777,
   serverArgs: ''
 };
 
+const normalizeSettings = (settings: LauncherSettings): LauncherSettings => {
+  const normalized = { ...settings };
+  const normalizedLocalPath = (normalized.localBuildRelative || '').replace(/\\/g, '/');
+  const normalizedLocalPathLower = normalizedLocalPath.toLowerCase();
+
+  const isLegacyAbsolutePath =
+    normalizedLocalPathLower.includes('/builds/godot/projectp1l0t.exe') ||
+    normalizedLocalPathLower.includes('/projectp1l0t_godot/projectp1l0t.exe') ||
+    normalizedLocalPathLower.includes('/onedrive/');
+
+  const isLegacyRelativePath = normalizedLocalPath === 'ProjectP1L0T.exe';
+
+  const isEmbeddedPath =
+    normalizedLocalPathLower === 'game/projectp1l0t.exe' ||
+    normalizedLocalPathLower.includes('node_modules/electron/dist/resources') ||
+    normalizedLocalPathLower.includes('/resources/game/projectp1l0t.exe');
+
+  const usingLegacyDefaults =
+    normalized.installDir === 'C:/ProjectP1L0T' &&
+    normalized.localBuildRelative === 'Builds/Godot/ProjectP1L0T.exe';
+
+  if (usingLegacyDefaults) {
+    normalized.installDir = defaultSettings.installDir;
+    normalized.useLocalBuild = defaultSettings.useLocalBuild;
+    normalized.localBuildRelative = defaultSettings.localBuildRelative;
+  } else if (!normalizedLocalPath || isLegacyRelativePath || isLegacyAbsolutePath || isEmbeddedPath) {
+    normalized.useLocalBuild = true;
+    normalized.localBuildRelative = defaultSettings.localBuildRelative;
+  }
+
+  return normalized;
+};
+
 export const readSettings = (): LauncherSettings => {
   if (typeof window === 'undefined') return defaultSettings;
   try {
     const raw = window.localStorage.getItem(SETTINGS_KEY);
-    return raw ? { ...defaultSettings, ...(JSON.parse(raw) as LauncherSettings) } : defaultSettings;
+    const merged = raw ? { ...defaultSettings, ...(JSON.parse(raw) as LauncherSettings) } : defaultSettings;
+    return normalizeSettings(merged);
   } catch {
     return defaultSettings;
   }

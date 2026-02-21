@@ -206,6 +206,24 @@ const ensureDir = async (dir) => {
   await fsp.mkdir(dir, { recursive: true });
 };
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const renameWithRetry = async (fromPath, toPath, attempts = 8, delayMs = 250) => {
+  for (let attempt = 0; attempt <= attempts; attempt += 1) {
+    try {
+      await fsp.rename(fromPath, toPath);
+      return;
+    } catch (error) {
+      const code = error?.code;
+      const retriable = code === 'EPERM' || code === 'EACCES' || code === 'EBUSY';
+      if (!retriable || attempt === attempts) {
+        throw error;
+      }
+      await sleep(delayMs);
+    }
+  }
+};
+
 const sendProgress = (sender, payload) => {
   try {
     sender.send('launcher:updateProgress', payload);
@@ -256,10 +274,35 @@ const extractPayload = async (archivePath, stagingDir, sender) => {
 const swapInstall = async (installDir, payloadDir, sender) => {
   sendProgress(sender, { state: 'Updating', step: 'Cleaning', progress: 96, message: 'Swapping build' });
   const backupDir = `${installDir}_old_${Date.now()}`;
+  const hadInstall = fs.existsSync(installDir);
+
   if (fs.existsSync(installDir)) {
-    await fsp.rename(installDir, backupDir);
+    await renameWithRetry(installDir, backupDir);
   }
-  await fsp.rename(payloadDir, installDir);
+
+  try {
+    await renameWithRetry(payloadDir, installDir);
+  } catch (swapError) {
+    writeLog(
+      'WARN',
+      'Rename swap failed, falling back to copy',
+      swapError instanceof Error ? swapError.message : String(swapError)
+    );
+    try {
+      await fsp.cp(payloadDir, installDir, { recursive: true, force: true });
+      await fsp.rm(payloadDir, { recursive: true, force: true });
+    } catch (copyError) {
+      if (hadInstall && fs.existsSync(backupDir) && !fs.existsSync(installDir)) {
+        try {
+          await renameWithRetry(backupDir, installDir);
+        } catch {
+          // keep original error path
+        }
+      }
+      throw copyError;
+    }
+  }
+
   if (fs.existsSync(backupDir)) {
     await fsp.rm(backupDir, { recursive: true, force: true });
   }
@@ -345,12 +388,39 @@ const resolveLaunchTarget = (payload) => {
   if (!relative || relative.trim().length === 0) {
     throw new Error('Game executable path is not configured');
   }
+  if (path.isAbsolute(relative)) {
+    return relative;
+  }
+  const normalizedRelative = relative.replace(/^[\\/]+/, '');
   if (payload.useLocalBuild) {
     const repoRoot = resolveRepoRoot();
-    return resolveExecutableInDir(repoRoot, relative);
+    const cwd = process.cwd();
+    const exeDir = path.dirname(process.execPath);
+    const candidates = [
+      resolveExecutableInDir(repoRoot, normalizedRelative),
+      path.join(repoRoot, 'Builds', 'Godot', 'ProjectP1L0T.exe'),
+      resolveExecutableInDir(cwd, normalizedRelative),
+      path.join(cwd, 'Builds', 'Godot', 'ProjectP1L0T.exe'),
+      resolveExecutableInDir(process.resourcesPath, normalizedRelative),
+      path.join(process.resourcesPath, 'game', 'ProjectP1L0T.exe'),
+      resolveExecutableInDir(exeDir, normalizedRelative),
+      path.join(exeDir, 'resources', 'game', 'ProjectP1L0T.exe')
+    ];
+
+    const seen = new Set();
+    for (const candidate of candidates) {
+      const normalized = path.normalize(candidate);
+      if (seen.has(normalized)) continue;
+      seen.add(normalized);
+      if (fs.existsSync(normalized)) {
+        return normalized;
+      }
+    }
+
+    throw new Error(`Game executable not found. Checked: ${Array.from(seen).join(' | ')}`);
   }
   const rootDir = payload.installDir && payload.installDir.trim().length > 0 ? payload.installDir : app.getPath('userData');
-  return resolveExecutable(rootDir, relative);
+  return resolveExecutable(rootDir, normalizedRelative);
 };
 
 const waitForServerStop = (processRef) =>
@@ -543,7 +613,13 @@ const readGameVersion = () => {
     const value = fs.readFileSync(versionPath, 'utf-8').trim();
     return value.length > 0 ? value : null;
   } catch {
-    return null;
+    try {
+      const versionPath = path.join(process.resourcesPath, 'game', 'VERSION');
+      const value = fs.readFileSync(versionPath, 'utf-8').trim();
+      return value.length > 0 ? value : null;
+    } catch {
+      return null;
+    }
   }
 };
 

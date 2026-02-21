@@ -1,6 +1,6 @@
 {
   "name": "projectp1l0t-launcher",
-  "version": "0.1.99",
+  "version": "0.1.100",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "lint": "eslint . --ext .ts,.tsx",
     "postinstall": "patch-package",
-    "dist:win": "npm run build && electron-builder --win nsis --x64"
+    "dist:win": "npm run build && electron-builder --win nsis --x64",
+    "dist:setup": "npm run build && electron-builder --win nsis --x64"
   },
   "dependencies": {
     "extract-zip": "^2.0.1",
@@ -46,6 +47,20 @@
       "electron/**/*",
       "package.json",
       "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../../Builds/Godot/ProjectP1L0T.exe",
+        "to": "game/ProjectP1L0T.exe"
+      },
+      {
+        "from": "../../Builds/Godot/ProjectP1L0T.pck",
+        "to": "game/ProjectP1L0T.pck"
+      },
+      {
+        "from": "../game-godot/VERSION",
+        "to": "game/VERSION"
+      }
     ],
     "nsis": {
       "oneClick": false,
