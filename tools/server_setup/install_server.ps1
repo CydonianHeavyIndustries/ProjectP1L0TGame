@@ -370,9 +370,17 @@ function Write-ServerManagerScripts([string]$InstallRoot, [string]$AdminToken) {
 @echo off
 setlocal
 set "BASE_URL=http://127.0.0.1:4280"
-set "ADMIN_TOKEN=$AdminToken"
+set "TOKEN_FILE=%~dp0admin_token.txt"
+set "TOKEN="
 if not "%~1"=="" set "BASE_URL=%~1"
-start "" "%BASE_URL%/admin/?token=%ADMIN_TOKEN%"
+if exist "%TOKEN_FILE%" (
+  set /p TOKEN=<"%TOKEN_FILE%"
+)
+if not "%TOKEN%"=="" (
+  start "" "%BASE_URL%/admin/?token=%TOKEN%"
+) else (
+  start "" "%BASE_URL%/admin/"
+)
 exit /b 0
 "@
   Set-Content -Path (Join-Path $managerDir "open_admin_ui.bat") -Value $openAdmin -Encoding ASCII
@@ -418,7 +426,7 @@ if "!choice!"=="4" (
   goto menu
 )
 if "!choice!"=="5" (
-  start "" "http://127.0.0.1:4280/admin/"
+  call "%~dp0open_admin_ui.bat"
   goto menu
 )
 if "!choice!"=="0" exit /b 0
@@ -629,15 +637,19 @@ try {
   $existingConfig["maxPlayers"] = if ($enableMaxHardware) { 128 } else { 64 }
   $existingConfig["tickRate"] = if ($enableMaxHardware) { 120 } else { 60 }
   $existingConfig["autosaveSeconds"] = if ($enableMaxHardware) { 15 } else { 30 }
-  $adminToken = if ($existingConfig.ContainsKey("adminToken") -and -not [string]::IsNullOrWhiteSpace($existingConfig["adminToken"])) { [string]$existingConfig["adminToken"] } else { New-AdminToken }
-  if ($adminToken -eq "change-me-now") {
-    $adminToken = New-AdminToken
+  $currentToken = ""
+  if ($existingConfig.ContainsKey("adminToken")) {
+    $currentToken = [string]$existingConfig["adminToken"]
   }
-  $existingConfig["adminToken"] = $adminToken
+  if ([string]::IsNullOrWhiteSpace($currentToken) -or $currentToken -eq "change-me-now") { $currentToken = New-AdminToken }
+  $existingConfig["adminToken"] = $currentToken
   $existingConfig | ConvertTo-Json -Depth 8 | Set-Content -Path $configPath -Encoding UTF8
+  $tokenFilePath = Join-Path $InstallDir "server_manager\admin_token.txt"
+  Set-Content -Path $tokenFilePath -Value $currentToken -Encoding ASCII
+  Write-InstallLog "[P1LOT] Admin token written to $tokenFilePath"
 
   Set-InstallProgress 74 "Writing server management scripts..."
-  Write-ServerManagerScripts -InstallRoot $InstallDir -AdminToken $adminToken
+  Write-ServerManagerScripts -InstallRoot $InstallDir -AdminToken $currentToken
   $runnerBat = Write-ServiceRunnerScript -InstallRoot $InstallDir
 
   Set-InstallProgress 78 "Configuring Windows service..."
@@ -734,7 +746,7 @@ try {
   }
   Set-InstallProgress 100 "Install complete."
   Stop-InstallProgress
-  Show-Info "Project P1L0T Server installed successfully.`n`nSource branch: $Branch`nService: $serviceName`nAdmin UI: $adminUrl`nAdmin token: $adminToken`nToken file: $($InstallDir)\server_manager\admin_token.txt`nServer manager scripts: $($InstallDir)\server_manager`nDesktop shortcut: $(if ($createDesktopShortcut) {'Yes'} else {'No'})`nLaunch after install: $(if ($launchAfterInstall) {'Yes'} else {'No'})`n`nInstaller log:`n$logFile"
+  Show-Info "Project P1L0T Server installed successfully.`n`nSource branch: $Branch`nService: $serviceName`nAdmin UI: $adminUrl`nAdmin token: $currentToken`nToken file: $tokenFilePath`nServer manager scripts: $($InstallDir)\server_manager`nDesktop shortcut: $(if ($createDesktopShortcut) {'Yes'} else {'No'})`nLaunch after install: $(if ($launchAfterInstall) {'Yes'} else {'No'})`n`nInstaller log:`n$logFile"
 }
 catch {
   Stop-InstallProgress

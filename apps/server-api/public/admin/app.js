@@ -9,6 +9,8 @@ const HOST_BRANCH_URL = 'https://github.com/CydonianHeavyIndustries/ProjectP1L0T
 
 const field = (id) => document.getElementById(id);
 const tokenKey = 'p1lot_admin_token';
+const query = new URLSearchParams(window.location.search);
+const tokenFromQuery = (query.get('token') || '').trim();
 let usersCache = [];
 let selectedUserId = '';
 
@@ -16,7 +18,7 @@ const setStatus = (text) => {
   statusEl.textContent = text;
 };
 
-const getToken = () => tokenInput.value.trim();
+const getToken = () => tokenInput.value.trim() || tokenFromQuery;
 
 const request = async (url, options = {}) => {
   const headers = { ...(options.headers || {}), 'x-admin-token': getToken() };
@@ -35,10 +37,9 @@ const saveToken = () => {
 
 const loadToken = () => {
   const saved = localStorage.getItem(tokenKey);
-  if (saved) tokenInput.value = saved;
-
-  const params = new URLSearchParams(window.location.search);
-  const tokenFromQuery = params.get('token');
+  if (saved) {
+    tokenInput.value = saved;
+  }
   if (tokenFromQuery) {
     tokenInput.value = tokenFromQuery;
     localStorage.setItem(tokenKey, tokenFromQuery);

@@ -110,9 +110,17 @@ const log = (level, message, meta = '') => {
 const app = express();
 app.use(express.json({ limit: '10mb' }));
 
-const authAdmin = (req, res, next) => {
+const extractAdminToken = (req) => {
   const headerToken = req.header('x-admin-token') || req.header('authorization')?.replace(/^Bearer\s+/i, '');
-  if (!headerToken || headerToken !== config.adminToken) {
+  if (headerToken) return String(headerToken).trim();
+  const queryToken = req.query?.token;
+  if (queryToken) return String(queryToken).trim();
+  return '';
+};
+
+const authAdmin = (req, res, next) => {
+  const token = extractAdminToken(req);
+  if (!token || token !== config.adminToken) {
     res.status(401).json({ error: 'unauthorized' });
     return;
   }
