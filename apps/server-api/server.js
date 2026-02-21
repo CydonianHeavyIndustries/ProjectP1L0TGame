@@ -4,13 +4,16 @@ const path = require('path');
 const crypto = require('crypto');
 const multer = require('multer');
 const os = require('os');
+const { spawn } = require('child_process');
 
 const ROOT = __dirname;
+const INSTALL_ROOT = path.resolve(ROOT, '..', '..');
 const DATA_DIR = process.env.P1LOT_DATA_DIR || path.join(ROOT, 'data');
 const USER_FILES_ROOT = path.join(DATA_DIR, 'user_files');
 const CONFIG_PATH = path.join(DATA_DIR, 'server.config.json');
 const USERS_PATH = path.join(DATA_DIR, 'users.json');
 const LOG_PATH = path.join(DATA_DIR, 'server.log');
+const UPDATE_STATUS_PATH = path.join(DATA_DIR, 'update_status.json');
 const ADMIN_STATIC = path.join(ROOT, 'public', 'admin');
 const SITE_STATIC = path.join(ROOT, 'public', 'site');
 const WEBSITE_SOURCE_CANDIDATES = [
@@ -29,6 +32,7 @@ const resolveFirstExistingDir = (candidates, fallback) => {
 };
 
 const WEBSITE_SOURCE = resolveFirstExistingDir(WEBSITE_SOURCE_CANDIDATES, SITE_STATIC);
+const UPDATE_SCRIPT_PATH = path.join(INSTALL_ROOT, 'server_manager', 'update_from_host.ps1');
 
 const ensureDir = (dirPath) => fs.mkdirSync(dirPath, { recursive: true });
 ensureDir(DATA_DIR);
@@ -76,6 +80,17 @@ const writeJson = (filePath, value) => {
   const temp = `${filePath}.tmp`;
   fs.writeFileSync(temp, JSON.stringify(value, null, 2), 'utf-8');
   fs.renameSync(temp, filePath);
+};
+
+const defaultUpdateStatus = {
+  state: 'idle',
+  message: 'No update has run yet.',
+  timestamp: nowIso()
+};
+
+const readUpdateStatus = () => readJson(UPDATE_STATUS_PATH, defaultUpdateStatus);
+const writeUpdateStatus = (state, message) => {
+  writeJson(UPDATE_STATUS_PATH, { state, message, timestamp: nowIso() });
 };
 
 let config = { ...defaultConfig, ...readJson(CONFIG_PATH, {}) };
@@ -314,6 +329,52 @@ app.get('/api/admin/bootstrap', authAdmin, (_req, res) => {
     ok: true,
     serverName: config.serverName
   });
+});
+
+app.get('/api/admin/update/status', authAdmin, (_req, res) => {
+  res.json({ status: readUpdateStatus() });
+});
+
+app.post('/api/admin/update', authAdmin, (_req, res) => {
+  const status = readUpdateStatus();
+  if (status.state === 'running') {
+    res.json({ ok: true, started: false, status });
+    return;
+  }
+
+  if (!fs.existsSync(UPDATE_SCRIPT_PATH)) {
+    res.status(500).json({ error: 'update_script_missing', path: UPDATE_SCRIPT_PATH });
+    return;
+  }
+
+  try {
+    writeUpdateStatus('running', 'Starting host branch update...');
+    const args = [
+      '-NoProfile',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-File',
+      UPDATE_SCRIPT_PATH,
+      '-InstallRoot',
+      INSTALL_ROOT,
+      '-Repo',
+      'CydonianHeavyIndustries/ProjectP1L0TGame',
+      '-Branch',
+      'host',
+      '-ServiceName',
+      'ProjectP1L0TServer'
+    ];
+    const child = spawn('powershell.exe', args, {
+      detached: true,
+      stdio: 'ignore'
+    });
+    child.unref();
+    log('INFO', 'Host update requested from admin UI');
+    res.json({ ok: true, started: true, status: readUpdateStatus() });
+  } catch (error) {
+    writeUpdateStatus('failed', `Failed to launch update process: ${error.message}`);
+    res.status(500).json({ error: 'update_launch_failed', detail: error.message });
+  }
 });
 
 // Host CHII website and admin dashboard.

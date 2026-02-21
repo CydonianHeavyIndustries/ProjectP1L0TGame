@@ -5,7 +5,6 @@ const userSelect = document.getElementById('file-user-select');
 const fileList = document.getElementById('file-list');
 const logsEl = document.getElementById('logs');
 const hostUpdatesButton = document.getElementById('open-host-updates');
-const HOST_BRANCH_URL = 'https://github.com/CydonianHeavyIndustries/ProjectP1L0TGame/tree/host';
 
 const field = (id) => document.getElementById(id);
 const tokenKey = 'p1lot_admin_token';
@@ -234,6 +233,37 @@ const uploadFiles = async () => {
   setStatus(`Uploaded ${files.length} file(s) for ${userId}.`);
 };
 
+const runHostUpdate = async () => {
+  if (!hostUpdatesButton) return;
+  hostUpdatesButton.disabled = true;
+  try {
+    setStatus('Starting host update...');
+    await request('/api/admin/update', { method: 'POST' });
+    const startedAt = Date.now();
+    const poll = async () => {
+      try {
+        const data = await request('/api/admin/update/status');
+        const status = data.status || {};
+        const state = String(status.state || 'unknown');
+        const message = String(status.message || '');
+        setStatus(`Update ${state}: ${message}`);
+        if (state === 'running' && Date.now() - startedAt < 5 * 60 * 1000) {
+          setTimeout(poll, 2500);
+          return;
+        }
+      } catch (err) {
+        setStatus(`Update status error: ${err.message}`);
+      } finally {
+        hostUpdatesButton.disabled = false;
+      }
+    };
+    setTimeout(poll, 1200);
+  } catch (err) {
+    setStatus(`Update failed to start: ${err.message}`);
+    hostUpdatesButton.disabled = false;
+  }
+};
+
 const loadLogs = async () => {
   const data = await request('/api/admin/logs');
   logsEl.textContent = (data.lines || []).join('\n');
@@ -254,10 +284,7 @@ document.getElementById('save-user-detail').addEventListener('click', () => save
 document.getElementById('upload-files').addEventListener('click', () => uploadFiles().catch((err) => setStatus(err.message)));
 
 if (hostUpdatesButton) {
-  hostUpdatesButton.addEventListener('click', () => {
-    window.open(HOST_BRANCH_URL, '_blank', 'noopener,noreferrer');
-    setStatus('Opened GitHub host branch for server updates.');
-  });
+  hostUpdatesButton.addEventListener('click', () => runHostUpdate());
 }
 
 userSelect.addEventListener('change', () => {

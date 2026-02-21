@@ -359,7 +359,7 @@ function Ensure-Nssm([string]$InstallRoot, [string]$TempRoot) {
   return $nssmExe
 }
 
-function Write-ServerManagerScripts([string]$InstallRoot, [string]$AdminToken) {
+function Write-ServerManagerScripts([string]$InstallRoot, [string]$AdminToken, [string]$RepoName, [string]$BranchName) {
   $managerDir = Join-Path $InstallRoot "server_manager"
   New-Item -Path $managerDir -ItemType Directory -Force | Out-Null
 
@@ -429,10 +429,116 @@ if "!choice!"=="5" (
   call "%~dp0open_admin_ui.bat"
   goto menu
 )
+if "!choice!"=="6" (
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0update_from_host.ps1"
+  pause
+  goto menu
+)
 if "!choice!"=="0" exit /b 0
 goto menu
 '@
+  $control = $control -replace "echo \[0\] Exit", "echo [6] Update From Host Branch`r`necho [0] Exit"
   Set-Content -Path (Join-Path $managerDir "server_control.bat") -Value $control -Encoding ASCII
+
+  $updateScript = @'
+param(
+  [string]$InstallRoot = "",
+  [string]$Repo = "__REPO__",
+  [string]$Branch = "__BRANCH__",
+  [string]$ServiceName = "ProjectP1L0TServer"
+)
+
+$ErrorActionPreference = "Stop"
+if ([string]::IsNullOrWhiteSpace($InstallRoot)) {
+  $InstallRoot = Split-Path -Parent $PSScriptRoot
+}
+
+$serverDir = Join-Path $InstallRoot "apps\server-api"
+$websiteDir = Join-Path $InstallRoot "apps\website"
+$dataDir = Join-Path $serverDir "data"
+$statusPath = Join-Path $dataDir "update_status.json"
+$logPath = Join-Path $dataDir "update_run.log"
+New-Item -Path $dataDir -ItemType Directory -Force | Out-Null
+
+function Set-UpdateStatus([string]$state, [string]$message) {
+  $payload = [ordered]@{
+    state = $state
+    message = $message
+    timestamp = (Get-Date).ToString("o")
+  }
+  $payload | ConvertTo-Json -Depth 5 | Set-Content -Path $statusPath -Encoding UTF8
+  Add-Content -Path $logPath -Value ("[{0}] [{1}] {2}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $state.ToUpperInvariant(), $message)
+}
+
+$tempRoot = Join-Path $env:TEMP ("ProjectP1L0T_HostUpdate_" + [guid]::NewGuid().ToString("N"))
+New-Item -Path $tempRoot -ItemType Directory -Force | Out-Null
+
+try {
+  Set-UpdateStatus "running" "Downloading host branch..."
+  $zipPath = Join-Path $tempRoot "host.zip"
+  $extractDir = Join-Path $tempRoot "extract"
+  $url = "https://codeload.github.com/$Repo/zip/refs/heads/$Branch"
+  Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing -TimeoutSec 120
+  Expand-Archive -LiteralPath $zipPath -DestinationPath $extractDir -Force
+  $rootDir = Get-ChildItem -Path $extractDir -Directory | Select-Object -First 1
+  if (-not $rootDir) { throw "Downloaded archive is empty." }
+
+  $srcServer = Join-Path $rootDir.FullName "apps\server-api"
+  $srcWebsite = Join-Path $rootDir.FullName "apps\website"
+  if (-not (Test-Path $srcServer)) { throw "apps/server-api missing in host branch payload." }
+
+  Set-UpdateStatus "running" "Stopping service..."
+  Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+  Start-Sleep -Seconds 2
+
+  $nodeProcs = Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object {
+    try { $_.Path -and $_.Path.StartsWith($InstallRoot, [System.StringComparison]::OrdinalIgnoreCase) } catch { $false }
+  }
+  foreach ($proc in $nodeProcs) {
+    try { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue } catch {}
+  }
+
+  Set-UpdateStatus "running" "Applying server files..."
+  if (Test-Path $serverDir) {
+    Get-ChildItem -Path $serverDir -Force | Where-Object { $_.Name -ne "data" } | Remove-Item -Recurse -Force
+  } else {
+    New-Item -Path $serverDir -ItemType Directory -Force | Out-Null
+  }
+  Copy-Item -Path (Join-Path $srcServer "*") -Destination $serverDir -Recurse -Force
+
+  if (Test-Path $srcWebsite) {
+    Set-UpdateStatus "running" "Applying website files..."
+    if (Test-Path $websiteDir) { Remove-Item -Path $websiteDir -Recurse -Force }
+    New-Item -Path $websiteDir -ItemType Directory -Force | Out-Null
+    Copy-Item -Path (Join-Path $srcWebsite "*") -Destination $websiteDir -Recurse -Force
+  }
+
+  Set-UpdateStatus "running" "Installing dependencies..."
+  $npmCmd = Join-Path $InstallRoot "node_runtime\npm.cmd"
+  if (Test-Path $npmCmd) {
+    Push-Location $serverDir
+    try {
+      & $npmCmd install --omit=dev --no-audit --no-fund | Out-Null
+    } finally {
+      Pop-Location
+    }
+  }
+
+  Set-UpdateStatus "running" "Starting service..."
+  Start-Service -Name $ServiceName
+
+  Set-UpdateStatus "success" "Host update complete."
+} catch {
+  Set-UpdateStatus "failed" $_.Exception.Message
+  throw
+} finally {
+  try {
+    if (Test-Path $tempRoot) { Remove-Item -Path $tempRoot -Recurse -Force }
+  } catch {}
+}
+'@
+  $updateScript = $updateScript.Replace("__REPO__", $RepoName).Replace("__BRANCH__", $BranchName)
+  Set-Content -Path (Join-Path $managerDir "update_from_host.ps1") -Value $updateScript -Encoding UTF8
 }
 
 function Write-ServiceRunnerScript([string]$InstallRoot) {
@@ -649,7 +755,7 @@ try {
   Write-InstallLog "[P1LOT] Admin token written to $tokenFilePath"
 
   Set-InstallProgress 74 "Writing server management scripts..."
-  Write-ServerManagerScripts -InstallRoot $InstallDir -AdminToken $currentToken
+  Write-ServerManagerScripts -InstallRoot $InstallDir -AdminToken $currentToken -RepoName $Repo -BranchName $Branch
   $runnerBat = Write-ServiceRunnerScript -InstallRoot $InstallDir
 
   Set-InstallProgress 78 "Configuring Windows service..."
