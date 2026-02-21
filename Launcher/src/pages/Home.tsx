@@ -9,6 +9,7 @@ import KeyValue from '../components/KeyValue';
 import { formatBytes, formatDate } from '../utils/format';
 
 const DISCORD_INVITE = 'https://discord.gg/SJGXsUXWGS';
+const HOST_BRANCH_URL = 'https://github.com/CydonianHeavyIndustries/ProjectP1L0TGame/tree/host';
 
 const primaryActionLabel = (state: string) => {
   if (state === 'NotInstalled') return 'Install';
@@ -41,6 +42,9 @@ const Home = ({ state }: { state: LauncherState }) => {
   const notes = parseReleaseNotes(release?.body);
   const openDiscord = () => {
     window.open(DISCORD_INVITE, '_blank', 'noopener,noreferrer');
+  };
+  const openHostBranch = () => {
+    window.open(HOST_BRANCH_URL, '_blank', 'noopener,noreferrer');
   };
 
   const handlePrimary = () => {
@@ -168,6 +172,9 @@ const Home = ({ state }: { state: LauncherState }) => {
               </Button>
               <Button variant="ghost" onClick={() => actions.stopServer()} disabled={isServerBusy || !isServerRunning}>
                 Stop Server
+              </Button>
+              <Button variant="ghost" onClick={openHostBranch}>
+                Host Branch Updates
               </Button>
             </div>
           </div>

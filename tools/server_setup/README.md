@@ -21,6 +21,16 @@ This always installs from:
 - Repo: `CydonianHeavyIndustries/ProjectP1L0TGame`
 - Branch: `host`
 
+## Build standalone setup EXE (single file)
+
+```bat
+tools\server_setup\build_server_setup_exe.bat
+```
+
+Output default:
+
+`F:\projectP1_server_setup.exe`
+
 ## Install on target machine
 
 1. Copy `projectP1_server_setup` folder to target machine.

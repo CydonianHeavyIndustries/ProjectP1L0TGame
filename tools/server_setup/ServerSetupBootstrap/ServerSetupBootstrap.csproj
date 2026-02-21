@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>projectP1_server_setup</AssemblyName>
+    <RootNamespace>ProjectP1L0T.ServerSetupBootstrap</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\install_server.ps1" LogicalName="install_server.ps1" />
+  </ItemGroup>
+</Project>
+

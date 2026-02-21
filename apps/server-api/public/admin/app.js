@@ -4,6 +4,8 @@ const usersBody = document.querySelector('#users-table tbody');
 const userSelect = document.getElementById('file-user-select');
 const fileList = document.getElementById('file-list');
 const logsEl = document.getElementById('logs');
+const hostUpdatesButton = document.getElementById('open-host-updates');
+const HOST_BRANCH_URL = 'https://github.com/CydonianHeavyIndustries/ProjectP1L0TGame/tree/host';
 
 const field = (id) => document.getElementById(id);
 const tokenKey = 'p1lot_admin_token';
@@ -241,6 +243,13 @@ document.getElementById('save-settings').addEventListener('click', () => saveSet
 document.getElementById('create-user').addEventListener('click', () => createUser().catch((err) => setStatus(err.message)));
 document.getElementById('save-user-detail').addEventListener('click', () => saveUserDetail().catch((err) => setStatus(err.message)));
 document.getElementById('upload-files').addEventListener('click', () => uploadFiles().catch((err) => setStatus(err.message)));
+
+if (hostUpdatesButton) {
+  hostUpdatesButton.addEventListener('click', () => {
+    window.open(HOST_BRANCH_URL, '_blank', 'noopener,noreferrer');
+    setStatus('Opened GitHub host branch for server updates.');
+  });
+}
 
 userSelect.addEventListener('change', () => {
   selectedUserId = userSelect.value;
