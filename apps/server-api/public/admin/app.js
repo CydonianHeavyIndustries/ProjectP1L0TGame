@@ -235,12 +235,18 @@ const uploadFiles = async () => {
 
 const runHostUpdate = async () => {
   if (!hostUpdatesButton) return;
+  const defaultLabel = 'Update';
+  hostUpdatesButton.textContent = 'Updating...';
   hostUpdatesButton.disabled = true;
   try {
     setStatus('Starting host update...');
-    await request('/api/admin/update', { method: 'POST' });
+    const launch = await request('/api/admin/update', { method: 'POST' });
+    if (launch?.started === false) {
+      setStatus('Update is already running.');
+    }
     const startedAt = Date.now();
     const poll = async () => {
+      let keepSuccessLabel = false;
       try {
         const data = await request('/api/admin/update/status');
         const status = data.status || {};
@@ -251,15 +257,27 @@ const runHostUpdate = async () => {
           setTimeout(poll, 2500);
           return;
         }
+        if (state === 'success') {
+          keepSuccessLabel = true;
+          hostUpdatesButton.textContent = 'Updated';
+          setTimeout(() => {
+            hostUpdatesButton.textContent = defaultLabel;
+          }, 3000);
+          return;
+        }
       } catch (err) {
         setStatus(`Update status error: ${err.message}`);
       } finally {
+        if (!keepSuccessLabel) {
+          hostUpdatesButton.textContent = defaultLabel;
+        }
         hostUpdatesButton.disabled = false;
       }
     };
     setTimeout(poll, 1200);
   } catch (err) {
     setStatus(`Update failed to start: ${err.message}`);
+    hostUpdatesButton.textContent = defaultLabel;
     hostUpdatesButton.disabled = false;
   }
 };
