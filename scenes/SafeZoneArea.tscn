@@ -21,3 +21,4 @@ shape = SubResource( 1 )
 [node name="DebugMesh" type="MeshInstance3D" parent="."]
 mesh = SubResource( 2 )
 material_override = SubResource( 3 )
+visible = false

@@ -17,6 +17,11 @@ const Settings = ({ state }: { state: LauncherState }) => {
                 value={settings.installDir}
                 onChange={(event) => actions.updateSettings({ installDir: event.target.value })}
               />
+              <div className="row">
+                <Button variant="ghost" type="button" onClick={() => void actions.chooseInstallDir()}>
+                  Browse…
+                </Button>
+              </div>
             </label>
             <label className="stack">
               Installed Game Executable (relative to /install)
@@ -86,6 +91,34 @@ const Settings = ({ state }: { state: LauncherState }) => {
                 onChange={(event) => actions.updateSettings({ safeMode: event.target.checked })}
               />
               Safe mode
+            </label>
+            <label className="stack">
+              Server Port
+              <input
+                type="number"
+                min={1}
+                max={65535}
+                value={settings.serverPort}
+                onChange={(event) => actions.updateSettings({ serverPort: Number(event.target.value) || 7777 })}
+              />
+            </label>
+            <label className="stack">
+              Server Address
+              <input
+                type="text"
+                value={settings.serverAddress}
+                onChange={(event) => actions.updateSettings({ serverAddress: event.target.value })}
+                placeholder="127.0.0.1"
+              />
+            </label>
+            <label className="stack">
+              Server Args
+              <input
+                type="text"
+                value={settings.serverArgs}
+                onChange={(event) => actions.updateSettings({ serverArgs: event.target.value })}
+                placeholder="--headless --server --port 7777"
+              />
             </label>
             <div className="row">
               <Button variant="ghost" type="button" onClick={() => actions.resetSettings()}>

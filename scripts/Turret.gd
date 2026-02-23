@@ -1,16 +1,17 @@
 extends StaticBody3D
 
 @export var max_health := 80.0
-@export var fire_interval := 0.9
+@export var fire_interval := 1.1
 @export var damage := 10.0
 @export var attack_range := 25.0
 @export var respawn_delay := 3.0
 @export var turn_speed := 6.0
 @export var muzzle_height := 0.8
-@export var projectile_speed := 9.0
+@export var projectile_speed := 6.0
 @export var projectile_lifetime := 3.5
 @export var projectile_offset := 0.5
 @export var projectile_scene: PackedScene = preload("res://scenes/TurretProjectile.tscn")
+@export var xp_reward := 40
 
 var current_health := 0.0
 var fire_timer := 0.0
@@ -84,12 +85,18 @@ func take_damage(amount: float, _source: Node = null, _cause: String = "") -> vo
 func _die() -> void:
 	is_dead = true
 	current_health = 0.0
+	_award_xp()
 	if collision:
 		collision.disabled = true
 	if mesh_root:
 		mesh_root.visible = false
 	var timer = get_tree().create_timer(respawn_delay)
 	timer.timeout.connect(_respawn)
+
+func _award_xp() -> void:
+	var player = get_tree().get_first_node_in_group("player")
+	if player and player.has_method("add_xp"):
+		player.add_xp(xp_reward)
 
 func _respawn() -> void:
 	is_dead = false

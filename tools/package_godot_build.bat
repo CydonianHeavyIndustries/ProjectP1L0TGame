@@ -64,7 +64,9 @@ if exist "%ZIP_PATH%" del /f /q "%ZIP_PATH%"
 
 echo [P1L0T] Importing assets...
 "%GODOT%" --headless --path "%ROOT%" --import
-echo [P1L0T] Import exit code: %errorlevel%
+if errorlevel 1 (
+  echo [P1L0T] Import step failed - continuing to export.
+)
 
 echo [P1L0T] Exporting Godot build...
 "%GODOT%" --headless --path "%ROOT%" --export-release "%EXPORT_PRESET%" "%EXE_PATH%"

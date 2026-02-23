@@ -369,9 +369,4 @@ FodyWeavers.xsd
 # Godot
 .godot/
 .import/
-*.import
-*.uid
-tools/godot/
-tools/godot.exe
-tools/godot/
-tools/godot.exe
+Builds/

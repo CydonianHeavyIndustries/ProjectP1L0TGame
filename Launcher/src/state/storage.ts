@@ -31,8 +31,11 @@ export const defaultSettings: LauncherSettings = {
   launchArgs: '',
   safeMode: false,
   gameExeRelative: 'ProjectP1L0T.exe',
-  useLocalBuild: true,
-  localBuildRelative: 'Builds/Godot/ProjectP1L0T.exe'
+  useLocalBuild: false,
+  localBuildRelative: 'Builds/Godot/ProjectP1L0T.exe',
+  serverAddress: '127.0.0.1',
+  serverPort: 7777,
+  serverArgs: ''
 };
 
 export const readSettings = (): LauncherSettings => {

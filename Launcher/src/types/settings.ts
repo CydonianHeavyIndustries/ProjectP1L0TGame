@@ -8,4 +8,7 @@ export interface LauncherSettings {
   gameExeRelative: string;
   useLocalBuild: boolean;
   localBuildRelative: string;
+  serverAddress: string;
+  serverPort: number;
+  serverArgs: string;
 }
