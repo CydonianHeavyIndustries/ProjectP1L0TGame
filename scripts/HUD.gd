@@ -25,6 +25,9 @@ extends Control
 @onready var damage_flash: ColorRect = ColorRect.new()
 @onready var hit_audio: AudioStreamPlayer = AudioStreamPlayer.new()
 @onready var hurt_audio: AudioStreamPlayer = AudioStreamPlayer.new()
+@onready var leaderboard_panel: Panel = Panel.new()
+@onready var leaderboard_title: Label = Label.new()
+@onready var leaderboard_rows: VBoxContainer = VBoxContainer.new()
 
 var hint_timer := 0.0
 var hitmarker_timer := 0.0
@@ -34,6 +37,9 @@ var _reload_fill_max := 0.0
 var _cooldown_fill_max := 0.0
 var _gun_radial_center := Vector2.ZERO
 var _titan_radial_center := Vector2.ZERO
+var _leaderboard_sources: Array = []
+var _leaderboard_refresh_timer := 0.0
+var _leaderboard_visible := true
 
 const HUD_BG := Color(0.02, 0.05, 0.08, 0.85)
 const HUD_EDGE := Color(0.15, 0.8, 1.0, 0.9)
@@ -41,9 +47,11 @@ const HUD_TEXT := Color(0.72, 0.9, 1.0, 1.0)
 const HUD_DIM := Color(0.45, 0.7, 0.9, 0.9)
 const HUD_ACCENT := Color(0.2, 1.0, 0.7, 0.9)
 const HUD_WARN := Color(1.0, 0.55, 0.25, 0.9)
+const HUD_PANEL := Color(0.03, 0.05, 0.08, 0.78)
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	set_process_unhandled_input(true)
 	add_to_group("hud")
 	add_child(damage_flash)
 	damage_flash.anchor_left = 0.0
@@ -100,6 +108,7 @@ func _ready() -> void:
 	_setup_health_bar()
 	_setup_reload_bar()
 	_setup_cooldown_bars()
+	_setup_leaderboard()
 
 	gun_radial = _build_radial_menu("GUN MENU", ["Primary", "Secondary", "Tertiary", "Melee", "Extras", "Back"])
 	titan_radial = _build_radial_menu("TITAN COMMAND", ["Drop", "Recall", "Follow", "Hold", "Assist", "Back"])
@@ -143,6 +152,11 @@ func _process(_delta: float) -> void:
 		damage_flash.color = Color(1.0, 0.1, 0.1, 0.35 * clamp(t_flash, 0.0, 1.0))
 	else:
 		damage_flash.color = Color(1.0, 0.1, 0.1, 0.0)
+	if _leaderboard_visible:
+		_leaderboard_refresh_timer -= _delta
+		if _leaderboard_refresh_timer <= 0.0:
+			_leaderboard_refresh_timer = 0.5
+			_refresh_leaderboard()
 	# Radials are positioned once when opened to avoid dragging with the cursor.
 
 func show_hint(text: String) -> void:
@@ -217,6 +231,158 @@ func _setup_health_bar() -> void:
 	health_fill.offset_bottom = 0.0
 	health_fill.color = HUD_ACCENT
 	_health_fill_max = 356.0
+
+func _setup_leaderboard() -> void:
+	add_child(leaderboard_panel)
+	leaderboard_panel.anchor_left = 1.0
+	leaderboard_panel.anchor_right = 1.0
+	leaderboard_panel.anchor_top = 0.0
+	leaderboard_panel.anchor_bottom = 0.0
+	leaderboard_panel.offset_left = -380
+	leaderboard_panel.offset_right = -20
+	leaderboard_panel.offset_top = 60
+	leaderboard_panel.offset_bottom = 260
+	leaderboard_panel.add_theme_stylebox_override("panel", _make_panel_style())
+
+	leaderboard_panel.add_child(leaderboard_title)
+	leaderboard_title.text = "LEADERBOARD"
+	leaderboard_title.position = Vector2(12, 8)
+	_style_label(leaderboard_title, 12, HUD_DIM, true)
+
+	leaderboard_panel.add_child(leaderboard_rows)
+	leaderboard_rows.anchor_left = 0.0
+	leaderboard_rows.anchor_right = 1.0
+	leaderboard_rows.anchor_top = 0.0
+	leaderboard_rows.anchor_bottom = 1.0
+	leaderboard_rows.offset_left = 8
+	leaderboard_rows.offset_right = -8
+	leaderboard_rows.offset_top = 28
+	leaderboard_rows.offset_bottom = -8
+	leaderboard_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	leaderboard_rows.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	leaderboard_panel.visible = _leaderboard_visible
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("Open Leaderboard"):
+		_leaderboard_visible = not _leaderboard_visible
+		leaderboard_panel.visible = _leaderboard_visible
+		get_viewport().set_input_as_handled()
+
+func _refresh_leaderboard() -> void:
+	var point_system = get_tree().get_first_node_in_group("point_system")
+	if point_system == null:
+		return
+	if not point_system.has_method("get_sources"):
+		return
+	var sources: Array = point_system.get_sources()
+	if sources != _leaderboard_sources:
+		_leaderboard_sources = sources.duplicate()
+		_build_leaderboard(point_system)
+	else:
+		_update_leaderboard(point_system)
+
+func _build_leaderboard(point_system: Node) -> void:
+	while leaderboard_rows.get_child_count() > 0:
+		var child = leaderboard_rows.get_child(0)
+		leaderboard_rows.remove_child(child)
+		child.free()
+	_add_leaderboard_row(_leaderboard_header_labels(), true)
+	_update_leaderboard(point_system)
+
+func _update_leaderboard(point_system: Node) -> void:
+	var players: Array = get_tree().get_nodes_in_group("player")
+	var start_index := 1
+	if leaderboard_rows.get_child_count() < start_index:
+		_add_leaderboard_row(_leaderboard_header_labels(), true)
+	var row_index := start_index
+	for player in players:
+		var labels = _leaderboard_row_labels(point_system, player)
+		if row_index >= leaderboard_rows.get_child_count():
+			_add_leaderboard_row(labels, false)
+		else:
+			_update_row_labels(leaderboard_rows.get_child(row_index), labels)
+		row_index += 1
+	while leaderboard_rows.get_child_count() > row_index:
+		leaderboard_rows.get_child(row_index).queue_free()
+
+func _leaderboard_header_labels() -> Array:
+	var labels: Array = ["Player", "Total"]
+	for source in _leaderboard_sources:
+		labels.append(str(source))
+	return labels
+
+func _leaderboard_row_labels(point_system: Node, player: Node) -> Array:
+	var labels: Array = []
+	var name_text := player.name
+	labels.append(name_text)
+	if point_system.has_method("get_player_points"):
+		labels.append(str(point_system.get_player_points(player)))
+	else:
+		labels.append("0")
+	var breakdown := {}
+	if point_system.has_method("get_player_breakdown"):
+		breakdown = point_system.get_player_breakdown(player)
+	for source in _leaderboard_sources:
+		labels.append(str(int(breakdown.get(source, 0))))
+	return labels
+
+func _add_leaderboard_row(labels: Array, is_header: bool) -> void:
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 8)
+	leaderboard_rows.add_child(row)
+	for i in range(labels.size()):
+		var label := Label.new()
+		label.text = str(labels[i])
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.custom_minimum_size = Vector2(60, 0)
+		if i == 0:
+			label.custom_minimum_size = Vector2(100, 0)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		if is_header:
+			_style_label(label, 11, HUD_DIM, true)
+		else:
+			_style_label(label, 11, HUD_TEXT)
+		row.add_child(label)
+
+func _update_row_labels(row: Node, labels: Array) -> void:
+	var children = row.get_children()
+	if children.size() < labels.size():
+		for _i in range(children.size(), labels.size()):
+			var label := Label.new()
+			label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			label.custom_minimum_size = Vector2(60, 0)
+			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			_style_label(label, 11, HUD_TEXT)
+			row.add_child(label)
+		children = row.get_children()
+	for i in range(labels.size()):
+		var label = children[i] if i < children.size() else null
+		if label:
+			label.text = str(labels[i])
+	if children.size() > labels.size():
+		for i in range(labels.size(), children.size()):
+			var extra = children[i]
+			row.remove_child(extra)
+			extra.free()
+
+func _make_panel_style() -> StyleBoxFlat:
+	var panel := StyleBoxFlat.new()
+	panel.bg_color = HUD_PANEL
+	panel.border_color = HUD_EDGE
+	panel.border_width_left = 1
+	panel.border_width_right = 1
+	panel.border_width_top = 1
+	panel.border_width_bottom = 1
+	panel.corner_radius_top_left = 6
+	panel.corner_radius_top_right = 6
+	panel.corner_radius_bottom_left = 6
+	panel.corner_radius_bottom_right = 6
+	panel.content_margin_left = 6
+	panel.content_margin_right = 6
+	panel.content_margin_top = 6
+	panel.content_margin_bottom = 6
+	return panel
 
 func _setup_reload_bar() -> void:
 	add_child(reload_frame)

@@ -3,6 +3,8 @@ extends StaticBody3D
 @export var max_health := 150.0
 @export var healthbar_height := 1.85
 @export var healthbar_forward := 0.18
+@export var unit_class := "grunt"
+@export var is_upgraded := false
 var current_health := 150.0
 var is_ko := false
 var _fill_base_pos := Vector3.ZERO
@@ -21,17 +23,37 @@ func _ready() -> void:
 	_update_healthbar()
 	_update_color(false)
 
-func take_damage(amount: float) -> void:
+func take_damage(amount: float, source: Node = null, cause: String = "") -> void:
 	if is_ko:
 		return
 	current_health = max(0.0, current_health - amount)
 	_update_healthbar()
 	_update_color(current_health <= 0.0)
 	if current_health <= 0.0:
+		_award_points(source, cause)
 		_start_ko_jump()
-		# we need to find the killed and give them points, this function should be called "Minions_Killed_Points_Giver()"
-			#find the owner of the bullet, give them a node in an array called points, a minions kill should give a player "var Minion Killed = 1"
-			# each source should be an an entry, there should be a point history
+
+func execute(killer: Node) -> void:
+	take_damage(max_health, killer, "execute")
+
+func _award_points(source: Node, cause: String) -> void:
+	if source == null:
+		return
+	var point_system = get_tree().get_first_node_in_group("point_system")
+	if point_system == null:
+		return
+	var event_id := "grunt_kill"
+	if unit_class != "" and unit_class != "grunt":
+		event_id = "%s_kill" % unit_class
+	if is_upgraded:
+		event_id = "upgraded_%s_kill" % (unit_class if unit_class != "" else "grunt")
+	if cause == "execute":
+		if is_upgraded:
+			event_id = "upgraded_%s_execute" % (unit_class if unit_class != "" else "grunt")
+		else:
+			event_id = "%s_execute" % (unit_class if unit_class != "" else "grunt")
+	if point_system.has_method("award"):
+		point_system.award(event_id, source, {"target": self, "upgraded": is_upgraded, "unit_class": unit_class})
 func _update_color(dead: bool) -> void:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.8, 0.2, 0.2) if dead else Color(0.95, 0.8, 0.2)

@@ -54,6 +54,7 @@ signal died
 @export var wallrun_roll := 0.22
 @export var wallrun_roll_speed := 10.0
 @export var wallrun_reentry_delay := 0.18
+@export var wallrun_side_switch_delay := 0.25
 @export var wallrun_intent_time := 0.2
 @export var wallrun_chain_time := 0.45
 @export var climb_check_distance := 1.0
@@ -150,6 +151,8 @@ var base_capsule_height := 1.2
 var base_capsule_radius := 0.35
 var recoil_offset := 0.0
 var is_dead := false
+var last_damage_source: Node = null
+var last_damage_cause := ""
 var spawn_transform := Transform3D.IDENTITY
 var hit_audio: AudioStreamPlayer = null
 var hurt_audio: AudioStreamPlayer = null
@@ -252,7 +255,7 @@ func _process(delta: float) -> void:
 	melee_timer = max(0.0, melee_timer - delta)
 
 	if Input.is_action_just_pressed("debug_kill"):
-		take_damage(max_health)
+		take_damage(max_health, self, "debug")
 
 	_handle_reload_input(delta)
 	_handle_titan_input(delta)
@@ -839,13 +842,22 @@ func _try_start_wallrun(input_dir: Vector2) -> void:
 		return
 	var hit = _get_wallrun_hit()
 	if hit and hit.has("normal"):
-		if last_wall_normal != Vector3.ZERO:
-			var dot = hit["normal"].dot(last_wall_normal)
-			if dot > 0.8:
-				if wallrun_chain_timer > 0.0:
-					return
-				if wallrun_cooldown > 0.0 and wallrun_intent <= 0.0:
-					return
+		var has_last = last_wall_normal != Vector3.ZERO
+		var last_dot := 0.0
+		if has_last:
+			last_dot = hit["normal"].dot(last_wall_normal)
+			if last_dot > 0.8 and wallrun_chain_timer > 0.0:
+				return
+		if wallrun_cooldown > 0.0:
+			var allow_early = false
+			if has_last and last_dot < -0.2:
+				var switch_threshold = max(0.0, wallrun_reentry_delay - wallrun_side_switch_delay)
+				allow_early = wallrun_cooldown <= switch_threshold
+			if not allow_early:
+				return
+		if has_last and last_dot > 0.8:
+			if wallrun_cooldown > 0.0 and wallrun_intent <= 0.0:
+				return
 		var desired = Vector3.ZERO
 		if input_dir.length() > 0.1:
 			desired = (global_transform.basis * Vector3(input_dir.x, 0, input_dir.y))
@@ -1025,7 +1037,7 @@ func _fire_hitscan() -> void:
 				_log("PvP blocked by safe zone.")
 				return
 		if target and target.has_method("take_damage"):
-			target.take_damage(fire_damage)
+			target.take_damage(fire_damage, self, "weapon")
 			_on_hit(result)
 
 func _spawn_tracer(from: Vector3, to: Vector3) -> void:
@@ -1177,11 +1189,15 @@ func _try_throw_grenade() -> void:
 	if grenade is RigidBody3D:
 		grenade.global_position = spawn_pos
 		get_parent().add_child(grenade)
+		if grenade.has_method("configure"):
+			grenade.configure(self)
 		var impulse = (-cam.global_transform.basis.z * grenade_throw_force) + (Vector3.UP * grenade_upward_force)
 		grenade.apply_impulse(impulse)
 	else:
 		grenade.global_position = spawn_pos
 		get_parent().add_child(grenade)
+		if grenade.has_method("configure"):
+			grenade.configure(self)
 	grenade_cooldown = grenade_cooldown_time
 
 func _toggle_fullscreen() -> void:
@@ -1191,9 +1207,11 @@ func _toggle_fullscreen() -> void:
 	else:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
-func take_damage(amount: float) -> void:
+func take_damage(amount: float, source: Node = null, cause: String = "") -> void:
 	if is_dead:
 		return
+	last_damage_source = source
+	last_damage_cause = cause
 	current_health = max(0.0, current_health - amount)
 	if hud and hud.has_method("show_damage_flash"):
 		hud.show_damage_flash()
@@ -1209,6 +1227,7 @@ func _die() -> void:
 	velocity = Vector3.ZERO
 	_hud_hint("You died")
 	emit_signal("died")
+	_award_death_points()
 	var timer = get_tree().create_timer(respawn_delay)
 	timer.timeout.connect(_respawn)
 
@@ -1222,3 +1241,18 @@ func _respawn() -> void:
 	global_transform = spawn_transform
 	velocity = Vector3.ZERO
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+func execute(killer: Node) -> void:
+	take_damage(max_health, killer, "execute")
+
+func _award_death_points() -> void:
+	if last_damage_source == null:
+		return
+	var point_system = get_tree().get_first_node_in_group("point_system")
+	if point_system == null:
+		return
+	var event_id = "player_kill"
+	if last_damage_cause == "execute":
+		event_id = "player_execute"
+	if point_system.has_method("award"):
+		point_system.award(event_id, last_damage_source, {"target": self})

@@ -1,30 +1,30 @@
-[gd_scene load_steps=7 format=3 uid="uid://coresystems"]
+[gd_scene format=3 uid="uid://coresystems"]
 
-[ext_resource type="Script" path="res://scripts/core_systems/factions/FactionSystem.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/core_systems/parties/PartySystem.gd" id="2"]
-[ext_resource type="Script" path="res://scripts/core_systems/parties/ClanSystem.gd" id="3"]
-[ext_resource type="Script" path="res://scripts/core_systems/economy/EconomySystem.gd" id="4"]
-[ext_resource type="Script" path="res://scripts/core_systems/safezones/SafeZoneSystem.gd" id="5"]
-[ext_resource type="Script" path="res://scripts/core_systems/spaceship_home/SpaceshipHomeSystem.gd" id="6"]
+[ext_resource type="Script" uid="uid://c4y0dg4ltvn2e" path="res://scripts/core_systems/factions/FactionSystem.gd" id="1"]
+[ext_resource type="Script" uid="uid://h1qu2focakr7" path="res://scripts/core_systems/parties/PartySystem.gd" id="2"]
+[ext_resource type="Script" uid="uid://vewlasj7a0qx" path="res://scripts/core_systems/parties/ClanSystem.gd" id="3"]
+[ext_resource type="Script" uid="uid://cnsf2qyqcauvn" path="res://scripts/core_systems/economy/EconomySystem.gd" id="4"]
+[ext_resource type="Script" uid="uid://cgtdvr73jhfjc" path="res://scripts/core_systems/safezones/SafeZoneSystem.gd" id="5"]
+[ext_resource type="Script" uid="uid://bbx1biakdxl3t" path="res://scripts/core_systems/spaceship_home/SpaceshipHomeSystem.gd" id="6"]
 
-[node name="CoreSystems" type="Node"]
+[node name="CoreSystems" type="Node" unique_id=1225505894]
 
-[node name="FactionSystem" type="Node" parent="."]
+[node name="FactionSystem" type="Node" parent="." unique_id=890854044]
 script = ExtResource("1")
 
-[node name="PartySystem" type="Node" parent="."]
+[node name="PartySystem" type="Node" parent="." unique_id=409712921]
 script = ExtResource("2")
 
-[node name="ClanSystem" type="Node" parent="."]
+[node name="ClanSystem" type="Node" parent="." unique_id=213550079]
 script = ExtResource("3")
 
-[node name="EconomySystem" type="Node" parent="."]
+[node name="EconomySystem" type="Node" parent="." unique_id=669453137]
 script = ExtResource("4")
 
-[node name="SafeZoneSystem" type="Node" parent="."]
+[node name="SafeZoneSystem" type="Node" parent="." unique_id=1214146750]
 script = ExtResource("5")
 
-[node name="SpaceshipHomeSystem" type="Node" parent="."]
+[node name="SpaceshipHomeSystem" type="Node" parent="." unique_id=2119662661]
 script = ExtResource("6")
 world_path = NodePath("../World")
 player_path = NodePath("../World/Player")
