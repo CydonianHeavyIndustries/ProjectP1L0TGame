@@ -21,6 +21,11 @@ Server default URL: `http://127.0.0.1:4280`
 - `POST /api/auth/login`
 - `GET /api/auth/me` (Bearer token)
 - `POST /api/auth/logout` (Bearer token)
+- `GET /api/user/profile` (Bearer token)
+- `PATCH /api/user/profile` (Bearer token)
+- `POST /api/user/profile-picture` (multipart field `avatar`, Bearer token)
+- `DELETE /api/user/profile-picture` (Bearer token)
+- `GET /api/user/profile-picture/:userId` (Bearer token)
 - `GET /api/admin/settings`
 - `PUT /api/admin/settings`
 - `GET /api/admin/users`
@@ -68,6 +73,8 @@ SMTP configuration is read from `data/server.config.json` (or env):
 If SMTP is not configured, verification links are written to:
 
 `apps/server-api/data/email_outbox.log`
+
+User-side account settings are supported via `/api/user/profile` and profile-picture endpoints.
 
 ## Admin UI
 

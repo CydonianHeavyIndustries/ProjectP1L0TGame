@@ -11,6 +11,7 @@ const ROOT = __dirname;
 const INSTALL_ROOT = path.resolve(ROOT, '..', '..');
 const DATA_DIR = process.env.P1LOT_DATA_DIR || path.join(ROOT, 'data');
 const USER_FILES_ROOT = path.join(DATA_DIR, 'user_files');
+const PROFILE_PICS_ROOT = path.join(DATA_DIR, 'profile_pictures');
 const CONFIG_PATH = path.join(DATA_DIR, 'server.config.json');
 const USERS_PATH = path.join(DATA_DIR, 'users.json');
 const SESSIONS_PATH = path.join(DATA_DIR, 'sessions.json');
@@ -40,6 +41,7 @@ const UPDATE_SCRIPT_PATH = path.join(INSTALL_ROOT, 'server_manager', 'update_fro
 const ensureDir = (dirPath) => fs.mkdirSync(dirPath, { recursive: true });
 ensureDir(DATA_DIR);
 ensureDir(USER_FILES_ROOT);
+ensureDir(PROFILE_PICS_ROOT);
 
 const nowIso = () => new Date().toISOString();
 const safeId = () => crypto.randomBytes(8).toString('hex');
@@ -142,6 +144,7 @@ const sha256 = (value) => crypto.createHash('sha256').update(String(value)).dige
 const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
 const usernameValid = (value) => /^[a-zA-Z0-9_.-]{3,32}$/.test(String(value || '').trim());
 const PASSWORD_MIN_LENGTH = 8;
+const AVATAR_MAX_MB = 5;
 
 const hashPassword = (password) => {
   const salt = crypto.randomBytes(16).toString('hex');
@@ -189,7 +192,8 @@ const sanitizeAuthUser = (user) => ({
   isAdmin: !!user.isAdmin,
   status: user.status || '',
   bio: user.bio || '',
-  discord: user.discord || ''
+  discord: user.discord || '',
+  avatarUrl: user.avatarFile ? `/api/user/profile-picture/${encodeURIComponent(user.id)}?v=${encodeURIComponent(user.avatarUpdatedAt || '')}` : null
 });
 
 const sanitizeAdminUser = (user) => ({
@@ -202,6 +206,7 @@ const sanitizeAdminUser = (user) => ({
   status: user.status || '',
   bio: user.bio || '',
   discord: user.discord || '',
+  avatarUrl: user.avatarFile ? `/api/user/profile-picture/${encodeURIComponent(user.id)}?v=${encodeURIComponent(user.avatarUpdatedAt || '')}` : null,
   createdAt: user.createdAt || '',
   updatedAt: user.updatedAt || ''
 });
@@ -306,6 +311,35 @@ const upload = multer({
   storage,
   limits: {
     fileSize: Math.max(1, Number(config.maxUploadMb || 64)) * 1024 * 1024
+  }
+});
+
+const avatarStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, PROFILE_PICS_ROOT),
+  filename: (req, file, cb) => {
+    const userId = safeName(req.auth?.user?.id || 'user');
+    const extMap = {
+      'image/png': '.png',
+      'image/jpeg': '.jpg',
+      'image/webp': '.webp'
+    };
+    const ext = extMap[file.mimetype] || path.extname(file.originalname || '').toLowerCase() || '.img';
+    cb(null, `${userId}${ext}`);
+  }
+});
+
+const avatarUpload = multer({
+  storage: avatarStorage,
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!allowed.includes(file.mimetype)) {
+      cb(new Error('unsupported_avatar_type'));
+      return;
+    }
+    cb(null, true);
+  },
+  limits: {
+    fileSize: AVATAR_MAX_MB * 1024 * 1024
   }
 });
 
@@ -476,6 +510,122 @@ app.post('/api/auth/logout', authUser, (req, res) => {
   sessions = sessions.filter((s) => s.tokenHash !== req.auth.tokenHash);
   saveSessions();
   res.json({ ok: true });
+});
+
+app.get('/api/user/profile', authUser, (req, res) => {
+  res.json({ ok: true, user: sanitizeAuthUser(req.auth.user) });
+});
+
+app.patch('/api/user/profile', authUser, (req, res) => {
+  const user = req.auth.user;
+  const payload = req.body || {};
+
+  if (payload.username !== undefined) {
+    const nextUsername = String(payload.username || '').trim();
+    if (!usernameValid(nextUsername)) {
+      res.status(400).json({ error: 'invalid_username' });
+      return;
+    }
+    const duplicate = users.some((u) => u.id !== user.id && String(u.username || '').toLowerCase() === nextUsername.toLowerCase());
+    if (duplicate) {
+      res.status(409).json({ error: 'username_taken' });
+      return;
+    }
+    user.username = nextUsername;
+  }
+
+  if (payload.status !== undefined) {
+    user.status = String(payload.status || '').slice(0, 140);
+  }
+  if (payload.bio !== undefined) {
+    user.bio = String(payload.bio || '').slice(0, 1000);
+  }
+  if (payload.discord !== undefined) {
+    user.discord = String(payload.discord || '').slice(0, 64);
+  }
+
+  if (payload.newPassword !== undefined) {
+    const currentPassword = String(payload.currentPassword || '');
+    const newPassword = String(payload.newPassword || '');
+    if (!verifyPassword(currentPassword, user.passwordHash)) {
+      res.status(401).json({ error: 'invalid_current_password' });
+      return;
+    }
+    if (newPassword.length < PASSWORD_MIN_LENGTH) {
+      res.status(400).json({ error: 'password_too_short', minPasswordLength: PASSWORD_MIN_LENGTH });
+      return;
+    }
+    user.passwordHash = hashPassword(newPassword);
+    sessions = sessions.filter((s) => s.userId !== user.id || s.tokenHash === req.auth.tokenHash);
+    saveSessions();
+  }
+
+  user.updatedAt = nowIso();
+  saveUsers();
+  res.json({ ok: true, user: sanitizeAuthUser(user) });
+});
+
+app.post('/api/user/profile-picture', authUser, (req, res) => {
+  avatarUpload.single('avatar')(req, res, (err) => {
+    if (err) {
+      const detail = err.message === 'unsupported_avatar_type'
+        ? 'Only png, jpg, jpeg, webp are allowed.'
+        : err.message === 'File too large'
+          ? `Max avatar size is ${AVATAR_MAX_MB} MB.`
+          : err.message;
+      res.status(400).json({ error: 'avatar_upload_failed', detail });
+      return;
+    }
+    if (!req.file) {
+      res.status(400).json({ error: 'avatar_missing' });
+      return;
+    }
+
+    const user = req.auth.user;
+    const prefix = `${safeName(user.id)}.`;
+    const allFiles = fs.readdirSync(PROFILE_PICS_ROOT).filter((name) => name.startsWith(prefix));
+    for (const fileName of allFiles) {
+      if (fileName !== req.file.filename) {
+        try { fs.unlinkSync(path.join(PROFILE_PICS_ROOT, fileName)); } catch {}
+      }
+    }
+
+    user.avatarFile = req.file.filename;
+    user.avatarUpdatedAt = nowIso();
+    user.updatedAt = nowIso();
+    saveUsers();
+    res.json({ ok: true, user: sanitizeAuthUser(user) });
+  });
+});
+
+app.delete('/api/user/profile-picture', authUser, (req, res) => {
+  const user = req.auth.user;
+  if (user.avatarFile) {
+    const target = path.join(PROFILE_PICS_ROOT, user.avatarFile);
+    if (fs.existsSync(target)) {
+      try { fs.unlinkSync(target); } catch {}
+    }
+  }
+  delete user.avatarFile;
+  delete user.avatarUpdatedAt;
+  user.updatedAt = nowIso();
+  saveUsers();
+  res.json({ ok: true, user: sanitizeAuthUser(user) });
+});
+
+app.get('/api/user/profile-picture/:userId', authUser, (req, res) => {
+  const userId = String(req.params.userId || '').trim();
+  const user = users.find((u) => u.id === userId);
+  if (!user || !user.avatarFile) {
+    res.status(404).json({ error: 'avatar_not_found' });
+    return;
+  }
+  const target = path.join(PROFILE_PICS_ROOT, user.avatarFile);
+  if (!fs.existsSync(target)) {
+    res.status(404).json({ error: 'avatar_not_found' });
+    return;
+  }
+  res.sendFile(target);
 });
 
 app.get('/api/admin/settings', authAdmin, (_req, res) => {
