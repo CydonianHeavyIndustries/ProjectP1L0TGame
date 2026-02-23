@@ -14,6 +14,13 @@ Server default URL: `http://127.0.0.1:4280`
 
 - `GET /api/health`
 - `GET /api/public/config`
+- `GET /api/public/auth-config`
+- `POST /api/auth/signup`
+- `POST /api/auth/resend-verification`
+- `GET /api/auth/verify-email?token=...`
+- `POST /api/auth/login`
+- `GET /api/auth/me` (Bearer token)
+- `POST /api/auth/logout` (Bearer token)
 - `GET /api/admin/settings`
 - `PUT /api/admin/settings`
 - `GET /api/admin/users`
@@ -24,6 +31,8 @@ Server default URL: `http://127.0.0.1:4280`
 - `POST /api/admin/users/:userId/files`
 - `DELETE /api/admin/users/:userId/files/:fileName`
 - `GET /api/admin/logs`
+- `POST /api/admin/update`
+- `GET /api/admin/update/status`
 
 Admin auth header:
 
@@ -34,6 +43,31 @@ Default token:
 `change-me-now`
 
 Change it in `data/server.config.json`.
+
+## Auth + Email verification
+
+User passwords are stored as salted scrypt hashes.
+
+Verification flow:
+
+1. `POST /api/auth/signup` creates user with `emailVerified=false`.
+2. Server issues verification token and sends email.
+3. `GET /api/auth/verify-email?token=...` marks user verified.
+4. `POST /api/auth/login` returns session token.
+
+SMTP configuration is read from `data/server.config.json` (or env):
+
+- `smtpHost`
+- `smtpPort`
+- `smtpSecure`
+- `smtpUser`
+- `smtpPass`
+- `smtpFrom`
+- `publicBaseUrl`
+
+If SMTP is not configured, verification links are written to:
+
+`apps/server-api/data/email_outbox.log`
 
 ## Admin UI
 
@@ -46,4 +80,3 @@ Includes:
 - user management with admin toggle and profile metadata
 - per-user file management
 - server logs
-

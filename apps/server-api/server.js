@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const os = require('os');
 const { spawn } = require('child_process');
+const nodemailer = require('nodemailer');
 
 const ROOT = __dirname;
 const INSTALL_ROOT = path.resolve(ROOT, '..', '..');
@@ -12,8 +13,10 @@ const DATA_DIR = process.env.P1LOT_DATA_DIR || path.join(ROOT, 'data');
 const USER_FILES_ROOT = path.join(DATA_DIR, 'user_files');
 const CONFIG_PATH = path.join(DATA_DIR, 'server.config.json');
 const USERS_PATH = path.join(DATA_DIR, 'users.json');
+const SESSIONS_PATH = path.join(DATA_DIR, 'sessions.json');
 const LOG_PATH = path.join(DATA_DIR, 'server.log');
 const UPDATE_STATUS_PATH = path.join(DATA_DIR, 'update_status.json');
+const EMAIL_OUTBOX_PATH = path.join(DATA_DIR, 'email_outbox.log');
 const ADMIN_STATIC = path.join(ROOT, 'public', 'admin');
 const SITE_STATIC = path.join(ROOT, 'public', 'site');
 const WEBSITE_SOURCE_CANDIDATES = [
@@ -63,6 +66,16 @@ const defaultConfig = {
   autosaveSeconds: 30,
   hardwareProfile: 'recommended',
   telemetryEnabled: true,
+  requireEmailVerification: true,
+  verificationTokenTtlHours: 24,
+  authSessionTtlHours: 72,
+  publicBaseUrl: process.env.P1LOT_PUBLIC_BASE_URL || 'http://127.0.0.1:4280',
+  smtpHost: process.env.P1LOT_SMTP_HOST || '',
+  smtpPort: Number(process.env.P1LOT_SMTP_PORT || 587),
+  smtpSecure: String(process.env.P1LOT_SMTP_SECURE || 'false').toLowerCase() === 'true',
+  smtpUser: process.env.P1LOT_SMTP_USER || '',
+  smtpPass: process.env.P1LOT_SMTP_PASS || '',
+  smtpFrom: process.env.P1LOT_SMTP_FROM || 'noreply@cydonianheavyindustries.inc',
   adminToken: process.env.P1LOT_ADMIN_TOKEN || 'change-me-now',
   webPort: Number(process.env.P1LOT_SERVER_PORT || 4280)
 };
@@ -101,6 +114,8 @@ writeJson(CONFIG_PATH, config);
 
 let users = readJson(USERS_PATH, []);
 if (!Array.isArray(users)) users = [];
+let sessions = readJson(SESSIONS_PATH, []);
+if (!Array.isArray(sessions)) sessions = [];
 if (users.length === 0) {
   users.push({
     id: 'admin',
@@ -110,6 +125,7 @@ if (users.length === 0) {
     enabled: true,
     status: 'Owner account',
     bio: '',
+    emailVerified: true,
     createdAt: nowIso(),
     updatedAt: nowIso()
   });
@@ -120,6 +136,114 @@ const log = (level, message, meta = '') => {
   const line = `[${nowIso()}] [${level}] ${message}${meta ? ` | ${meta}` : ''}\n`;
   fs.appendFileSync(LOG_PATH, line, 'utf-8');
   process.stdout.write(line);
+};
+
+const sha256 = (value) => crypto.createHash('sha256').update(String(value)).digest('hex');
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
+const usernameValid = (value) => /^[a-zA-Z0-9_.-]{3,32}$/.test(String(value || '').trim());
+const PASSWORD_MIN_LENGTH = 8;
+
+const hashPassword = (password) => {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
+  return `scrypt$${salt}$${hash}`;
+};
+
+const verifyPassword = (password, encoded) => {
+  if (!encoded || typeof encoded !== 'string') return false;
+  const [algo, salt, expectedHash] = encoded.split('$');
+  if (algo !== 'scrypt' || !salt || !expectedHash) return false;
+  const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
+  const left = Buffer.from(hash, 'hex');
+  const right = Buffer.from(expectedHash, 'hex');
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+};
+
+const addHoursIso = (hours) => new Date(Date.now() + Math.max(1, Number(hours || 1)) * 3600000).toISOString();
+const isExpiredIso = (iso) => !iso || Number.isNaN(Date.parse(iso)) || Date.now() > Date.parse(iso);
+
+const makeVerificationToken = () => {
+  const raw = crypto.randomBytes(32).toString('hex');
+  return { raw, hash: sha256(raw) };
+};
+
+const makeSessionToken = () => {
+  const raw = crypto.randomBytes(48).toString('hex');
+  return { raw, hash: sha256(raw) };
+};
+
+const saveUsers = () => writeJson(USERS_PATH, users);
+const saveSessions = () => writeJson(SESSIONS_PATH, sessions);
+
+const pruneSessions = () => {
+  sessions = sessions.filter((session) => !isExpiredIso(session.expiresAt));
+  saveSessions();
+};
+
+const sanitizeAuthUser = (user) => ({
+  id: user.id,
+  username: user.username,
+  email: user.email,
+  emailVerified: !!user.emailVerified,
+  isAdmin: !!user.isAdmin,
+  status: user.status || '',
+  bio: user.bio || '',
+  discord: user.discord || ''
+});
+
+const sanitizeAdminUser = (user) => ({
+  id: user.id,
+  username: user.username,
+  email: user.email,
+  emailVerified: !!user.emailVerified,
+  isAdmin: !!user.isAdmin,
+  enabled: !!user.enabled,
+  status: user.status || '',
+  bio: user.bio || '',
+  discord: user.discord || '',
+  createdAt: user.createdAt || '',
+  updatedAt: user.updatedAt || ''
+});
+
+const sendVerificationEmail = async (user, rawToken) => {
+  const verifyUrl = `${String(config.publicBaseUrl || 'http://127.0.0.1:4280').replace(/\/+$/, '')}/api/auth/verify-email?token=${encodeURIComponent(rawToken)}`;
+  const subject = 'Verify your Project P1L0T account';
+  const text = [
+    `Hello ${user.username},`,
+    '',
+    'Please verify your account by opening this link:',
+    verifyUrl,
+    '',
+    'If you did not create this account, you can ignore this email.'
+  ].join('\n');
+
+  if (config.smtpHost && config.smtpFrom) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: String(config.smtpHost),
+        port: Number(config.smtpPort || 587),
+        secure: Boolean(config.smtpSecure),
+        auth: config.smtpUser ? { user: String(config.smtpUser), pass: String(config.smtpPass || '') } : undefined
+      });
+      await transporter.sendMail({
+        from: String(config.smtpFrom),
+        to: user.email,
+        subject,
+        text
+      });
+      log('INFO', 'Verification email sent', user.email);
+      return { sent: true, mode: 'smtp' };
+    } catch (error) {
+      log('ERROR', 'Verification email send failed', `${user.email} ${error.message}`);
+      return { sent: false, mode: 'smtp_error', error: error.message, verifyUrl };
+    }
+  }
+
+  const outboxLine = `[${nowIso()}] to=${user.email} subject="${subject}" link=${verifyUrl}\n`;
+  fs.appendFileSync(EMAIL_OUTBOX_PATH, outboxLine, 'utf-8');
+  log('INFO', 'Verification email written to outbox', user.email);
+  return { sent: true, mode: 'outbox', verifyUrl };
 };
 
 const app = express();
@@ -139,6 +263,28 @@ const authAdmin = (req, res, next) => {
     res.status(401).json({ error: 'unauthorized' });
     return;
   }
+  next();
+};
+
+const authUser = (req, res, next) => {
+  pruneSessions();
+  const bearer = req.header('authorization')?.replace(/^Bearer\s+/i, '').trim();
+  if (!bearer) {
+    res.status(401).json({ error: 'unauthorized' });
+    return;
+  }
+  const hashed = sha256(bearer);
+  const session = sessions.find((s) => s.tokenHash === hashed && !isExpiredIso(s.expiresAt));
+  if (!session) {
+    res.status(401).json({ error: 'invalid_session' });
+    return;
+  }
+  const user = users.find((u) => u.id === session.userId);
+  if (!user || user.enabled === false) {
+    res.status(401).json({ error: 'user_unavailable' });
+    return;
+  }
+  req.auth = { tokenHash: hashed, session, user };
   next();
 };
 
@@ -188,8 +334,152 @@ app.get('/api/public/config', (_req, res) => {
   });
 });
 
+app.get('/api/public/auth-config', (_req, res) => {
+  res.json({
+    allowSignup: Boolean(config.allowSignup),
+    requireEmailVerification: Boolean(config.requireEmailVerification),
+    passwordMinLength: PASSWORD_MIN_LENGTH
+  });
+});
+
+app.post('/api/auth/signup', async (req, res) => {
+  if (!config.allowSignup) {
+    res.status(403).json({ error: 'signup_disabled' });
+    return;
+  }
+  const username = String(req.body?.username || '').trim();
+  const email = normalizeEmail(req.body?.email);
+  const password = String(req.body?.password || '');
+  if (!usernameValid(username) || !email.includes('@') || password.length < PASSWORD_MIN_LENGTH) {
+    res.status(400).json({ error: 'invalid_payload', minPasswordLength: PASSWORD_MIN_LENGTH });
+    return;
+  }
+  if (users.some((u) => String(u.username || '').toLowerCase() === username.toLowerCase() || normalizeEmail(u.email) === email)) {
+    res.status(409).json({ error: 'duplicate_user' });
+    return;
+  }
+
+  const verify = makeVerificationToken();
+  const user = {
+    id: safeId(),
+    username,
+    email,
+    passwordHash: hashPassword(password),
+    emailVerified: false,
+    emailVerificationTokenHash: verify.hash,
+    emailVerificationExpiresAt: addHoursIso(clamp(config.verificationTokenTtlHours, 1, 168, 24)),
+    isAdmin: false,
+    enabled: true,
+    status: '',
+    bio: '',
+    discord: '',
+    createdAt: nowIso(),
+    updatedAt: nowIso()
+  };
+  users.push(user);
+  saveUsers();
+
+  const delivery = await sendVerificationEmail(user, verify.raw);
+  res.json({
+    ok: true,
+    requiresVerification: Boolean(config.requireEmailVerification),
+    user: sanitizeAuthUser(user),
+    emailDelivery: delivery.mode,
+    verifyUrlPreview: delivery.mode === 'outbox' ? delivery.verifyUrl : undefined
+  });
+});
+
+app.post('/api/auth/resend-verification', async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  const user = users.find((u) => normalizeEmail(u.email) === email);
+  if (!user) {
+    res.json({ ok: true });
+    return;
+  }
+  if (user.emailVerified) {
+    res.json({ ok: true, alreadyVerified: true });
+    return;
+  }
+  const verify = makeVerificationToken();
+  user.emailVerificationTokenHash = verify.hash;
+  user.emailVerificationExpiresAt = addHoursIso(clamp(config.verificationTokenTtlHours, 1, 168, 24));
+  user.updatedAt = nowIso();
+  saveUsers();
+  const delivery = await sendVerificationEmail(user, verify.raw);
+  res.json({ ok: true, emailDelivery: delivery.mode, verifyUrlPreview: delivery.mode === 'outbox' ? delivery.verifyUrl : undefined });
+});
+
+app.get('/api/auth/verify-email', (req, res) => {
+  const token = String(req.query?.token || '').trim();
+  if (!token) {
+    res.status(400).json({ error: 'missing_token' });
+    return;
+  }
+  const tokenHash = sha256(token);
+  const user = users.find((u) => u.emailVerificationTokenHash === tokenHash);
+  if (!user) {
+    res.status(400).json({ error: 'invalid_token' });
+    return;
+  }
+  if (isExpiredIso(user.emailVerificationExpiresAt)) {
+    res.status(400).json({ error: 'token_expired' });
+    return;
+  }
+  user.emailVerified = true;
+  delete user.emailVerificationTokenHash;
+  delete user.emailVerificationExpiresAt;
+  user.updatedAt = nowIso();
+  saveUsers();
+  log('INFO', 'Email verified', user.id);
+  res.send('<html><body style="font-family:Segoe UI;background:#0a0f1a;color:#d8f7ff;padding:24px"><h2>Project P1L0T</h2><p>Email verified successfully. You can return to the launcher.</p></body></html>');
+});
+
+app.post('/api/auth/login', (req, res) => {
+  const login = String(req.body?.login || req.body?.username || req.body?.email || '').trim();
+  const password = String(req.body?.password || '');
+  if (!login || !password) {
+    res.status(400).json({ error: 'missing_credentials' });
+    return;
+  }
+  const normalizedLogin = login.toLowerCase();
+  const user = users.find((u) => String(u.username || '').toLowerCase() === normalizedLogin || normalizeEmail(u.email) === normalizedLogin);
+  if (!user || !user.passwordHash || !verifyPassword(password, user.passwordHash)) {
+    res.status(401).json({ error: 'invalid_credentials' });
+    return;
+  }
+  if (user.enabled === false) {
+    res.status(403).json({ error: 'user_disabled' });
+    return;
+  }
+  if (config.requireEmailVerification && !user.emailVerified) {
+    res.status(403).json({ error: 'email_not_verified' });
+    return;
+  }
+  pruneSessions();
+  const token = makeSessionToken();
+  sessions.push({
+    id: safeId(),
+    userId: user.id,
+    tokenHash: token.hash,
+    createdAt: nowIso(),
+    expiresAt: addHoursIso(clamp(config.authSessionTtlHours, 1, 720, 72))
+  });
+  saveSessions();
+  res.json({ ok: true, token: token.raw, user: sanitizeAuthUser(user) });
+});
+
+app.get('/api/auth/me', authUser, (req, res) => {
+  res.json({ ok: true, user: sanitizeAuthUser(req.auth.user) });
+});
+
+app.post('/api/auth/logout', authUser, (req, res) => {
+  sessions = sessions.filter((s) => s.tokenHash !== req.auth.tokenHash);
+  saveSessions();
+  res.json({ ok: true });
+});
+
 app.get('/api/admin/settings', authAdmin, (_req, res) => {
-  const { adminToken, ...safe } = config;
+  const { adminToken, smtpPass, ...safe } = config;
   res.json({ settings: safe });
 });
 
@@ -207,17 +497,27 @@ app.put('/api/admin/settings', authAdmin, (req, res) => {
     tickRate: clamp(next.tickRate ?? config.tickRate, 10, 240, 60),
     autosaveSeconds: clamp(next.autosaveSeconds ?? config.autosaveSeconds, 5, 600, 30),
     telemetryEnabled: Boolean(next.telemetryEnabled ?? config.telemetryEnabled),
-    hardwareProfile: pickEnum(next.hardwareProfile ?? config.hardwareProfile, ['recommended', 'max'], 'recommended')
+    hardwareProfile: pickEnum(next.hardwareProfile ?? config.hardwareProfile, ['recommended', 'max'], 'recommended'),
+    requireEmailVerification: Boolean(next.requireEmailVerification ?? config.requireEmailVerification),
+    verificationTokenTtlHours: clamp(next.verificationTokenTtlHours ?? config.verificationTokenTtlHours, 1, 168, 24),
+    authSessionTtlHours: clamp(next.authSessionTtlHours ?? config.authSessionTtlHours, 1, 720, 72),
+    publicBaseUrl: String(next.publicBaseUrl ?? config.publicBaseUrl),
+    smtpHost: String(next.smtpHost ?? config.smtpHost),
+    smtpPort: clamp(next.smtpPort ?? config.smtpPort, 1, 65535, 587),
+    smtpSecure: Boolean(next.smtpSecure ?? config.smtpSecure),
+    smtpUser: String(next.smtpUser ?? config.smtpUser),
+    smtpPass: String(next.smtpPass ?? config.smtpPass),
+    smtpFrom: String(next.smtpFrom ?? config.smtpFrom)
   };
   writeJson(CONFIG_PATH, config);
   log('INFO', 'Server settings updated');
-  const { adminToken, ...safe } = config;
+  const { adminToken, smtpPass, ...safe } = config;
   res.json({ ok: true, settings: safe });
 });
 
 app.get('/api/admin/users', authAdmin, (_req, res) => {
   users = readJson(USERS_PATH, users);
-  res.json({ users });
+  res.json({ users: users.map(sanitizeAdminUser) });
 });
 
 app.get('/api/admin/users/:userId', authAdmin, (req, res) => {
@@ -226,25 +526,28 @@ app.get('/api/admin/users/:userId', authAdmin, (req, res) => {
     res.status(404).json({ error: 'user_not_found' });
     return;
   }
-  res.json({ user });
+  res.json({ user: sanitizeAdminUser(user) });
 });
 
 app.post('/api/admin/users', authAdmin, (req, res) => {
-  const { username, email } = req.body || {};
+  const { username, email, password } = req.body || {};
   const name = String(username || '').trim();
-  const mail = String(email || '').trim();
-  if (name.length < 3 || !mail.includes('@')) {
+  const mail = normalizeEmail(email);
+  if (!usernameValid(name) || !mail.includes('@')) {
     res.status(400).json({ error: 'invalid_payload' });
     return;
   }
-  if (users.some((u) => u.username.toLowerCase() === name.toLowerCase() || u.email.toLowerCase() === mail.toLowerCase())) {
+  if (users.some((u) => String(u.username || '').toLowerCase() === name.toLowerCase() || normalizeEmail(u.email) === mail)) {
     res.status(400).json({ error: 'duplicate_user' });
     return;
   }
+  const hasPassword = typeof password === 'string' && password.length >= PASSWORD_MIN_LENGTH;
   const user = {
     id: safeId(),
     username: name,
     email: mail,
+    passwordHash: hasPassword ? hashPassword(password) : undefined,
+    emailVerified: hasPassword ? false : true,
     isAdmin: false,
     enabled: true,
     status: '',
@@ -253,9 +556,9 @@ app.post('/api/admin/users', authAdmin, (req, res) => {
     updatedAt: nowIso()
   };
   users.push(user);
-  writeJson(USERS_PATH, users);
+  saveUsers();
   log('INFO', 'User created', user.id);
-  res.json({ ok: true, user });
+  res.json({ ok: true, user: sanitizeAdminUser(user) });
 });
 
 app.patch('/api/admin/users/:userId', authAdmin, (req, res) => {
@@ -270,14 +573,24 @@ app.patch('/api/admin/users/:userId', authAdmin, (req, res) => {
     ...prev,
     isAdmin: req.body?.isAdmin === undefined ? prev.isAdmin : Boolean(req.body.isAdmin),
     enabled: req.body?.enabled === undefined ? prev.enabled : Boolean(req.body.enabled),
+    emailVerified: req.body?.emailVerified === undefined ? prev.emailVerified : Boolean(req.body.emailVerified),
     status: req.body?.status === undefined ? prev.status : String(req.body.status ?? ''),
     bio: req.body?.bio === undefined ? prev.bio : String(req.body.bio ?? ''),
     discord: req.body?.discord === undefined ? prev.discord : String(req.body.discord ?? ''),
+    passwordHash: req.body?.newPassword === undefined
+      ? prev.passwordHash
+      : (typeof req.body.newPassword === 'string' && req.body.newPassword.length >= PASSWORD_MIN_LENGTH
+          ? hashPassword(req.body.newPassword)
+          : prev.passwordHash),
     updatedAt: nowIso()
   };
-  writeJson(USERS_PATH, users);
+  if (req.body?.resetVerificationToken) {
+    delete users[targetIndex].emailVerificationTokenHash;
+    delete users[targetIndex].emailVerificationExpiresAt;
+  }
+  saveUsers();
   log('INFO', 'User updated', userId);
-  res.json({ ok: true, user: users[targetIndex] });
+  res.json({ ok: true, user: sanitizeAdminUser(users[targetIndex]) });
 });
 
 app.get('/api/admin/users/:userId/files', authAdmin, (req, res) => {
