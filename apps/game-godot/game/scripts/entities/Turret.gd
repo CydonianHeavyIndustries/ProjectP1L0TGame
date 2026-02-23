@@ -72,9 +72,9 @@ func _fire_projectile(origin: Vector3, direction: Vector3) -> void:
 		projectile.global_position = spawn_pos
 	get_parent().add_child(projectile)
 	if projectile.has_method("configure"):
-		projectile.configure(direction, projectile_speed, damage, projectile_lifetime)
+		projectile.configure(direction, projectile_speed, damage, projectile_lifetime, self)
 
-func take_damage(amount: float) -> void:
+func take_damage(amount: float, _source: Node = null, _cause: String = "") -> void:
 	if is_dead:
 		return
 	is_aggro = true

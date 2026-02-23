@@ -3,7 +3,8 @@ extends StaticBody3D
 @export var max_health := 150.0
 @export var healthbar_height := 1.85
 @export var healthbar_forward := 0.18
-@export var xp_reward := 25
+@export var unit_class := "grunt"
+@export var is_upgraded := false
 var current_health := 150.0
 var is_ko := false
 var _fill_base_pos := Vector3.ZERO
@@ -18,20 +19,41 @@ var mesh_parts: Array[MeshInstance3D] = []
 func _ready() -> void:
 	current_health = max_health
 	_cache_mesh_parts()
-	_autoplay_first_animation(mesh_root)
 	_setup_healthbar()
 	_update_healthbar()
 	_update_color(false)
 
-func take_damage(amount: float) -> void:
+func take_damage(amount: float, source: Node = null, cause: String = "") -> void:
 	if is_ko:
 		return
 	current_health = max(0.0, current_health - amount)
 	_update_healthbar()
 	_update_color(current_health <= 0.0)
 	if current_health <= 0.0:
+		_award_points(source, cause)
 		_start_ko_jump()
 
+func execute(killer: Node) -> void:
+	take_damage(max_health, killer, "execute")
+
+func _award_points(source: Node, cause: String) -> void:
+	if source == null:
+		return
+	var point_system = get_tree().get_first_node_in_group("point_system")
+	if point_system == null:
+		return
+	var event_id := "grunt_kill"
+	if unit_class != "" and unit_class != "grunt":
+		event_id = "%s_kill" % unit_class
+	if is_upgraded:
+		event_id = "upgraded_%s_kill" % (unit_class if unit_class != "" else "grunt")
+	if cause == "execute":
+		if is_upgraded:
+			event_id = "upgraded_%s_execute" % (unit_class if unit_class != "" else "grunt")
+		else:
+			event_id = "%s_execute" % (unit_class if unit_class != "" else "grunt")
+	if point_system.has_method("award"):
+		point_system.award(event_id, source, {"target": self, "upgraded": is_upgraded, "unit_class": unit_class})
 func _update_color(dead: bool) -> void:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.8, 0.2, 0.2) if dead else Color(0.95, 0.8, 0.2)
@@ -41,28 +63,9 @@ func _update_color(dead: bool) -> void:
 func _cache_mesh_parts() -> void:
 	mesh_parts.clear()
 	if mesh_root:
-		_collect_meshes(mesh_root)
-
-func _collect_meshes(node: Node) -> void:
-	for child in node.get_children():
-		if child is MeshInstance3D:
-			mesh_parts.append(child)
-		_collect_meshes(child)
-
-func _autoplay_first_animation(root: Node) -> void:
-	if root == null:
-		return
-	var players: Array = root.find_children("*", "AnimationPlayer", true, false)
-	if players.is_empty():
-		return
-	var anim_player: AnimationPlayer = players[0] as AnimationPlayer
-	if anim_player == null:
-		return
-	var anims: PackedStringArray = anim_player.get_animation_list()
-	if anims.is_empty():
-		return
-	if not anim_player.is_playing():
-		anim_player.play(anims[0])
+		for child in mesh_root.get_children():
+			if child is MeshInstance3D:
+				mesh_parts.append(child)
 
 func _setup_healthbar() -> void:
 	if health_back and health_back.get_parent() is Node3D:
@@ -112,7 +115,6 @@ func _start_ko_jump() -> void:
 	if is_ko:
 		return
 	is_ko = true
-	_award_xp()
 	var start_pos := position
 	var up_pos := start_pos + Vector3(0, 0.8, 0)
 	var tween := create_tween()
@@ -125,8 +127,3 @@ func _reset_health() -> void:
 	is_ko = false
 	_update_color(false)
 	_update_healthbar()
-
-func _award_xp() -> void:
-	var player = get_tree().get_first_node_in_group("player")
-	if player and player.has_method("add_xp"):
-		player.add_xp(xp_reward)
