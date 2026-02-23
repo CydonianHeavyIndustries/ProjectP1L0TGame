@@ -19,6 +19,15 @@ func _ready() -> void:
 	_start_network_mode()
 	_register_network_callbacks()
 
+	# Backward compatibility: some scenes still ship with a pre-placed Player node.
+	# Configure it as the local player in offline mode so controls/HUD remain functional.
+	if run_mode == "offline" and world.has_node("Player"):
+		var legacy_player := world.get_node("Player")
+		if legacy_player is CharacterBody3D:
+			legacy_player.call("configure_player", 1, true, dedicated_server)
+			players[1] = legacy_player
+			return
+
 	if run_mode == "offline":
 		_spawn_player(1)
 	elif run_mode == "server" and not dedicated_server:
@@ -152,4 +161,3 @@ func _is_local_player(peer_id: int) -> bool:
 	if dedicated_server:
 		return false
 	return peer_id == multiplayer.get_unique_id()
-
